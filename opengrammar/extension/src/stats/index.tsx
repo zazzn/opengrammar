@@ -1,11 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import { calculateWritingStats, getReadabilityLevel, type WritingStats } from './writing-stats';
+import { calculateWritingStats, calculateWritingScore, getReadabilityLevel, type WritingStats, type WritingScoreBreakdown } from './writing-stats';
 import './stats.css';
 import type { AnalyticsSummary } from '../types';
 
+interface WritingSessionEntry {
+  date: string;
+  wordsChecked: number;
+  issuesFound: number;
+  issuesFixed: number;
+  writingScore: number;
+  sessionsCount: number;
+}
+
 const StatsPopup = () => {
   const [stats, setStats] = useState<WritingStats | null>(null);
+  const [score, setScore] = useState<WritingScoreBreakdown | null>(null);
+  const [history, setHistory] = useState<WritingSessionEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
 
@@ -15,14 +26,22 @@ const StatsPopup = () => {
 
   const loadStats = async () => {
     try {
-      // Get active element's text
+      // Load current active text
       const response = await chrome.runtime.sendMessage({ type: 'GET_ACTIVE_TEXT' });
+      // Load usage analytics
       const analyticsResponse = await chrome.runtime.sendMessage({ type: 'GET_ANALYTICS_SUMMARY' });
       setAnalytics(analyticsResponse);
+      
+      // Load daily history
+      const historyResponse = await chrome.runtime.sendMessage({ type: 'GET_WRITING_HISTORY', days: 7 });
+      if (historyResponse) {
+        setHistory(Array.isArray(historyResponse) ? historyResponse.reverse() : []);
+      }
       
       if (response?.text) {
         const calculatedStats = calculateWritingStats(response.text, response.issues);
         setStats(calculatedStats);
+        setScore(calculateWritingScore(calculatedStats));
       }
     } catch (error) {
       console.error('Failed to load stats:', error);
@@ -59,6 +78,58 @@ const StatsPopup = () => {
       </header>
 
       <main className="stats-main">
+        {/* Writing Score */}
+        {score && (
+          <section className="stats-section">
+            <h2>Overall Score</h2>
+            <div className="score-card">
+              <div className="score-circle-wrapper">
+                <svg className="score-circle" viewBox="0 0 100 100">
+                  <circle className="score-circle-bg" cx="50" cy="50" r="45" />
+                  <circle 
+                    className="score-circle-progress" 
+                    cx="50" 
+                    cy="50" 
+                    r="45" 
+                    style={{ 
+                      strokeDasharray: `${score.overall * 2.83} 283`, 
+                      stroke: score.color 
+                    }}
+                  />
+                </svg>
+                <div className="score-number" style={{ color: score.color }}>
+                  {score.overall}
+                </div>
+              </div>
+              <div className="score-details">
+                <div className="score-label-row">
+                  <span className="score-badge" style={{ backgroundColor: `${score.color}20`, color: score.color }}>
+                    {score.label}
+                  </span>
+                </div>
+                <div className="score-breakdown">
+                  <div className="breakdown-item">
+                    <span>Correctness</span>
+                    <span className="breakdown-value">{score.correctness}/40</span>
+                  </div>
+                  <div className="breakdown-item">
+                    <span>Readability</span>
+                    <span className="breakdown-value">{score.readability}/30</span>
+                  </div>
+                  <div className="breakdown-item">
+                    <span>Engagement</span>
+                    <span className="breakdown-value">{score.engagement}/15</span>
+                  </div>
+                  <div className="breakdown-item">
+                    <span>Delivery</span>
+                    <span className="breakdown-value">{score.delivery}/15</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Quick Stats Grid */}
         <section className="stats-section">
           <h2>Overview</h2>
@@ -141,9 +212,30 @@ const StatsPopup = () => {
           </section>
         )}
 
+        {history.length > 0 && (
+          <section className="stats-section">
+            <h2>Recent History</h2>
+            <div className="history-list">
+              {history.slice(0, 5).map(session => (
+                <div className="history-item" key={session.date}>
+                  <div className="history-date">
+                    {new Date(session.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  </div>
+                  <div className="history-stats">
+                    <span className="history-score" style={{ color: getScoreColor(session.writingScore) }}>
+                      {session.writingScore} Score
+                    </span>
+                    <span className="history-words">{session.wordsChecked.toLocaleString()} words</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {analytics && (
           <section className="stats-section">
-            <h2>Synced Usage</h2>
+            <h2>Lifetime Insights</h2>
             <div className="stats-grid">
               <StatCard label="Analyses" value={analytics.totals.analysis_runs || 0} />
               <StatCard label="Suggestions Applied" value={analytics.totals.suggestions_applied || 0} />
@@ -151,7 +243,7 @@ const StatsPopup = () => {
               <StatCard label="Rewrites Applied" value={analytics.totals.rewrite_applied || 0} />
             </div>
             <p className="sync-caption">
-              Synced activity {analytics.lastUpdatedAt ? `updated ${new Date(analytics.lastUpdatedAt).toLocaleString()}` : 'has not been recorded yet'}.
+              Synced activity {analytics.lastUpdatedAt ? `updated ${new Date(analytics.lastUpdatedAt).toLocaleDateString()}` : 'has not been recorded yet'}.
             </p>
           </section>
         )}
@@ -159,6 +251,13 @@ const StatsPopup = () => {
     </div>
   );
 };
+
+function getScoreColor(score: number): string {
+  if (score >= 80) return '#16A34A';
+  if (score >= 60) return '#F59E0B';
+  if (score >= 40) return '#EA580C';
+  return '#DC2626';
+}
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
