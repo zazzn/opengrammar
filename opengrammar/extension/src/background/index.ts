@@ -161,6 +161,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   }
+
+  // D1: Badge count update
+  if (request.type === 'UPDATE_BADGE_COUNT') {
+    void updateBadge(request.count, sender.tab?.id);
+    sendResponse({ success: true });
+    return false;
+  }
+
+  // D4: Writing history
+  if (request.type === 'SAVE_WRITING_SESSION') {
+    void saveWritingSession(request.payload).then(() => {
+      sendResponse({ success: true });
+    });
+    return true;
+  }
+
+  if (request.type === 'GET_WRITING_HISTORY') {
+    void getWritingHistory(request.days || 30).then((history) => {
+      sendResponse(history);
+    });
+    return true;
+  }
 });
 
 // Handle context menu clicks
@@ -279,6 +301,10 @@ async function handleGrammarCheck(
       });
     }
     
+    // D1: Update badge count after analysis
+    const issueCount = data.issues?.length || 0;
+    void updateBadge(issueCount, undefined);
+
     sendResponse(data);
   } catch (error) {
     console.error('Grammar check failed:', error);
@@ -650,3 +676,97 @@ checkBackendHealth();
 
 // Periodic health check every 5 minutes
 setInterval(checkBackendHealth, 5 * 60 * 1000);
+
+// ─── D1: Badge ───────────────────────────────────────────────────────────────
+
+async function updateBadge(issueCount: number, tabId?: number): Promise<void> {
+  try {
+    if (issueCount > 0) {
+      const text = issueCount > 99 ? '99+' : String(issueCount);
+      const color = issueCount > 5 ? '#DC2626' : issueCount > 0 ? '#F59E0B' : '#16A34A';
+      await chrome.action.setBadgeText({ text, tabId });
+      await chrome.action.setBadgeBackgroundColor({ color, tabId });
+    } else {
+      await chrome.action.setBadgeText({ text: '', tabId });
+    }
+  } catch (error) {
+    // Badge API may not be available in all contexts
+    console.debug('Badge update failed:', error);
+  }
+}
+
+// ─── D4: Writing History ─────────────────────────────────────────────────────
+
+interface WritingSessionEntry {
+  date: string; // YYYY-MM-DD
+  wordsChecked: number;
+  issuesFound: number;
+  issuesFixed: number;
+  writingScore: number;
+  sessionsCount: number;
+  topErrors: Record<string, number>;
+}
+
+async function saveWritingSession(payload: {
+  wordsChecked: number;
+  issuesFound: number;
+  issuesFixed: number;
+  writingScore: number;
+  errorTypes?: Record<string, number>;
+}): Promise<void> {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const result = await chrome.storage.local.get('writingHistory');
+  const history: Record<string, WritingSessionEntry> = result.writingHistory || {};
+
+  const existing = history[today] || {
+    date: today,
+    wordsChecked: 0,
+    issuesFound: 0,
+    issuesFixed: 0,
+    writingScore: 0,
+    sessionsCount: 0,
+    topErrors: {},
+  };
+
+  existing.wordsChecked += payload.wordsChecked;
+  existing.issuesFound += payload.issuesFound;
+  existing.issuesFixed += payload.issuesFixed;
+  existing.sessionsCount += 1;
+
+  // Rolling average of writing score
+  existing.writingScore = Math.round(
+    ((existing.writingScore * (existing.sessionsCount - 1)) + payload.writingScore) / existing.sessionsCount
+  );
+
+  // Aggregate error types
+  if (payload.errorTypes) {
+    for (const [type, count] of Object.entries(payload.errorTypes)) {
+      existing.topErrors[type] = (existing.topErrors[type] || 0) + count;
+    }
+  }
+
+  history[today] = existing;
+
+  // Keep only last 90 days
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 90);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  for (const key of Object.keys(history)) {
+    if (key < cutoffStr) delete history[key];
+  }
+
+  await chrome.storage.local.set({ writingHistory: history });
+}
+
+async function getWritingHistory(days: number = 30): Promise<WritingSessionEntry[]> {
+  const result = await chrome.storage.local.get('writingHistory');
+  const history: Record<string, WritingSessionEntry> = result.writingHistory || {};
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  return Object.values(history)
+    .filter(entry => entry.date >= cutoffStr)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
