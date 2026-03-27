@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div class="paper-texture"></div>
@@ -192,13 +194,13 @@
                         <span class="breadcrumb-sep">/</span>
                         <span class="current">Quick Start</span>
                     </nav>
-                    <h1>🚀 Quick Start</h1>
+                    <h1><i data-lucide="rocket" class="icon-inline"></i> Quick Start</h1>
                     <p class="section-description">Get OpenGrammar up and running in 5 minutes!</p>
                 </div>
 
                 <div class="content-body">
                     <div class="callout callout-primary">
-                        <div class="callout-icon">⚡</div>
+                        <div class="callout-icon"><i data-lucide="zap" class="icon-inline"></i></div>
                         <div class="callout-content">
                             <strong>5-Minute Setup</strong>
                             <p>Follow these steps to get OpenGrammar running quickly. You'll need an API key for the best experience.</p>
@@ -216,7 +218,7 @@
                     </ol>
 
                     <div class="callout callout-success">
-                        <div class="callout-icon">✅</div>
+                        <div class="callout-icon"><i data-lucide="check-circle-2" class="icon-inline"></i></div>
                         <div class="callout-content">
                             <strong>Free Tier:</strong> 100 requests/day - enough for most users!
                         </div>
@@ -265,7 +267,7 @@ bun run build</code></pre>
                                     <li>Enable <strong>Developer mode</strong> (toggle in top-right)</li>
                                     <li>Click <strong>Load unpacked</strong></li>
                                     <li>Select the <code>opengrammar/extension/dist</code> folder</li>
-                                    <li>✅ Extension loaded! You'll see the OpenGrammar icon</li>
+                                    <li><i data-lucide="check-circle-2" class="icon-inline"></i> Extension loaded! You'll see the OpenGrammar icon</li>
                                 </ol>
                             </div>
                             <div class="tab-pane" id="brave">
@@ -275,7 +277,7 @@ bun run build</code></pre>
                                     <li>Enable <strong>Developer mode</strong> (top-right)</li>
                                     <li>Click <strong>Load unpacked</strong></li>
                                     <li>Select <code>opengrammar/extension/dist</code> folder</li>
-                                    <li>✅ Extension loaded!</li>
+                                    <li><i data-lucide="check-circle-2" class="icon-inline"></i> Extension loaded!</li>
                                 </ol>
                             </div>
                             <div class="tab-pane" id="edge">
@@ -285,13 +287,13 @@ bun run build</code></pre>
                                     <li>Enable <strong>Developer mode</strong> (left sidebar)</li>
                                     <li>Click <strong>Load unpacked</strong></li>
                                     <li>Select <code>opengrammar/extension/dist</code> folder</li>
-                                    <li>✅ Extension loaded!</li>
+                                    <li><i data-lucide="check-circle-2" class="icon-inline"></i> Extension loaded!</li>
                                 </ol>
                             </div>
                             <div class="tab-pane" id="firefox">
                                 <h4>Mozilla Firefox</h4>
                                 <div class="callout callout-warning">
-                                    <div class="callout-icon">⚠️</div>
+                                    <div class="callout-icon"><i data-lucide="alert-triangle" class="icon-inline"></i>️</div>
                                     <div class="callout-content">
                                         <strong>Note:</strong> Firefox support is temporary. The extension must be reloaded each time you restart Firefox.
                                     </div>
@@ -301,7 +303,7 @@ bun run build</code></pre>
                                     <li>Click <strong>Load Temporary Add-on</strong></li>
                                     <li>Navigate to <code>opengrammar/extension/dist</code></li>
                                     <li>Select <code>manifest.json</code></li>
-                                    <li>✅ Extension loaded!</li>
+                                    <li><i data-lucide="check-circle-2" class="icon-inline"></i> Extension loaded!</li>
                                 </ol>
                             </div>
                         </div>
@@ -328,7 +330,7 @@ bun run build</code></pre>
 
                     <div class="feature-grid">
                         <div class="feature-card">
-                            <div class="feature-icon">📚</div>
+                            <div class="feature-icon"><i data-lucide="library" class="icon-inline"></i></div>
                             <h4>Read Next</h4>
                             <ul class="link-list">
                                 <li><a href="#backend-deployment">Backend Deployment</a></li>
@@ -377,12 +379,12 @@ curl http://localhost:8787/health</code></pre>
                         <span class="breadcrumb-sep">/</span>
                         <span class="current">Browser Extension</span>
                     </nav>
-                    <h1>🌐 Browser Extension Setup</h1>
+                    <h1><i data-lucide="globe" class="icon-inline"></i> Browser Extension Setup</h1>
                     <p class="section-description">Install and configure OpenGrammar on Chrome, Brave, Edge, and Firefox.</p>
                 </div>
 
                 <div class="content-body">
-                    <h2>📋 Supported Browsers</h2>
+                    <h2><i data-lucide="clipboard-list" class="icon-inline"></i> Supported Browsers</h2>
                     
                     <div class="table-wrapper">
                         <table class="data-table">
@@ -397,38 +399,38 @@ curl http://localhost:8787/health</code></pre>
                                 <tr>
                                     <td><strong>Google Chrome</strong></td>
                                     <td>88+</td>
-                                    <td><span class="status-badge success">✅ Fully Supported</span></td>
+                                    <td><span class="status-badge success"><i data-lucide="check-circle-2" class="icon-inline"></i> Fully Supported</span></td>
                                 </tr>
                                 <tr>
                                     <td><strong>Brave</strong></td>
                                     <td>1.20+</td>
-                                    <td><span class="status-badge success">✅ Fully Supported</span></td>
+                                    <td><span class="status-badge success"><i data-lucide="check-circle-2" class="icon-inline"></i> Fully Supported</span></td>
                                 </tr>
                                 <tr>
                                     <td><strong>Microsoft Edge</strong></td>
                                     <td>88+</td>
-                                    <td><span class="status-badge success">✅ Fully Supported</span></td>
+                                    <td><span class="status-badge success"><i data-lucide="check-circle-2" class="icon-inline"></i> Fully Supported</span></td>
                                 </tr>
                                 <tr>
                                     <td><strong>Mozilla Firefox</strong></td>
                                     <td>90+</td>
-                                    <td><span class="status-badge warning">✅ Supported (Temporary)</span></td>
+                                    <td><span class="status-badge warning"><i data-lucide="check-circle-2" class="icon-inline"></i> Supported (Temporary)</span></td>
                                 </tr>
                                 <tr>
                                     <td><strong>Opera</strong></td>
                                     <td>74+</td>
-                                    <td><span class="status-badge success">✅ Supported</span></td>
+                                    <td><span class="status-badge success"><i data-lucide="check-circle-2" class="icon-inline"></i> Supported</span></td>
                                 </tr>
                                 <tr>
                                     <td><strong>Vivaldi</strong></td>
                                     <td>3.6+</td>
-                                    <td><span class="status-badge success">✅ Supported</span></td>
+                                    <td><span class="status-badge success"><i data-lucide="check-circle-2" class="icon-inline"></i> Supported</span></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
 
-                    <h2>🔧 Installation - Chrome</h2>
+                    <h2><i data-lucide="wrench" class="icon-inline"></i> Installation - Chrome</h2>
                     
                     <h3>Step 1: Build the Extension</h3>
                     <div class="code-block">
@@ -462,13 +464,13 @@ bun run build</code></pre>
                         <li>Click <strong>Select</strong></li>
                     </ol>
                     <div class="callout callout-success">
-                        <div class="callout-icon">✅</div>
+                        <div class="callout-icon"><i data-lucide="check-circle-2" class="icon-inline"></i></div>
                         <div class="callout-content">
                             <strong>Extension loaded!</strong> You'll see the OpenGrammar icon in your toolbar.
                         </div>
                     </div>
 
-                    <h2>⚙️ Initial Configuration</h2>
+                    <h2><i data-lucide="settings" class="icon-inline"></i> Initial Configuration</h2>
                     
                     <h3>Step 1: Open Settings</h3>
                     <ol>
@@ -490,26 +492,26 @@ bun run build</code></pre>
                     <h3>Step 3: Configure AI Provider</h3>
                     <div class="provider-cards">
                         <div class="provider-card">
-                            <div class="provider-icon">⚡</div>
+                            <div class="provider-icon"><i data-lucide="zap" class="icon-inline"></i></div>
                             <h4>Groq (Free)</h4>
                             <p>100 requests/day free</p>
                             <code>llama-3.1-70b-versatile</code>
                         </div>
                         <div class="provider-card">
-                            <div class="provider-icon">🟢</div>
+                            <div class="provider-icon"><i data-lucide="circle-dot" class="icon-inline"></i></div>
                             <h4>OpenAI</h4>
                             <p>Best quality</p>
                             <code>gpt-4o-mini</code>
                         </div>
                         <div class="provider-card">
-                            <div class="provider-icon">🦙</div>
+                            <div class="provider-icon"><i data-lucide="bot" class="icon-inline"></i></div>
                             <h4>Ollama</h4>
                             <p>Local & offline</p>
                             <code>qwen2.5:1.5b</code>
                         </div>
                     </div>
 
-                    <h2>🎨 User Interface</h2>
+                    <h2><i data-lucide="palette" class="icon-inline"></i> User Interface</h2>
                     
                     <h3>Color-Coded Underlines</h3>
                     <div class="color-guide">
@@ -563,7 +565,7 @@ bun run build</code></pre>
                         <span class="breadcrumb-sep">/</span>
                         <span class="current">What is OpenGrammar?</span>
                     </nav>
-                    <h1>📖 What is OpenGrammar?</h1>
+                    <h1><i data-lucide="book-open" class="icon-inline"></i> What is OpenGrammar?</h1>
                     <p class="section-description">Your privacy-first, open-source writing assistant</p>
                 </div>
 
@@ -575,32 +577,32 @@ bun run build</code></pre>
                         </div>
                     </div>
 
-                    <h2>🌟 Key Features</h2>
+                    <h2><i data-lucide="star" class="icon-inline"></i> Key Features</h2>
                     
                     <div class="feature-grid-2">
                         <div class="feature-box">
-                            <div class="feature-box-icon">🔒</div>
+                            <div class="feature-box-icon"><i data-lucide="lock" class="icon-inline"></i></div>
                             <h3>Zero Cost Option</h3>
                             <p>The core engine runs locally in your browser, checking for passive voice, repetition, and readability without needing a server or an internet connection.</p>
                         </div>
                         <div class="feature-box">
-                            <div class="feature-box-icon">🔑</div>
+                            <div class="feature-box-icon"><i data-lucide="key" class="icon-inline"></i></div>
                             <h3>Bring Your Own AI</h3>
                             <p>Just paste in your own API key (like OpenAI, Groq, or OpenRouter). You pay only fractions of a cent for what you actually use, directly to the AI provider.</p>
                         </div>
                         <div class="feature-box">
-                            <div class="feature-box-icon">🛡️</div>
+                            <div class="feature-box-icon"><i data-lucide="shield" class="icon-inline"></i></div>
                             <h3>Absolute Privacy</h3>
                             <p>We don't have a database. We don't have user accounts. Your API key never leaves your browser. If you use the AI features, your text is sent securely to a stateless edge function, processed, and immediately forgotten.</p>
                         </div>
                         <div class="feature-box">
-                            <div class="feature-box-icon">📦</div>
+                            <div class="feature-box-icon"><i data-lucide="package" class="icon-inline"></i></div>
                             <h3>Open Source & Self-Hosted</h3>
                             <p>You can deploy the backend to Cloudflare Workers or Vercel Edge for free in one command. You own the infrastructure.</p>
                         </div>
                     </div>
 
-                    <h2>✨ Features</h2>
+                    <h2><i data-lucide="sparkles" class="icon-inline"></i> Features</h2>
                     
                     <ul class="feature-list">
                         <li>
@@ -672,12 +674,12 @@ bun run build</code></pre>
                         <span class="breadcrumb-sep">/</span>
                         <span class="current">Backend Deployment</span>
                     </nav>
-                    <h1>🌐 Backend Deployment</h1>
+                    <h1><i data-lucide="globe" class="icon-inline"></i> Backend Deployment</h1>
                     <p class="section-description">Deploy OpenGrammar backend to production with any of these platforms.</p>
                 </div>
                 <div class="content-body">
                     <div class="callout callout-info">
-                        <div class="callout-icon">📋</div>
+                        <div class="callout-icon"><i data-lucide="clipboard-list" class="icon-inline"></i></div>
                         <div class="callout-content">
                             <strong>Deployment Options Comparison</strong>
                             <p>Choose the platform that best fits your needs.</p>
@@ -729,7 +731,7 @@ bun run build</code></pre>
                         </table>
                     </div>
 
-                    <h2>☁️ Cloudflare Workers (Recommended)</h2>
+                    <h2><i data-lucide="cloud" class="icon-inline"></i> Cloudflare Workers (Recommended)</h2>
                     
                     <h3>Prerequisites</h3>
                     <ul>
@@ -781,7 +783,7 @@ wrangler deploy --env production</code></pre>
                         <pre><code>Deployed https://opengrammar.yourname.workers.dev</code></pre>
                     </div>
 
-                    <h2>▲ Vercel</h2>
+                    <h2><i data-lucide="triangle" class="icon-inline"></i> Vercel</h2>
                     
                     <h3>Step 1: Install Vercel CLI</h3>
                     <div class="code-block">
@@ -794,7 +796,7 @@ wrangler deploy --env production</code></pre>
 vercel --prod</code></pre>
                     </div>
 
-                    <h2>🐳 Docker Self-Hosting</h2>
+                    <h2><i data-lucide="container" class="icon-inline"></i> Docker Self-Hosting</h2>
                     
                     <h3>Option 1: Docker Compose</h3>
                     <div class="code-block">
@@ -833,12 +835,12 @@ docker-compose --profile local-llm up -d</code></pre>
                         <span class="breadcrumb-sep">/</span>
                         <span class="current">Docker Self-Hosting</span>
                     </nav>
-                    <h1>🐳 Docker Self-Hosting</h1>
+                    <h1><i data-lucide="container" class="icon-inline"></i> Docker Self-Hosting</h1>
                     <p class="section-description">Run OpenGrammar locally with Docker and optional local LLM support (Ollama).</p>
                 </div>
                 <div class="content-body">
                     <div class="callout callout-primary">
-                        <div class="callout-icon">🎯</div>
+                        <div class="callout-icon"><i data-lucide="target" class="icon-inline"></i></div>
                         <div class="callout-content">
                             <strong>Why Self-Host with Docker?</strong>
                             <ul>
@@ -851,7 +853,7 @@ docker-compose --profile local-llm up -d</code></pre>
                         </div>
                     </div>
 
-                    <h2>🚀 Quick Start</h2>
+                    <h2><i data-lucide="rocket" class="icon-inline"></i> Quick Start</h2>
                     
                     <h3>Option 1: Backend Only (Use Cloud APIs)</h3>
                     <div class="code-block">
@@ -883,7 +885,7 @@ docker-compose logs -f opengrammar-backend</code></pre>
 docker-compose --profile local-llm up -d</code></pre>
                     </div>
 
-                    <h2>🤖 Local LLM Setup with Ollama</h2>
+                    <h2><i data-lucide="cpu" class="icon-inline"></i> Local LLM Setup with Ollama</h2>
                     
                     <h3>Step 1: Start Ollama Container</h3>
                     <div class="code-block">
@@ -905,7 +907,7 @@ ollama pull llama3.2:3b       # Good all-rounder, 2GB
 exit</code></pre>
                     </div>
 
-                    <h2>🎯 Model Recommendations</h2>
+                    <h2><i data-lucide="target" class="icon-inline"></i> Model Recommendations</h2>
                     
                     <div class="table-wrapper">
                         <table class="data-table">
@@ -924,7 +926,7 @@ exit</code></pre>
                                     <td><strong>qwen2.5:0.5b</strong></td>
                                     <td>400MB</td>
                                     <td>1GB</td>
-                                    <td>⚡⚡⚡⚡⚡</td>
+                                    <td><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i></td>
                                     <td>⭐⭐⭐</td>
                                     <td>Fast basic checks</td>
                                 </tr>
@@ -932,7 +934,7 @@ exit</code></pre>
                                     <td><strong>qwen2.5:1.5b</strong></td>
                                     <td>1GB</td>
                                     <td>2GB</td>
-                                    <td>⚡⚡⚡⚡</td>
+                                    <td><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i></td>
                                     <td>⭐⭐⭐⭐</td>
                                     <td>Balanced</td>
                                 </tr>
@@ -940,7 +942,7 @@ exit</code></pre>
                                     <td><strong>phi4-mini:3.8b</strong></td>
                                     <td>2.5GB</td>
                                     <td>4GB</td>
-                                    <td>⚡⚡⚡</td>
+                                    <td><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i></td>
                                     <td>⭐⭐⭐⭐⭐</td>
                                     <td>Best quality</td>
                                 </tr>
@@ -948,7 +950,7 @@ exit</code></pre>
                                     <td><strong>llama3.2:3b</strong></td>
                                     <td>2GB</td>
                                     <td>3GB</td>
-                                    <td>⚡⚡⚡⚡</td>
+                                    <td><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i></td>
                                     <td>⭐⭐⭐⭐</td>
                                     <td>Good balance</td>
                                 </tr>
@@ -982,21 +984,21 @@ exit</code></pre>
                         <span class="breadcrumb-sep">/</span>
                         <span class="current">AI Providers</span>
                     </nav>
-                    <h1>🤖 AI Provider Setup</h1>
+                    <h1><i data-lucide="cpu" class="icon-inline"></i> AI Provider Setup</h1>
                     <p class="section-description">Configure AI providers for advanced grammar checking and tone rewriting.</p>
                 </div>
                 <div class="content-body">
-                    <h2>📋 Overview</h2>
+                    <h2><i data-lucide="clipboard-list" class="icon-inline"></i> Overview</h2>
                     <p>OpenGrammar supports <strong>6 AI providers</strong>, giving you flexibility in cost, quality, and privacy.</p>
 
                     <div class="provider-comparison">
                         <div class="provider-card-large">
                             <div class="provider-header">
-                                <span class="provider-icon">⚡</span>
+                                <span class="provider-icon"><i data-lucide="zap" class="icon-inline"></i></span>
                                 <h3>Groq</h3>
                             </div>
                             <div class="provider-stats">
-                                <div class="stat"><span>Speed:</span> ⚡⚡⚡</div>
+                                <div class="stat"><span>Speed:</span> <i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i></div>
                                 <div class="stat"><span>Quality:</span> ⭐⭐⭐⭐</div>
                                 <div class="stat"><span>Cost:</span> Free tier</div>
                             </div>
@@ -1004,11 +1006,11 @@ exit</code></pre>
                         </div>
                         <div class="provider-card-large">
                             <div class="provider-header">
-                                <span class="provider-icon">🟢</span>
+                                <span class="provider-icon"><i data-lucide="circle-dot" class="icon-inline"></i></span>
                                 <h3>OpenAI</h3>
                             </div>
                             <div class="provider-stats">
-                                <div class="stat"><span>Speed:</span> ⚡⚡</div>
+                                <div class="stat"><span>Speed:</span> <i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i></div>
                                 <div class="stat"><span>Quality:</span> ⭐⭐⭐⭐⭐</div>
                                 <div class="stat"><span>Cost:</span> $$</div>
                             </div>
@@ -1016,11 +1018,11 @@ exit</code></pre>
                         </div>
                         <div class="provider-card-large">
                             <div class="provider-header">
-                                <span class="provider-icon">🦙</span>
+                                <span class="provider-icon"><i data-lucide="bot" class="icon-inline"></i></span>
                                 <h3>Ollama</h3>
                             </div>
                             <div class="provider-stats">
-                                <div class="stat"><span>Speed:</span> ⚡⚡⚡</div>
+                                <div class="stat"><span>Speed:</span> <i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i></div>
                                 <div class="stat"><span>Quality:</span> ⭐⭐⭐</div>
                                 <div class="stat"><span>Cost:</span> Free</div>
                             </div>
@@ -1028,7 +1030,7 @@ exit</code></pre>
                         </div>
                     </div>
 
-                    <h2>⚡ Groq (Recommended - Free)</h2>
+                    <h2><i data-lucide="zap" class="icon-inline"></i> Groq (Recommended - Free)</h2>
                     
                     <h3>Step 1: Create Account</h3>
                     <ol>
@@ -1080,11 +1082,11 @@ exit</code></pre>
                         <span class="breadcrumb-sep">/</span>
                         <span class="current">Using OpenGrammar</span>
                     </nav>
-                    <h1>📖 Using OpenGrammar</h1>
+                    <h1><i data-lucide="book-open" class="icon-inline"></i> Using OpenGrammar</h1>
                     <p class="section-description">Complete user guide to all features and functionality.</p>
                 </div>
                 <div class="content-body">
-                    <h2>✍️ Grammar Checking</h2>
+                    <h2><i data-lucide="pen-tool" class="icon-inline"></i> Grammar Checking</h2>
                     
                     <h3>Color-Coded Underlines</h3>
                     <div class="color-guide">
@@ -1119,47 +1121,47 @@ exit</code></pre>
                         <li><strong>Apply Changes</strong> - Click Apply, Ignore, or Add to Dictionary</li>
                     </ol>
 
-                    <h2>🎨 Tone Rewriting</h2>
+                    <h2><i data-lucide="palette" class="icon-inline"></i> Tone Rewriting</h2>
                     
                     <h3>Available Tones</h3>
                     <div class="tone-grid">
                         <div class="tone-card">
-                            <span class="tone-emoji">🎩</span>
+                            <span class="tone-emoji"><i data-lucide="briefcase" class="icon-inline"></i></span>
                             <h4>Formal</h4>
                             <p>Business, academic</p>
                         </div>
                         <div class="tone-card">
-                            <span class="tone-emoji">😊</span>
+                            <span class="tone-emoji"><i data-lucide="smile" class="icon-inline"></i></span>
                             <h4>Casual</h4>
                             <p>Friends, chat</p>
                         </div>
                         <div class="tone-card">
-                            <span class="tone-emoji">💼</span>
+                            <span class="tone-emoji"><i data-lucide="briefcase" class="icon-inline"></i></span>
                             <h4>Professional</h4>
                             <p>Work emails</p>
                         </div>
                         <div class="tone-card">
-                            <span class="tone-emoji">🤗</span>
+                            <span class="tone-emoji"><i data-lucide="heart-handshake" class="icon-inline"></i></span>
                             <h4>Friendly</h4>
                             <p>Social media</p>
                         </div>
                         <div class="tone-card">
-                            <span class="tone-emoji">⚡</span>
+                            <span class="tone-emoji"><i data-lucide="zap" class="icon-inline"></i></span>
                             <h4>Concise</h4>
                             <p>Quick messages</p>
                         </div>
                         <div class="tone-card">
-                            <span class="tone-emoji">📚</span>
+                            <span class="tone-emoji"><i data-lucide="library" class="icon-inline"></i></span>
                             <h4>Detailed</h4>
                             <p>Explanations</p>
                         </div>
                         <div class="tone-card">
-                            <span class="tone-emoji">💪</span>
+                            <span class="tone-emoji"><i data-lucide="dumbbell" class="icon-inline"></i></span>
                             <h4>Persuasive</h4>
                             <p>Sales, pitches</p>
                         </div>
                         <div class="tone-card">
-                            <span class="tone-emoji">😐</span>
+                            <span class="tone-emoji"><i data-lucide="meh" class="icon-inline"></i></span>
                             <h4>Neutral</h4>
                             <p>General use</p>
                         </div>
@@ -1192,16 +1194,16 @@ exit</code></pre>
                         <span class="breadcrumb-sep">/</span>
                         <span class="current">Tone Rewriting</span>
                     </nav>
-                    <h1>🎨 Tone Rewriting</h1>
+                    <h1><i data-lucide="palette" class="icon-inline"></i> Tone Rewriting</h1>
                     <p class="section-description">Master the art of rewriting text in different tones.</p>
                 </div>
                 <div class="content-body">
-                    <h2>🎭 Available Tones</h2>
+                    <h2><i data-lucide="smile-plus" class="icon-inline"></i> Available Tones</h2>
                     
                     <div class="tone-detail-grid">
                         <div class="tone-detail-card">
                             <div class="tone-detail-header">
-                                <span class="tone-detail-icon">🎩</span>
+                                <span class="tone-detail-icon"><i data-lucide="briefcase" class="icon-inline"></i></span>
                                 <h3>Formal</h3>
                             </div>
                             <p class="tone-detail-use">Use for: Academic writing, business proposals, official communications</p>
@@ -1219,7 +1221,7 @@ exit</code></pre>
 
                         <div class="tone-detail-card">
                             <div class="tone-detail-header">
-                                <span class="tone-detail-icon">😊</span>
+                                <span class="tone-detail-icon"><i data-lucide="smile" class="icon-inline"></i></span>
                                 <h3>Casual</h3>
                             </div>
                             <p class="tone-detail-use">Use for: Social media, text messages, informal emails</p>
@@ -1237,7 +1239,7 @@ exit</code></pre>
 
                         <div class="tone-detail-card">
                             <div class="tone-detail-header">
-                                <span class="tone-detail-icon">💼</span>
+                                <span class="tone-detail-icon"><i data-lucide="briefcase" class="icon-inline"></i></span>
                                 <h3>Professional</h3>
                             </div>
                             <p class="tone-detail-use">Use for: Work emails, business communication, reports</p>
@@ -1254,7 +1256,7 @@ exit</code></pre>
                         </div>
                     </div>
 
-                    <h2>🚀 How to Use</h2>
+                    <h2><i data-lucide="rocket" class="icon-inline"></i> How to Use</h2>
                     
                     <h3>Method 1: Right-Click Menu</h3>
                     <ol>
@@ -1299,11 +1301,11 @@ exit</code></pre>
                         <span class="breadcrumb-sep">/</span>
                         <span class="current">Writing Statistics</span>
                     </nav>
-                    <h1>📊 Writing Statistics</h1>
+                    <h1><i data-lucide="bar-chart-2" class="icon-inline"></i> Writing Statistics</h1>
                     <p class="section-description">Analyze and improve your writing with detailed statistics.</p>
                 </div>
                 <div class="content-body">
-                    <h2>📈 Available Metrics</h2>
+                    <h2><i data-lucide="trending-up" class="icon-inline"></i> Available Metrics</h2>
                     
                     <h3>Readability Scores</h3>
                     
@@ -1435,11 +1437,11 @@ exit</code></pre>
                         <span class="breadcrumb-sep">/</span>
                         <span class="current">Troubleshooting</span>
                     </nav>
-                    <h1>🔧 Troubleshooting</h1>
+                    <h1><i data-lucide="wrench" class="icon-inline"></i> Troubleshooting</h1>
                     <p class="section-description">Solve common OpenGrammar issues with this comprehensive guide.</p>
                 </div>
                 <div class="content-body">
-                    <h2>🔍 Common Issues</h2>
+                    <h2><i data-lucide="search" class="icon-inline"></i> Common Issues</h2>
                     
                     <h3>No Grammar Highlights</h3>
                     <div class="troubleshoot-card">
@@ -1521,7 +1523,7 @@ exit</code></pre>
                         <span class="breadcrumb-sep">/</span>
                         <span class="current">FAQ</span>
                     </nav>
-                    <h1>❓ Frequently Asked Questions</h1>
+                    <h1><i data-lucide="help-circle" class="icon-inline"></i> Frequently Asked Questions</h1>
                     <p class="section-description">Common questions about OpenGrammar.</p>
                 </div>
                 <div class="content-body">
@@ -1613,7 +1615,7 @@ exit</code></pre>
                         <span class="breadcrumb-sep">/</span>
                         <span class="current">API Reference</span>
                     </nav>
-                    <h1>📚 API Reference</h1>
+                    <h1><i data-lucide="library" class="icon-inline"></i> API Reference</h1>
                     <p class="section-description">Backend API documentation for developers.</p>
                 </div>
                 <div class="content-body">
@@ -1758,12 +1760,16 @@ exit</code></pre>
 
         <footer class="content-footer">
             <div class="footer-content">
-                <p>Built with ❤️ by <a href="https://github.com/swadhinbiswas" target="_blank">Swadhin Biswas</a></p>
+                <p>Built with <i data-lucide="heart" class="icon-inline"></i>️ by <a href="https://github.com/swadhinbiswas" target="_blank">Swadhin Biswas</a></p>
                 <p>OpenGrammar is licensed under <a href="https://opensource.org/licenses/Apache-2.0" target="_blank">Apache 2.0</a></p>
             </div>
         </footer>
     </main>
 
     <script src="script.js"></script>
+
+<script>
+    lucide.createIcons();
+</script>
 </body>
 </html>
