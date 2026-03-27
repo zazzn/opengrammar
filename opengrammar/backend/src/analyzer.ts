@@ -861,6 +861,10 @@ export class RuleBasedAnalyzer {
       { pattern: /\b(he|she|it)\s+were\b/gi, suggestion: '$1 was', reason: 'Use "was" with he/she/it (singular).' },
       { pattern: /\b(I|we|they)\s+was\b/gi, suggestion: '$1 were', reason: 'Use "were" with I/we/they.' },
       { pattern: /\bthere\s+is\s+(many|several|numerous|various|multiple)\b/gi, suggestion: 'there are $1', reason: 'Use "are" with plural subjects.' },
+      { pattern: /\bI\s+is\b/gi, suggestion: 'I am', reason: 'Use "am" with the subject "I".' },
+      { pattern: /\bI\s+are\b/gi, suggestion: 'I am', reason: 'Use "am" with the subject "I".' },
+      { pattern: /\b(you|we|they)\s+is\b/gi, suggestion: '$1 are', reason: 'Use "are" with plural subjects and "you".' },
+      { pattern: /\b(you|we|they)\s+am\b/gi, suggestion: '$1 are', reason: 'Use "are" with plural subjects and "you".' },
     ];
 
     for (const rule of svRules) {
