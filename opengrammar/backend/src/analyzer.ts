@@ -66,6 +66,8 @@ export class RuleBasedAnalyzer {
     issues.push(...this.checkArticleErrors(text));
     issues.push(...this.checkSubjectVerbAgreement(text));
     issues.push(...this.checkMissingCommas(text));
+    issues.push(...this.checkConfusedWords(text));
+    issues.push(...this.checkSentenceFragments(text));
     issues.push(...this.checkCustomRules(text));
 
     return issues;
@@ -929,6 +931,111 @@ export class RuleBasedAnalyzer {
 
     return issues;
   }
+
+  /**
+   * Check for commonly confused words using context clues
+   */
+  private static checkConfusedWords(text: string): Issue[] {
+    const issues: Issue[] = [];
+
+    const confusedRules: Array<{pattern: RegExp, suggestion: string, reason: string}> = [
+      // affect vs effect
+      { pattern: /\bthe\s+affect\b/gi, suggestion: 'the effect', reason: 'Use "effect" (noun). "Affect" is usually a verb.' },
+      { pattern: /\ban\s+affect\b/gi, suggestion: 'an effect', reason: 'Use "effect" (noun). "Affect" is usually a verb.' },
+      { pattern: /\bhas\s+no\s+affect\b/gi, suggestion: 'has no effect', reason: 'Use "effect" (noun) here.' },
+      { pattern: /\beffect\s+(the|a|his|her|their|our|my|your|its)\b/gi, suggestion: 'affect $1', reason: 'Use "affect" (verb) when meaning "to influence".' },
+
+      // then vs than
+      { pattern: /\b(bigger|smaller|better|worse|more|less|faster|slower|higher|lower|greater|fewer|older|younger|earlier|later|longer|shorter|taller|stronger|weaker|easier|harder|smarter|richer|poorer|cheaper|nicer|closer)\s+then\b/gi, suggestion: '$1 than', reason: 'Use "than" for comparisons, not "then".' },
+
+      // lose vs loose
+      { pattern: /\b(will|might|could|would|going to|gonna|dont want to|don't want to)\s+loose\b/gi, suggestion: '$1 lose', reason: 'Use "lose" (verb, opposite of win/find). "Loose" means not tight.' },
+
+      // accept vs except
+      { pattern: /\bexcept\s+(the|his|her|their|our|my|your|this|that|an?)\s+(offer|invitation|terms|conditions|award|gift|prize|challenge|proposal|request|apology|responsibility)\b/gi, suggestion: 'accept $1 $2', reason: 'Use "accept" (to receive). "Except" means excluding.' },
+
+      // who vs whom
+      { pattern: /\bto\s+who\b/gi, suggestion: 'to whom', reason: 'Use "whom" after a preposition (to, for, with, by).' },
+      { pattern: /\bfor\s+who\b/gi, suggestion: 'for whom', reason: 'Use "whom" after a preposition.' },
+      { pattern: /\bwith\s+who\b/gi, suggestion: 'with whom', reason: 'Use "whom" after a preposition.' },
+      { pattern: /\bby\s+who\b/gi, suggestion: 'by whom', reason: 'Use "whom" after a preposition.' },
+
+      // complement vs compliment
+      { pattern: /\bcomplement\s+(him|her|them|you|me|us)\b/gi, suggestion: 'compliment $1', reason: 'Use "compliment" (praise). "Complement" means to complete.' },
+
+      // principal vs principle
+      { pattern: /\bthe\s+principle\s+(of\s+the\s+school|said|announced|decided)\b/gi, suggestion: 'the principal $1', reason: 'Use "principal" for a school leader. "Principle" is a rule or belief.' },
+
+      // weather vs whether
+      { pattern: /\bweather\s+(or\s+not|we|you|they|he|she|it|I|to)\b/gi, suggestion: 'whether $1', reason: 'Use "whether" for conditions/choices. "Weather" refers to climate.' },
+
+      // bare vs bear
+      { pattern: /\bcan't\s+bare\b/gi, suggestion: "can't bear", reason: 'Use "bear" (to tolerate). "Bare" means naked or uncovered.' },
+
+      // peak vs peek vs pique
+      { pattern: /\bpeek\s+(interest|curiosity)\b/gi, suggestion: 'pique $1', reason: 'Use "pique" (to stimulate). "Peek" means to look quickly.' },
+      { pattern: /\bpeak\s+(interest|curiosity)\b/gi, suggestion: 'pique $1', reason: 'Use "pique" (to stimulate). "Peak" means the top.' },
+    ];
+
+    for (const rule of confusedRules) {
+      let match: RegExpExecArray | null;
+      while ((match = rule.pattern.exec(text)) !== null) {
+        issues.push({
+          type: 'spelling',
+          original: match[0],
+          suggestion: match[0].replace(rule.pattern, rule.suggestion),
+          reason: rule.reason,
+          offset: match.index,
+          length: match[0].length,
+        });
+      }
+    }
+
+    return issues;
+  }
+
+  /**
+   * Check for sentence fragments — sentences starting with subordinating
+   * conjunctions that lack a main clause.
+   */
+  private static checkSentenceFragments(text: string): Issue[] {
+    const issues: Issue[] = [];
+
+    // Split into sentences
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
+    let currentIndex = 0;
+
+    const subordinators = /^\s*(because|although|though|even though|while|whereas|since|unless|until|if|when|whenever|wherever|after|before|as soon as|in order to|so that)\b/i;
+
+    for (const sentence of sentences) {
+      const trimmed = sentence.trim();
+      const match = subordinators.exec(trimmed);
+
+      if (match) {
+        // A sentence fragment typically has no comma indicating a main clause joined
+        // and is relatively short (< 12 words likely fragment)
+        const wordCount = trimmed.split(/\s+/).length;
+        const hasComma = trimmed.includes(',');
+
+        // If it starts with a subordinator, is short, and has no comma
+        // it's very likely a fragment
+        if (wordCount < 10 && !hasComma) {
+          issues.push({
+            type: 'grammar',
+            original: trimmed,
+            suggestion: 'This may be a sentence fragment. Add a main clause.',
+            reason: `Sentences starting with "${match[1]}" need a main clause to be complete.`,
+            offset: currentIndex,
+            length: sentence.length,
+          });
+        }
+      }
+
+      currentIndex += sentence.length;
+    }
+
+    return issues;
+  }
 }
 
 export class LLMAnalyzer {
@@ -938,17 +1045,18 @@ export class LLMAnalyzer {
     model: string = 'gpt-3.5-turbo',
     provider: LLMProvider = 'openai',
     baseUrl?: string,
-    context?: AnalysisContext
+    context?: AnalysisContext,
+    ruleIssues?: Issue[]
   ): Promise<Issue[]> {
     try {
       let issues: any[] = [];
 
       // Use Groq SDK for Groq provider
       if (provider === 'groq') {
-        issues = await this.analyzeWithGroq(text, apiKey, model, context);
+        issues = await this.analyzeWithGroq(text, apiKey, model, context, ruleIssues);
       } else {
         // Use OpenAI SDK for other providers (OpenAI, OpenRouter, Together, Ollama, Custom)
-        issues = await this.analyzeWithOpenAI(text, apiKey, model, provider, baseUrl, context);
+        issues = await this.analyzeWithOpenAI(text, apiKey, model, provider, baseUrl, context, ruleIssues);
       }
 
       return issues;
@@ -962,23 +1070,21 @@ export class LLMAnalyzer {
     text: string,
     apiKey: string,
     model: string,
-    context?: AnalysisContext
+    context?: AnalysisContext,
+    ruleIssues?: Issue[]
   ): Promise<Issue[]> {
     const groq = new Groq({ apiKey });
 
-    const prompt = this.createGrammarPrompt(text, context);
+    const { systemPrompt, userPrompt } = this.createGrammarPrompts(text, context, ruleIssues);
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [
-        { 
-          role: 'system', 
-          content: 'You are an expert grammar assistant. Return ONLY valid JSON.' 
-        },
-        { role: 'user', content: prompt }
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
       ],
       model: model,
       response_format: { type: 'json_object' },
-      temperature: 0.3,
+      temperature: 0.2,
     });
 
     let content = chatCompletion.choices[0]?.message?.content;
@@ -1003,7 +1109,8 @@ export class LLMAnalyzer {
     model: string,
     provider: LLMProvider,
     baseUrl?: string,
-    context?: AnalysisContext
+    context?: AnalysisContext,
+    ruleIssues?: Issue[]
   ): Promise<Issue[]> {
     const providerBaseUrl = baseUrl || this.getProviderBaseUrl(provider);
     
@@ -1012,16 +1119,16 @@ export class LLMAnalyzer {
       baseURL: providerBaseUrl,
     });
 
-    const prompt = this.createGrammarPrompt(text, context);
+    const { systemPrompt, userPrompt } = this.createGrammarPrompts(text, context, ruleIssues);
 
     const completion = await openai.chat.completions.create({
       messages: [
-        { role: 'system', content: 'You are an expert grammar assistant. Return ONLY valid JSON.' },
-        { role: 'user', content: prompt }
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
       ],
       model: model,
       response_format: { type: 'json_object' },
-      temperature: 0.3,
+      temperature: 0.2,
     });
 
     let content = completion.choices[0]?.message?.content;
@@ -1052,32 +1159,89 @@ export class LLMAnalyzer {
     return urls[provider as string] ?? urls.openai;
   }
 
-  private static createGrammarPrompt(text: string, context?: AnalysisContext): string {
-    const contextBlock = context
-      ? `\nCONTEXT:\n- Domain: ${context.domain || 'unknown'}\n- Editor type: ${context.editorType || 'generic'}\n- Active sentence: ${context.activeSentence || 'n/a'}\n- Previous text: ${context.previousText || 'n/a'}\n- Next text: ${context.nextText || 'n/a'}\n- Document excerpt: ${context.fullTextExcerpt || 'n/a'}\n`
+  /**
+   * Create structured, few-shot grammar prompts with domain awareness.
+   * Returns separate system and user prompts for better LLM instruction following.
+   */
+  private static createGrammarPrompts(
+    text: string,
+    context?: AnalysisContext,
+    ruleIssues?: Issue[]
+  ): { systemPrompt: string; userPrompt: string } {
+    // Detect writing domain from context
+    const domain = this.detectDomain(context);
+    const domainInstruction = this.getDomainInstruction(domain);
+
+    // Build the list of already-detected issues so LLM doesn't duplicate
+    const alreadyDetected = ruleIssues && ruleIssues.length > 0
+      ? `\n\nALREADY DETECTED (do NOT report these again):\n${ruleIssues.slice(0, 15).map(i => `- "${i.original}" → "${i.suggestion}"`).join('\n')}`
       : '';
 
-    return `Analyze this text for grammar, spelling, clarity, and style issues.
+    const systemPrompt = `You are a professional copy editor and grammar expert. Your job is to find errors that automated rules might miss — contextual mistakes, awkward phrasing, unclear antecedents, and subtle grammar issues.
 
-Use the additional context to improve consistency, tone, and document-level suggestions when available.
+RULES:
+1. Report ONLY genuine errors. Do NOT flag valid informal English or stylistic choices.
+2. Every suggestion must be a concrete replacement, never vague advice like "consider rewording."
+3. Match the "original" field EXACTLY to a substring in the text.
+4. Maximum 8 issues per analysis. Prioritize: spelling > grammar > clarity > style.
+5. Do NOT repeat issues already detected by the rule engine.${alreadyDetected}
+${domainInstruction}
 
-TEXT:
-${text}
-${contextBlock}
-
-Return JSON:
+RETURN FORMAT: Valid JSON only.
 {
   "issues": [
     {
       "type": "grammar|spelling|clarity|style",
-      "original": "exact text",
-      "suggestion": "correction",
-      "reason": "brief explanation"
+      "original": "exact substring from text",
+      "suggestion": "concrete replacement",
+      "reason": "one-sentence explanation"
     }
   ]
 }
 
-Return ONLY JSON. If no issues: {"issues": []}`;
+EXAMPLE:
+Input: "The team have decided to moves forward with there plan."
+Output: {"issues":[{"type":"grammar","original":"team have","suggestion":"team has","reason":"'Team' is a collective noun treated as singular in American English."},{"type":"grammar","original":"to moves","suggestion":"to move","reason":"Infinitive verbs should use the base form."},{"type":"spelling","original":"there plan","suggestion":"their plan","reason":"'Their' (possessive) is needed here, not 'there' (location)."}]}
+
+If there are no issues, return: {"issues": []}`;
+
+    // Build context block
+    const contextBlock = context
+      ? `\n\nCONTEXT:\n- Source: ${context.domain || 'unknown'} (${context.editorType || 'generic'})\n- Active sentence: ${context.activeSentence || 'n/a'}\n- Surrounding text: ${(context.previousText || '').slice(-100)}[CURSOR]${(context.nextText || '').slice(0, 100)}`
+      : '';
+
+    const userPrompt = `Analyze this text for grammar, spelling, clarity, and style issues:\n\n"""\n${text}\n"""${contextBlock}`;
+
+    return { systemPrompt, userPrompt };
+  }
+
+  /**
+   * Detect the writing domain from URL and editor type
+   */
+  private static detectDomain(context?: AnalysisContext): string {
+    if (!context?.domain) return 'general';
+    const d = context.domain.toLowerCase();
+    if (d.includes('mail.google') || d.includes('outlook') || d.includes('yahoo')) return 'email';
+    if (d.includes('docs.google') || d.includes('notion') || d.includes('overleaf')) return 'document';
+    if (d.includes('github') || d.includes('stackoverflow') || d.includes('gitlab')) return 'technical';
+    if (d.includes('twitter') || d.includes('reddit') || d.includes('facebook') || d.includes('linkedin')) return 'social';
+    if (d.includes('slack') || d.includes('discord') || d.includes('teams')) return 'chat';
+    return 'general';
+  }
+
+  /**
+   * Get domain-specific instructions for the LLM
+   */
+  private static getDomainInstruction(domain: string): string {
+    const instructions: Record<string, string> = {
+      email: '\nDOMAIN: Email. Focus on tone, professionalism, and brevity. Flag overly casual language in business emails. Ignore informal greetings.',
+      document: '\nDOMAIN: Document/Essay. Focus on formal grammar, passive voice overuse, paragraph transitions, and academic clarity.',
+      technical: '\nDOMAIN: Technical writing. Ignore code blocks and variable names. Check only prose. Be lenient with technical jargon.',
+      social: '\nDOMAIN: Social media. Only flag clear spelling/grammar errors. Do NOT flag informal language, slang, or conversational tone.',
+      chat: '\nDOMAIN: Chat/messaging. Only flag obvious typos. Do NOT flag informal language or abbreviations.',
+      general: '',
+    };
+    return instructions[domain] || '';
   }
 
   static async getModels(provider: string, apiKey?: string, baseUrl?: string): Promise<string[]> {
