@@ -47,6 +47,7 @@ export class RuleBasedAnalyzer {
     issues.push(...checkSpelling(text, this.dictionary));
 
     // Rule-based checks
+    issues.push(...this.checkCapitalization(text));
     issues.push(...this.checkPassiveVoice(text));
     issues.push(...this.checkRepetition(text));
     issues.push(...this.checkLongSentences(text));
@@ -85,6 +86,66 @@ export class RuleBasedAnalyzer {
         pattern: /\b(me|him|her|them|us)\s+and\s+(I|he|she|they|we)\b/gi,
         suggestion: '$2 and $1',
         reason: 'Use subject pronouns (I, he, she, they, we) when they are part of the subject.'
+      },
+      {
+        pattern: /\b(me\s+and\s+him|him\s+and\s+me)\b/gi,
+        suggestion: 'he and I',
+        reason: 'When acting as the subject, use "He and I".'
+      },
+      {
+        pattern: /\b(me\s+and\s+her|her\s+and\s+me)\b/gi,
+        suggestion: 'she and I',
+        reason: 'When acting as the subject, use "She and I".'
+      },
+      {
+        pattern: /\bbeside\s+you\s+and\s+I\b/gi,
+        suggestion: 'beside you and me',
+        reason: 'Use object pronouns after prepositions ("between you and me").'
+      },
+      {
+        pattern: /\bbetween\s+you\s+and\s+I\b/gi,
+        suggestion: 'between you and me',
+        reason: 'Use object pronouns after prepositions ("between you and me").'
+      },
+      {
+        pattern: /\barrived\s+to\b/gi,
+        suggestion: 'arrived in / at',
+        reason: 'Use "arrived in" for cities/countries and "arrived at" for specific places/events.'
+      },
+      {
+        pattern: /\bcould\s+care\s+less\b/gi,
+        suggestion: "couldn't care less",
+        reason: 'The idiom is "couldn\'t care less" (meaning you care zero percent).'
+      },
+      {
+        pattern: /\bon\s+accident\b/gi,
+        suggestion: 'by accident',
+        reason: 'The correct idiom is "by accident", not "on accident".'
+      },
+      {
+        pattern: /\bbased\s+off\s+of\b/gi,
+        suggestion: 'based on',
+        reason: 'Use "based on" instead of "based off of".'
+      },
+      {
+        pattern: /\bfor\s+all\s+intensive\s+purposes\b/gi,
+        suggestion: 'for all intents and purposes',
+        reason: 'The correct idiom is "for all intents and purposes".'
+      },
+      {
+        pattern: /\balot\b/gi,
+        suggestion: 'a lot',
+        reason: '"A lot" is always two words.'
+      },
+      {
+        pattern: /\bdefinately\b/gi,
+        suggestion: 'definitely',
+        reason: 'The correct spelling is "definitely".'
+      },
+      {
+        pattern: /\bseperate\b/gi,
+        suggestion: 'separate',
+        reason: 'The correct spelling is "separate" (there is "a rat" in separate).'
       },
       {
         pattern: /\b(I|he|she|they|we)\s+and\s+(me|him|her|them|us)\b/gi,
@@ -387,6 +448,67 @@ export class RuleBasedAnalyzer {
           length: match[0].length,
         });
       }
+    }
+
+    return issues;
+  }
+
+  private static checkCapitalization(text: string): Issue[] {
+    const issues: Issue[] = [];
+    
+    // Capitalize standalone 'I'
+    const iRegex = /(?:^|\s)(i)(?=\s|['’]m|[.,!?]|$)/g;
+    let match: RegExpExecArray | null;
+    while ((match = iRegex.exec(text)) !== null) {
+      const matchIndex = match.index + match[0].indexOf('i');
+      issues.push({
+        type: 'grammar',
+        original: 'i',
+        suggestion: 'I',
+        reason: 'The pronoun "I" should always be capitalized.',
+        offset: matchIndex,
+        length: 1,
+      });
+    }
+
+    // Capitalize days of the week & months
+    const dateRegex = /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december)\b/g;
+    while ((match = dateRegex.exec(text)) !== null) {
+      issues.push({
+        type: 'grammar',
+        original: match[1],
+        suggestion: match[1].charAt(0).toUpperCase() + match[1].slice(1),
+        reason: 'Days of the week and months should be capitalized.',
+        offset: match.index,
+        length: match[1].length,
+      });
+    }
+
+    // Common Proper Nouns (Names & Places)
+    const commonNamesList = ['swadhin', 'dhaka', 'john', 'mary', 'london', 'paris', 'america', 'india', 'bangladesh', 'google', 'microsoft', 'apple', 'facebook'];
+    const namesRegex = new RegExp(`\\b(${commonNamesList.join('|')})\\b`, 'g');
+    while ((match = namesRegex.exec(text)) !== null) {
+      issues.push({
+        type: 'grammar',
+        original: match[1],
+        suggestion: match[1].charAt(0).toUpperCase() + match[1].slice(1),
+        reason: 'Proper nouns, names, and places should be capitalized.',
+        offset: match.index,
+        length: match[1].length,
+      });
+    }
+
+    // Capitalize first letter of sentences
+    const sentenceStartRegex = /(?:^|[.!?]\s+)([a-z])/g;
+    while ((match = sentenceStartRegex.exec(text)) !== null) {
+      issues.push({
+        type: 'grammar',
+        original: match[1],
+        suggestion: match[1].toUpperCase(),
+        reason: 'The first word of a sentence should be capitalized.',
+        offset: match.index + match[0].lastIndexOf(match[1]),
+        length: 1,
+      });
     }
 
     return issues;
