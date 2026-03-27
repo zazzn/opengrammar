@@ -1,6 +1,32 @@
 import type { AnalysisContext, Issue, CustomRule, LLMProvider } from './shared-types.js';
 import OpenAI from 'openai';
 import { Groq } from 'groq-sdk';
+import { checkSpelling, SAFE_WORDS } from './spellchecker.js';
+
+/**
+ * Past participles commonly used as adjectives.
+ * These should NOT be flagged as passive voice.
+ */
+const ADJECTIVE_PARTICIPLES = new Set([
+  'excited', 'interested', 'pleased', 'surprised', 'tired',
+  'bored', 'confused', 'disappointed', 'embarrassed', 'frightened',
+  'satisfied', 'worried', 'amazed', 'concerned', 'delighted',
+  'determined', 'exhausted', 'fascinated', 'relaxed', 'shocked',
+  'stressed', 'required', 'needed', 'expected', 'supposed',
+  'complicated', 'dedicated', 'educated', 'experienced', 'limited',
+  'married', 'organized', 'prepared', 'qualified', 'related',
+  'retired', 'scared', 'skilled', 'talented', 'united',
+  'advanced', 'balanced', 'broken', 'closed', 'combined',
+  'connected', 'convinced', 'crowded', 'damaged', 'depressed',
+  'detailed', 'developed', 'disabled', 'engaged', 'established',
+  'fixed', 'focused', 'hidden', 'improved', 'increased',
+  'involved', 'isolated', 'known', 'located', 'mixed',
+  'motivated', 'observed', 'opened', 'pleased', 'preferred',
+  'published', 'recognized', 'reduced', 'registered', 'renewed',
+  'repeated', 'reserved', 'satisfied', 'settled', 'shared',
+  'situated', 'specialized', 'supposed', 'troubled', 'updated',
+  'used', 'valued', 'varied', 'worried',
+]);
 
 export class RuleBasedAnalyzer {
   private static dictionary: Set<string> = new Set();
@@ -17,6 +43,10 @@ export class RuleBasedAnalyzer {
       this.customRules = options.customRules;
     }
 
+    // Dictionary-based spell checking (real spell checker)
+    issues.push(...checkSpelling(text, this.dictionary));
+
+    // Rule-based checks
     issues.push(...this.checkPassiveVoice(text));
     issues.push(...this.checkRepetition(text));
     issues.push(...this.checkLongSentences(text));
@@ -33,7 +63,9 @@ export class RuleBasedAnalyzer {
     issues.push(...this.checkWeakWords(text));
     issues.push(...this.checkCliches(text));
     issues.push(...this.checkBasicGrammar(text));
-    issues.push(...this.checkCommonMisspellings(text));
+    issues.push(...this.checkArticleErrors(text));
+    issues.push(...this.checkSubjectVerbAgreement(text));
+    issues.push(...this.checkMissingCommas(text));
     issues.push(...this.checkCustomRules(text));
 
     return issues;
@@ -76,11 +108,6 @@ export class RuleBasedAnalyzer {
         pattern: /\beated\b/gi,
         suggestion: 'ate',
         reason: '"Eated" is not a word. The past tense of "eat" is "ate".'
-      },
-      {
-        pattern: /\bseed\b/gi,
-        suggestion: 'saw',
-        reason: '"Seed" is not the past tense. The past tense of "see" is "saw".'
       },
       {
         pattern: /\bcomed\b/gi,
@@ -374,6 +401,12 @@ export class RuleBasedAnalyzer {
     for (const pattern of passivePatterns) {
       let match: RegExpExecArray | null;
       while ((match = pattern.exec(text)) !== null) {
+        // Extract the participle (second word)
+        const participle = match[2]?.toLowerCase() || '';
+
+        // Skip if the participle is commonly used as an adjective
+        if (ADJECTIVE_PARTICIPLES.has(participle)) continue;
+
         issues.push({
           type: 'style',
           original: match[0],
@@ -760,6 +793,140 @@ export class RuleBasedAnalyzer {
         console.warn('Invalid custom rule pattern:', rule.pattern, e);
       }
     }
+    return issues;
+  }
+
+  /**
+   * Check for article errors (a/an)
+   */
+  private static checkArticleErrors(text: string): Issue[] {
+    const issues: Issue[] = [];
+
+    // "a" before vowel sounds (but not "a uniform", "a user", "a European", etc.)
+    const vowelExceptions = new Set(['uni', 'use', 'usu', 'eur', 'one', 'once']);
+    const aBeforeVowelRegex = /\ba\s+([aeiou]\w*)\b/gi;
+    let match: RegExpExecArray | null;
+    while ((match = aBeforeVowelRegex.exec(text)) !== null) {
+      const nextWord = (match[1] || '').toLowerCase();
+      const isException = Array.from(vowelExceptions).some(ex => nextWord.startsWith(ex));
+      if (!isException) {
+        issues.push({
+          type: 'grammar',
+          original: match[0],
+          suggestion: `an ${match[1]}`,
+          reason: 'Use "an" before words that begin with a vowel sound.',
+          offset: match.index,
+          length: match[0].length,
+        });
+      }
+    }
+
+    // "an" before consonant sounds (but not "an hour", "an honest", "an heir")
+    const consonantExceptions = new Set(['hour', 'honest', 'honor', 'honour', 'heir', 'herb']);
+    const anBeforeConsonantRegex = /\ban\s+([bcdfghjklmnpqrstvwxyz]\w*)\b/gi;
+    while ((match = anBeforeConsonantRegex.exec(text)) !== null) {
+      const nextWord = (match[1] || '').toLowerCase();
+      const isException = Array.from(consonantExceptions).some(ex => nextWord.startsWith(ex));
+      if (!isException) {
+        issues.push({
+          type: 'grammar',
+          original: match[0],
+          suggestion: `a ${match[1]}`,
+          reason: 'Use "a" before words that begin with a consonant sound.',
+          offset: match.index,
+          length: match[0].length,
+        });
+      }
+    }
+
+    return issues;
+  }
+
+  /**
+   * Check for subject-verb agreement errors
+   */
+  private static checkSubjectVerbAgreement(text: string): Issue[] {
+    const issues: Issue[] = [];
+
+    const svRules: Array<{pattern: RegExp, suggestion: string, reason: string}> = [
+      { pattern: /\b(he|she|it)\s+don't\b/gi, suggestion: "$1 doesn't", reason: 'Use "doesn\'t" with he/she/it.' },
+      { pattern: /\b(they|we|you)\s+doesn't\b/gi, suggestion: "$1 don't", reason: 'Use "don\'t" with they/we/you.' },
+      { pattern: /\b(he|she|it)\s+have\s+(been|done|gone|made|seen|had)\b/gi, suggestion: "$1 has $2", reason: 'Use "has" with he/she/it.' },
+      { pattern: /\beveryone\s+have\b/gi, suggestion: 'everyone has', reason: 'Use "has" with "everyone" (singular).' },
+      { pattern: /\beverybody\s+have\b/gi, suggestion: 'everybody has', reason: 'Use "has" with "everybody" (singular).' },
+      { pattern: /\bsomebody\s+have\b/gi, suggestion: 'somebody has', reason: 'Use "has" with "somebody" (singular).' },
+      { pattern: /\bnobody\s+have\b/gi, suggestion: 'nobody has', reason: 'Use "has" with "nobody" (singular).' },
+      { pattern: /\b(he|she|it)\s+were\b/gi, suggestion: '$1 was', reason: 'Use "was" with he/she/it (singular).' },
+      { pattern: /\b(I|we|they)\s+was\b/gi, suggestion: '$1 were', reason: 'Use "were" with I/we/they.' },
+      { pattern: /\bthere\s+is\s+(many|several|numerous|various|multiple)\b/gi, suggestion: 'there are $1', reason: 'Use "are" with plural subjects.' },
+    ];
+
+    for (const rule of svRules) {
+      let match: RegExpExecArray | null;
+      while ((match = rule.pattern.exec(text)) !== null) {
+        issues.push({
+          type: 'grammar',
+          original: match[0],
+          suggestion: match[0].replace(rule.pattern, rule.suggestion),
+          reason: rule.reason,
+          offset: match.index,
+          length: match[0].length,
+        });
+      }
+    }
+
+    return issues;
+  }
+
+  /**
+   * Check for missing commas in common patterns
+   */
+  private static checkMissingCommas(text: string): Issue[] {
+    const issues: Issue[] = [];
+
+    // Comma after introductory words
+    const introWords = ['however', 'therefore', 'furthermore', 'moreover', 'nevertheless',
+      'meanwhile', 'consequently', 'additionally', 'similarly', 'accordingly',
+      'unfortunately', 'fortunately', 'finally', 'obviously', 'clearly'];
+
+    for (const word of introWords) {
+      const regex = new RegExp(`(?:^|[.!?]\\s+)${word}\\s+(?!,)([A-Za-z])`, 'gi');
+      let match: RegExpExecArray | null;
+      while ((match = regex.exec(text)) !== null) {
+        const fullMatch = match[0];
+        // Only flag if the word starts at the beginning or after a sentence
+        const wordStart = text.indexOf(word, match.index);
+        if (wordStart >= 0) {
+          issues.push({
+            type: 'grammar',
+            original: `${word} ${match[1]}`,
+            suggestion: `${word}, ${match[1]}`,
+            reason: `Add a comma after the introductory word "${word}".`,
+            offset: wordStart,
+            length: word.length + 2,
+          });
+        }
+      }
+    }
+
+    // Comma with direct address: "Thanks John" → "Thanks, John"
+    const addressPatterns = [
+      /\b(thanks|thank you|hi|hello|hey|dear|excuse me)\s+([A-Z][a-z]+)\b/g,
+    ];
+    for (const pattern of addressPatterns) {
+      let match: RegExpExecArray | null;
+      while ((match = pattern.exec(text)) !== null) {
+        issues.push({
+          type: 'grammar',
+          original: match[0],
+          suggestion: `${match[1]}, ${match[2]}`,
+          reason: 'Add a comma before a name in direct address.',
+          offset: match.index,
+          length: match[0].length,
+        });
+      }
+    }
+
     return issues;
   }
 }
