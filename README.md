@@ -28,14 +28,16 @@ Most popular grammar assistants require you to send every keystroke to their ser
 
 ## ✨ Features
 
-- **Works Everywhere:** Seamlessly integrates into text inputs, textareas, and rich text editors (like Gmail, Google Docs, Notion, and Reddit).
-- **Blazing Fast:** Built with modern web technologies (React, Vite, Manifest V3) for minimal performance impact.
-- **Dual-Engine Architecture:**
-  - *Rule-Based (Free & Offline):* Catches passive voice, repeated words, and overly long sentences.
-  - *AI-Powered (Requires API Key):* Advanced grammar, spelling, clarity, and stylistic suggestions using models like GPT-4, Groq, Together, or open-source alternatives via OpenRouter and Ollama.
-- **Tone & Style Rewriting:** Right-click context menus or shortcuts to quickly rewrite text in 8 different tones (Formal, Casual, Professional, etc.).
-- **Writing Statistics:** Built-in dashboard for readability scores, reading time, and vocabulary diversity.
-- **Intuitive UI:** Familiar red, yellow, and blue underlines with click-to-apply suggestions.
+- **Blazing Fast & Works Everywhere:** Seamlessly integrates into text inputs, textareas, and rich text editors (like Gmail, Google Docs, Notion, and Reddit). Built with modern React, Vite, and Manifest V3.
+- **Advanced Dual-Engine Architecture:**
+  1. *Rule-Based Engine (Free & Offline):* Powered by a 156,000-word offline dictionary with Damerau-Levenshtein edit-distance and phonetic matching. Features 40+ granular grammar rules including subject-verb agreement, sentence fragments, and commonly confused words (affect/effect).
+  2. *AI-Powered Engine (Bring Your Own Key):* Use OpenAI, Groq, Together, OpenRouter, or local Ollama. The engine uses advanced prompting and **deduplication logic**—it never wastes LLM tokens on issues the offline engine already caught.
+- **Smart Context Awareness:** The engine automatically detects the domain you are writing in (Business Email, Technical Document, Chat, etc.) and adjusts its strictness accordingly.
+- **Tone & Style Rewriting:** Right-click context menus or shortcuts (Ctrl+Shift+R) to instantly rewrite highlighted text in 8 different tones.
+- **Deep Analytics & History:**
+  - **Dynamic Writing Score:** Evaluates your text (0-100) based on Correctness, Readability, Engagement (vocabulary diversity), and Delivery (sentence length variation).
+  - **Daily Tracking:** Silently and privately tracks your daily writing history, words checked, and average score directly in your browser.
+- **Intuitive UI:** Familiar red, yellow, and blue underlines with interactive click-to-apply tooltips and a dedicated stats dashboard popup.
 
 ## 🚀 Getting Started (For Users)
 
@@ -54,26 +56,25 @@ Want to build OpenGrammar from scratch or deploy your own backend? Here is how.
 ### Prerequisites
 
 - Node.js (v18 or newer)
-- npm, pnpm, or yarn
+- Bun (recommended) or npm/pnpm
 
 ### 1. Set up the Backend (Serverless Edge API)
 
-The backend is a lightweight API that securely handles the AI requests.
+The backend is a lightweight Hono API that securely handles AI translation requests.
 
 ```bash
 # Navigate to the backend folder
 cd opengrammar/backend
 
 # Install dependencies
-npm install
+bun install
 
 # Run locally for testing (runs on http://localhost:8787)
-npm run dev
+bun run dev
 
 # Deploy to Cloudflare Workers (requires a free Cloudflare account)
-npx wrangler deploy
+bun run deploy
 ```
-*After deploying, copy the provided URL (e.g., `https://opengrammar.yourname.workers.dev`).*
 
 ### 2. Set up the Chrome Extension
 
@@ -82,13 +83,10 @@ npx wrangler deploy
 cd opengrammar/extension
 
 # Install dependencies
-npm install
-
-# IMPORTANT: Link your Backend
-# Open src/background/index.ts and replace the BACKEND_URL with your deployed URL from step 1.
+bun install
 
 # Build the extension
-npm run build
+bun run build
 ```
 
 This will create a `dist/` folder. Load this folder into Chrome following the user instructions above.
@@ -97,9 +95,9 @@ This will create a `dist/` folder. Load this folder into Chrome following the us
 
 **We need your help to make OpenGrammar the best open-source writing assistant!**
 
-One of our primary goals is to build the most comprehensive library of local (offline) grammar and style rules. You don't need to be a developer to help—if you have a good eye for grammar, you can contribute!
+One of our primary goals is to build the most comprehensive library of local (offline) grammar and style rules.
 
-- **📚 Add Grammar Rules:** Help us expand our `analyzer-simple.ts` with more regex-based rules for common mistakes, style improvements, and clarity checks. See [GRAMMAR_RULES.md](./GRAMMAR_RULES.md) for a guide on how to add them.
+- **📚 Add Grammar Rules:** Help us expand `analyzer.ts` with more regex-based rules for common mistakes, style improvements, and clarity checks. See [GRAMMAR_RULES.md](./GRAMMAR_RULES.md) for a guide on how to add them.
 - **🐛 Report Bugs:** Found a website where the highlighting is wonky? Open an issue!
 - **💡 Suggest Features:** Have an idea for a cool new feature? Let's discuss it in the Discussions tab.
 
