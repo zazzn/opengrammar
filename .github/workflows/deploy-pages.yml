@@ -32,15 +32,17 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
+      - name: Build site
+        run: |
+          mkdir public
+          cp index.html public/
+          cp logo.svg public/
+          cp -r docs public/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload root files and docs folder
-          path: '.'
-          pattern: |
-            index.html
-            logo.svg
-            docs/**
+          path: './public'
 
       - name: Deploy to GitHub Pages
         id: deployment
