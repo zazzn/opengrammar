@@ -1,6 +1,6 @@
+import { ChevronDown, Gauge, Languages, PenSquare, Settings2, Sparkles } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import { ChevronDown, Gauge, Languages, PenSquare, Settings2, Sparkles } from 'lucide-react';
 import './popup.css';
 import type { ProviderConfig } from '../types';
 
@@ -45,12 +45,21 @@ const Popup = () => {
 
   const loadSettings = () => {
     chrome.storage.sync.get(
-      ['enabled', 'apiKey', 'model', 'backendUrl', 'provider', 'customBaseUrl', 'backendHealthy', 'providerModelMemory'],
+      [
+        'enabled',
+        'apiKey',
+        'model',
+        'backendUrl',
+        'provider',
+        'customBaseUrl',
+        'backendHealthy',
+        'providerModelMemory',
+      ],
       (result) => {
         const memory = (result.providerModelMemory || {}) as Record<string, string>;
         const selectedProvider = result.provider || 'openai';
         const rememberedModel = memory[selectedProvider];
-        
+
         setSettings({
           enabled: result.enabled !== false,
           apiKey: result.apiKey || '',
@@ -62,7 +71,7 @@ const Popup = () => {
         });
         setProviderModelMemory(memory);
         setLoading(false);
-      }
+      },
     );
   };
 
@@ -80,11 +89,11 @@ const Popup = () => {
   const loadModels = async () => {
     setFetchingModels(true);
     try {
-      const response = await chrome.runtime.sendMessage({ 
-        type: 'GET_MODELS', 
+      const response = await chrome.runtime.sendMessage({
+        type: 'GET_MODELS',
         provider: settings.provider,
         apiKey: settings.apiKey,
-        baseUrl: settings.provider === 'custom' ? settings.customBaseUrl : undefined
+        baseUrl: settings.provider === 'custom' ? settings.customBaseUrl : undefined,
       });
       if (response.models) {
         setAvailableModels(response.models);
@@ -118,7 +127,7 @@ const Popup = () => {
       },
       () => {
         console.log('Settings saved');
-      }
+      },
     );
   };
 
@@ -129,7 +138,7 @@ const Popup = () => {
   };
 
   const getDefaultModel = (provider: string): string => {
-    const providerConfig = providers.find(p => p.id === provider);
+    const providerConfig = providers.find((p) => p.id === provider);
     return providerConfig?.models[0] || 'gpt-4o-mini';
   };
 
@@ -150,7 +159,7 @@ const Popup = () => {
     );
   }
 
-  const selectedProvider = providers.find(p => p.id === settings.provider);
+  const selectedProvider = providers.find((p) => p.id === settings.provider);
 
   return (
     <div className="container">
@@ -193,9 +202,13 @@ const Popup = () => {
           <div className="memory-card">
             <div>
               <strong>Active AI</strong>
-              <span>{selectedProvider?.name || 'OpenAI'} · {settings.model}</span>
+              <span>
+                {selectedProvider?.name || 'OpenAI'} · {settings.model}
+              </span>
             </div>
-            <span className={`status-dot ${settings.backendHealthy ? 'healthy' : 'unhealthy'}`}></span>
+            <span
+              className={`status-dot ${settings.backendHealthy ? 'healthy' : 'unhealthy'}`}
+            ></span>
           </div>
 
           <div className="setting-group">
@@ -240,15 +253,29 @@ const Popup = () => {
                   title={showApiKey ? 'Hide' : 'Show'}
                 >
                   {showApiKey ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
-                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
                     </svg>
                   ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
                     </svg>
                   )}
                 </button>
@@ -270,8 +297,13 @@ const Popup = () => {
                 <option>Loading...</option>
               ) : (
                 <>
-                  {(availableModels.length > 0 ? availableModels : selectedProvider?.models || []).map((model) => (
-                    <option key={model} value={model}>{model}</option>
+                  {(availableModels.length > 0
+                    ? availableModels
+                    : selectedProvider?.models || []
+                  ).map((model) => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
                   ))}
                 </>
               )}
@@ -295,7 +327,9 @@ const Popup = () => {
               {settings.provider === 'custom' && (
                 <div className="setting-group compact-group">
                   <label>
-                    <span className="setting-label with-icon"><Languages size={14} /> Custom Base URL</span>
+                    <span className="setting-label with-icon">
+                      <Languages size={14} /> Custom Base URL
+                    </span>
                   </label>
                   <input
                     type="url"
@@ -309,10 +343,10 @@ const Popup = () => {
 
               <div className="setting-group compact-group">
                 <label>
-                  <span className="setting-label with-icon"><Sparkles size={14} /> Backend URL</span>
-                  <span className="setting-hint">
-                    Default is http://localhost:8787
+                  <span className="setting-label with-icon">
+                    <Sparkles size={14} /> Backend URL
                   </span>
+                  <span className="setting-hint">Default is http://localhost:8787</span>
                 </label>
                 <input
                   type="url"
@@ -322,7 +356,9 @@ const Popup = () => {
                   className="text-input"
                 />
                 <div className="backend-status">
-                  <span className={`status-dot ${settings.backendHealthy ? 'healthy' : 'unhealthy'}`}></span>
+                  <span
+                    className={`status-dot ${settings.backendHealthy ? 'healthy' : 'unhealthy'}`}
+                  ></span>
                   <span className="status-text">
                     {settings.backendHealthy ? 'Connected' : 'Not connected'}
                   </span>
@@ -335,9 +371,16 @@ const Popup = () => {
 
       <footer>
         <button onClick={() => chrome.runtime.openOptionsPage()} className="btn-options">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
           Open Settings
         </button>
@@ -349,5 +392,5 @@ const Popup = () => {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <Popup />
-  </React.StrictMode>
+  </React.StrictMode>,
 );

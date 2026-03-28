@@ -80,7 +80,7 @@ async function initialize() {
   renderIgnoredIssues();
   checkBackendHealth();
   await loadAnalytics();
-  
+
   console.log('OpenGrammar options page initialized');
 }
 
@@ -90,7 +90,18 @@ async function initialize() {
 async function loadSettings() {
   return new Promise<void>((resolve) => {
     chrome.storage.sync.get(
-      ['enabled', 'apiKey', 'model', 'backendUrl', 'checkAsYouType', 'showNotifications', 'autocompleteEnabled', 'disabledDomains', 'dictionary', 'ignoredIssues'],
+      [
+        'enabled',
+        'apiKey',
+        'model',
+        'backendUrl',
+        'checkAsYouType',
+        'showNotifications',
+        'autocompleteEnabled',
+        'disabledDomains',
+        'dictionary',
+        'ignoredIssues',
+      ],
       (result) => {
         settings = {
           enabled: result.enabled !== false,
@@ -105,7 +116,7 @@ async function loadSettings() {
           ignoredIssues: normalizeIgnoredIssues(result.ignoredIssues),
           disabledModules: result.disabledModules || [],
         };
-        
+
         // Update UI
         elements.enabled.checked = settings.enabled;
         elements.checkAsYouType.checked = settings.checkAsYouType;
@@ -119,9 +130,9 @@ async function loadSettings() {
         elements.apiKey.value = settings.apiKey;
         elements.model.value = settings.model;
         elements.backendUrl.value = settings.backendUrl;
-        
+
         resolve();
-      }
+      },
     );
   });
 }
@@ -182,7 +193,7 @@ async function saveSettings() {
       () => {
         console.log('Settings saved');
         resolve();
-      }
+      },
     );
   });
 }
@@ -196,12 +207,12 @@ function setupEventListeners() {
     settings.enabled = elements.enabled.checked;
     saveSettings();
   });
-  
+
   elements.checkAsYouType.addEventListener('change', () => {
     settings.checkAsYouType = elements.checkAsYouType.checked;
     saveSettings();
   });
-  
+
   elements.showNotifications.addEventListener('change', () => {
     settings.showNotifications = elements.showNotifications.checked;
     saveSettings();
@@ -211,7 +222,7 @@ function setupEventListeners() {
     settings.autocompleteEnabled = elements.autocompleteEnabled.checked;
     saveSettings();
   });
-  
+
   // Rule Category Toggles
   const updateDisabledModules = () => {
     const disabled: string[] = [];
@@ -235,40 +246,40 @@ function setupEventListeners() {
     settings.apiKey = elements.apiKey.value;
     saveSettings();
   });
-  
+
   elements.toggleApiKey.addEventListener('click', () => {
     const type = elements.apiKey.type === 'password' ? 'text' : 'password';
     elements.apiKey.type = type;
   });
-  
+
   // Model
   elements.model.addEventListener('change', () => {
     settings.model = elements.model.value;
     saveSettings();
   });
-  
+
   // Backend URL
   elements.backendUrl.addEventListener('input', () => {
     settings.backendUrl = elements.backendUrl.value;
     saveSettings();
     checkBackendHealth();
   });
-  
+
   // Domain management
   elements.addDomain.addEventListener('click', addDomain);
   elements.newDomain.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addDomain();
   });
-  
+
   // Dictionary management
   elements.addWord.addEventListener('click', addWord);
   elements.newWord.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addWord();
   });
-  
+
   // Ignored issues
   elements.clearIgnored.addEventListener('click', clearIgnoredIssues);
-  
+
   // Data management
   elements.exportData.addEventListener('click', exportData);
   elements.importData.addEventListener('click', () => elements.importFile.click());
@@ -283,15 +294,15 @@ function setupEventListeners() {
 async function checkBackendHealth() {
   const statusIndicator = elements.backendStatus.querySelector('.status-indicator') as HTMLElement;
   const statusText = elements.backendStatus.querySelector('.status-text') as HTMLElement;
-  
+
   if (!statusIndicator || !statusText) return;
-  
+
   try {
     const backendUrl = settings.backendUrl || 'http://localhost:8787/analyze';
     const healthUrl = backendUrl.replace('/analyze', '/health');
-    
+
     const response = await fetch(healthUrl, { method: 'GET' });
-    
+
     if (response.ok) {
       statusIndicator.className = 'status-indicator healthy';
       statusText.textContent = 'Connected';
@@ -309,30 +320,30 @@ async function checkBackendHealth() {
  */
 function addDomain() {
   const domain = elements.newDomain.value.trim().toLowerCase();
-  
+
   if (!domain) return;
-  
+
   // Validate domain format
   const domainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i;
   if (!domainRegex.test(domain)) {
     alert('Please enter a valid domain (e.g., example.com)');
     return;
   }
-  
+
   if (settings.disabledDomains.includes(domain)) {
     alert('This domain is already in the list');
     return;
   }
-  
+
   settings.disabledDomains.push(domain);
   saveSettings();
   renderDomainList();
-  
+
   elements.newDomain.value = '';
 }
 
 function removeDomain(domain: string) {
-  settings.disabledDomains = settings.disabledDomains.filter(d => d !== domain);
+  settings.disabledDomains = settings.disabledDomains.filter((d) => d !== domain);
   saveSettings();
   renderDomainList();
 }
@@ -342,7 +353,7 @@ function renderDomainList() {
     elements.domainList.innerHTML = '<div class="empty-state">No disabled domains</div>';
     return;
   }
-  
+
   elements.domainList.innerHTML = settings.disabledDomains
     .map(
       (domain) => `
@@ -355,10 +366,10 @@ function renderDomainList() {
             </svg>
           </button>
         </div>
-      `
+      `,
     )
     .join('');
-  
+
   // Add event listeners
   elements.domainList.querySelectorAll('.domain-item-remove').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -373,33 +384,34 @@ function renderDomainList() {
  */
 function addWord() {
   const word = elements.newWord.value.trim().toLowerCase();
-  
+
   if (!word) return;
-  
+
   if (settings.dictionary.includes(word)) {
     alert('This word is already in the dictionary');
     return;
   }
-  
+
   settings.dictionary.push(word);
   saveSettings();
   renderDictionary();
-  
+
   elements.newWord.value = '';
 }
 
 function removeWord(word: string) {
-  settings.dictionary = settings.dictionary.filter(w => w !== word);
+  settings.dictionary = settings.dictionary.filter((w) => w !== word);
   saveSettings();
   renderDictionary();
 }
 
 function renderDictionary() {
   if (settings.dictionary.length === 0) {
-    elements.dictionaryList.innerHTML = '<div class="empty-state" style="width: 100%;">No custom dictionary words</div>';
+    elements.dictionaryList.innerHTML =
+      '<div class="empty-state" style="width: 100%;">No custom dictionary words</div>';
     return;
   }
-  
+
   elements.dictionaryList.innerHTML = settings.dictionary
     .map(
       (word) => `
@@ -407,10 +419,10 @@ function renderDictionary() {
           ${escapeHtml(word)}
           <button class="dictionary-word-remove" data-word="${escapeHtml(word)}" title="Remove">&times;</button>
         </span>
-      `
+      `,
     )
     .join('');
-  
+
   // Add event listeners
   elements.dictionaryList.querySelectorAll('.dictionary-word-remove').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -432,7 +444,7 @@ function clearIgnoredIssues() {
 }
 
 function removeIgnoredIssue(id: string) {
-  settings.ignoredIssues = settings.ignoredIssues.filter(issue => issue.id !== id);
+  settings.ignoredIssues = settings.ignoredIssues.filter((issue) => issue.id !== id);
   saveSettings();
   renderIgnoredIssues();
 }
@@ -442,7 +454,7 @@ function renderIgnoredIssues() {
     elements.ignoredIssuesList.innerHTML = '<div class="empty-state">No ignored issues</div>';
     return;
   }
-  
+
   elements.ignoredIssuesList.innerHTML = settings.ignoredIssues
     .sort((a, b) => b.ignoredAt - a.ignoredAt)
     .map(
@@ -463,10 +475,10 @@ function renderIgnoredIssues() {
             </svg>
           </button>
         </div>
-      `
+      `,
     )
     .join('');
-  
+
   // Add event listeners
   elements.ignoredIssuesList.querySelectorAll('.ignored-item-remove').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -485,32 +497,32 @@ async function exportData() {
     exportedAt: new Date().toISOString(),
     version: '1.0.0',
   };
-  
+
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  
+
   const a = document.createElement('a');
   a.href = url;
   a.download = `opengrammar-settings-${new Date().toISOString().split('T')[0]}.json`;
   a.click();
-  
+
   URL.revokeObjectURL(url);
 }
 
 async function importData(event: Event) {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
-  
+
   if (!file) return;
-  
+
   try {
     const text = await file.text();
     const data = JSON.parse(text);
-    
+
     if (!data.settings) {
       throw new Error('Invalid file format');
     }
-    
+
     if (confirm('This will overwrite your current settings. Continue?')) {
       settings = { ...settings, ...data.settings };
       await saveSettings();
@@ -571,7 +583,10 @@ function renderAnalyticsList(container: HTMLElement, entries: Array<[string, num
   }
 
   container.innerHTML = top
-    .map(([label, value]) => `<div class="analytics-row"><span>${escapeHtml(label)}</span><strong>${value}</strong></div>`)
+    .map(
+      ([label, value]) =>
+        `<div class="analytics-row"><span>${escapeHtml(label)}</span><strong>${value}</strong></div>`,
+    )
     .join('');
 }
 

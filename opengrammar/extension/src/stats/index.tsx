@@ -1,6 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import { calculateWritingStats, calculateWritingScore, getReadabilityLevel, type WritingStats, type WritingScoreBreakdown } from './writing-stats';
+import {
+  calculateWritingScore,
+  calculateWritingStats,
+  getReadabilityLevel,
+  type WritingScoreBreakdown,
+  type WritingStats,
+} from './writing-stats';
 import './stats.css';
 import type { AnalyticsSummary } from '../types';
 
@@ -31,13 +37,16 @@ const StatsPopup = () => {
       // Load usage analytics
       const analyticsResponse = await chrome.runtime.sendMessage({ type: 'GET_ANALYTICS_SUMMARY' });
       setAnalytics(analyticsResponse);
-      
+
       // Load daily history
-      const historyResponse = await chrome.runtime.sendMessage({ type: 'GET_WRITING_HISTORY', days: 7 });
+      const historyResponse = await chrome.runtime.sendMessage({
+        type: 'GET_WRITING_HISTORY',
+        days: 7,
+      });
       if (historyResponse) {
         setHistory(Array.isArray(historyResponse) ? historyResponse.reverse() : []);
       }
-      
+
       if (response?.text) {
         const calculatedStats = calculateWritingStats(response.text, response.issues);
         setStats(calculatedStats);
@@ -86,14 +95,14 @@ const StatsPopup = () => {
               <div className="score-circle-wrapper">
                 <svg className="score-circle" viewBox="0 0 100 100">
                   <circle className="score-circle-bg" cx="50" cy="50" r="45" />
-                  <circle 
-                    className="score-circle-progress" 
-                    cx="50" 
-                    cy="50" 
-                    r="45" 
-                    style={{ 
-                      strokeDasharray: `${score.overall * 2.83} 283`, 
-                      stroke: score.color 
+                  <circle
+                    className="score-circle-progress"
+                    cx="50"
+                    cy="50"
+                    r="45"
+                    style={{
+                      strokeDasharray: `${score.overall * 2.83} 283`,
+                      stroke: score.color,
                     }}
                   />
                 </svg>
@@ -103,7 +112,10 @@ const StatsPopup = () => {
               </div>
               <div className="score-details">
                 <div className="score-label-row">
-                  <span className="score-badge" style={{ backgroundColor: `${score.color}20`, color: score.color }}>
+                  <span
+                    className="score-badge"
+                    style={{ backgroundColor: `${score.color}20`, color: score.color }}
+                  >
                     {score.label}
                   </span>
                 </div>
@@ -167,11 +179,7 @@ const StatsPopup = () => {
         <section className="stats-section">
           <h2>Reading Time</h2>
           <div className="time-grid">
-            <TimeCard
-              icon="📖"
-              label="Reading Time"
-              value={formatTime(stats.readingTimeSeconds)}
-            />
+            <TimeCard icon="📖" label="Reading Time" value={formatTime(stats.readingTimeSeconds)} />
             <TimeCard
               icon="🎤"
               label="Speaking Time"
@@ -185,14 +193,18 @@ const StatsPopup = () => {
           <h2>Vocabulary</h2>
           <div className="vocab-grid">
             <StatCard label="Unique Words" value={stats.uniqueWords.toLocaleString()} />
-            <StatCard label="Vocabulary Diversity" value={`${stats.vocabularyDiversity.toFixed(1)}%`} />
+            <StatCard
+              label="Vocabulary Diversity"
+              value={`${stats.vocabularyDiversity.toFixed(1)}%`}
+            />
             <StatCard label="Avg Word Length" value={stats.averageWordLength.toFixed(1)} />
             <StatCard label="Syllables" value={stats.syllableCount.toLocaleString()} />
           </div>
         </section>
 
         {/* Issues Breakdown */}
-        {stats.grammarIssues + stats.spellingIssues + stats.clarityIssues + stats.styleIssues > 0 && (
+        {stats.grammarIssues + stats.spellingIssues + stats.clarityIssues + stats.styleIssues >
+          0 && (
           <section className="stats-section">
             <h2>Issues Found</h2>
             <div className="issues-grid">
@@ -216,16 +228,24 @@ const StatsPopup = () => {
           <section className="stats-section">
             <h2>Recent History</h2>
             <div className="history-list">
-              {history.slice(0, 5).map(session => (
+              {history.slice(0, 5).map((session) => (
                 <div className="history-item" key={session.date}>
                   <div className="history-date">
-                    {new Date(session.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    {new Date(session.date).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
                   </div>
                   <div className="history-stats">
-                    <span className="history-score" style={{ color: getScoreColor(session.writingScore) }}>
+                    <span
+                      className="history-score"
+                      style={{ color: getScoreColor(session.writingScore) }}
+                    >
                       {session.writingScore} Score
                     </span>
-                    <span className="history-words">{session.wordsChecked.toLocaleString()} words</span>
+                    <span className="history-words">
+                      {session.wordsChecked.toLocaleString()} words
+                    </span>
                   </div>
                 </div>
               ))}
@@ -238,12 +258,22 @@ const StatsPopup = () => {
             <h2>Lifetime Insights</h2>
             <div className="stats-grid">
               <StatCard label="Analyses" value={analytics.totals.analysis_runs || 0} />
-              <StatCard label="Suggestions Applied" value={analytics.totals.suggestions_applied || 0} />
-              <StatCard label="Autocomplete Accepted" value={analytics.totals.autocomplete_accepted || 0} />
+              <StatCard
+                label="Suggestions Applied"
+                value={analytics.totals.suggestions_applied || 0}
+              />
+              <StatCard
+                label="Autocomplete Accepted"
+                value={analytics.totals.autocomplete_accepted || 0}
+              />
               <StatCard label="Rewrites Applied" value={analytics.totals.rewrite_applied || 0} />
             </div>
             <p className="sync-caption">
-              Synced activity {analytics.lastUpdatedAt ? `updated ${new Date(analytics.lastUpdatedAt).toLocaleDateString()}` : 'has not been recorded yet'}.
+              Synced activity{' '}
+              {analytics.lastUpdatedAt
+                ? `updated ${new Date(analytics.lastUpdatedAt).toLocaleDateString()}`
+                : 'has not been recorded yet'}
+              .
             </p>
           </section>
         )}
@@ -283,7 +313,9 @@ function TimeCard({ icon, label, value }: { icon: string; label: string; value: 
 function IssueCard({ type, count, color }: { type: string; count: number; color: string }) {
   return (
     <div className="issue-card" style={{ borderColor: color }}>
-      <span className="issue-count" style={{ color }}>{count}</span>
+      <span className="issue-count" style={{ color }}>
+        {count}
+      </span>
       <span className="issue-type">{type}</span>
     </div>
   );
@@ -299,5 +331,5 @@ function formatTime(seconds: number): string {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <StatsPopup />
-  </React.StrictMode>
+  </React.StrictMode>,
 );

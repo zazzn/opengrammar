@@ -1,5 +1,5 @@
-import type { AutocompleteResponse, Issue } from "../types";
-import { extractText, getCaretPosition, setCaretPosition } from "./textExtractor";
+import type { AutocompleteResponse, Issue } from '../types';
+import { extractText, getCaretPosition, setCaretPosition } from './textExtractor';
 
 export interface AutocompleteState {
   element: HTMLElement;
@@ -19,11 +19,11 @@ export class AutocompletePopup {
     // Check if element is an input or textarea
     const isInput = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA';
     const text = extractText(element);
-    
+
     // Create the ghost text container
     this.box = document.createElement('div');
     this.box.className = 'opengrammar-autocomplete-ghost';
-    
+
     if (isInput) {
       // Basic inline popup for now to avoid breaking the complex inputMirror logic safely
       this.box.style.cssText = `
@@ -97,8 +97,11 @@ export class AutocompletePopup {
       const before = text.slice(0, replaceStart);
       const after = text.slice(replaceEnd);
       // Auto-add space before suggestion if needed
-      const paddedSuggestion = (before.endsWith(' ') || suggestion.startsWith(' ') || suggestion.startsWith('.')) ? suggestion : ' ' + suggestion;
-      
+      const paddedSuggestion =
+        before.endsWith(' ') || suggestion.startsWith(' ') || suggestion.startsWith('.')
+          ? suggestion
+          : ' ' + suggestion;
+
       input.value = `${before}${paddedSuggestion}${after}`;
       const nextCursor = replaceStart + paddedSuggestion.length;
       input.setSelectionRange(nextCursor, nextCursor);
@@ -106,8 +109,11 @@ export class AutocompletePopup {
     } else {
       const before = text.slice(0, replaceStart);
       const after = text.slice(replaceEnd);
-      const paddedSuggestion = (before.endsWith(' ') || suggestion.startsWith(' ') || suggestion.startsWith('.')) ? suggestion : ' ' + suggestion;
-      
+      const paddedSuggestion =
+        before.endsWith(' ') || suggestion.startsWith(' ') || suggestion.startsWith('.')
+          ? suggestion
+          : ' ' + suggestion;
+
       element.textContent = `${before}${paddedSuggestion}${after}`;
       setCaretPosition(element, replaceStart + paddedSuggestion.length);
       element.dispatchEvent(new Event('input', { bubbles: true }));

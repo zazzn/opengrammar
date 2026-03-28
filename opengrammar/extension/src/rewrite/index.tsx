@@ -1,8 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import './rewrite.css';
 
-type Tone = 'formal' | 'casual' | 'professional' | 'friendly' | 'concise' | 'detailed' | 'persuasive' | 'neutral';
+type Tone =
+  | 'formal'
+  | 'casual'
+  | 'professional'
+  | 'friendly'
+  | 'concise'
+  | 'detailed'
+  | 'persuasive'
+  | 'neutral';
 
 const RewritePopup = () => {
   const [selectedText, setSelectedText] = useState('');
@@ -26,14 +34,18 @@ const RewritePopup = () => {
   const handleRewrite = async () => {
     setLoading(true);
     setError('');
-    
+
     try {
       const { apiKey, model, provider, customBaseUrl, backendUrl } = await chrome.storage.sync.get([
-        'apiKey', 'model', 'provider', 'customBaseUrl', 'backendUrl'
+        'apiKey',
+        'model',
+        'provider',
+        'customBaseUrl',
+        'backendUrl',
       ]);
 
       const baseUrl = backendUrl || 'http://localhost:8787';
-      
+
       const response = await fetch(`${baseUrl}/rewrite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -137,9 +149,7 @@ const RewritePopup = () => {
                 ) : rewrittenText ? (
                   <div className="text-content rewritten">{rewrittenText}</div>
                 ) : (
-                  <div className="text-content placeholder">
-                    Click "Rewrite" to see suggestions
-                  </div>
+                  <div className="text-content placeholder">Click "Rewrite" to see suggestions</div>
                 )}
               </div>
             </div>
@@ -152,7 +162,7 @@ const RewritePopup = () => {
               >
                 {loading ? 'Rewriting...' : '✨ Rewrite'}
               </button>
-              
+
               {rewrittenText && (
                 <>
                   <button className="btn-apply" onClick={handleApply}>
@@ -174,5 +184,5 @@ const RewritePopup = () => {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <RewritePopup />
-  </React.StrictMode>
+  </React.StrictMode>,
 );
