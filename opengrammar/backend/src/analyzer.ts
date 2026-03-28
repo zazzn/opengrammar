@@ -4,6 +4,7 @@ import { Groq } from 'groq-sdk';
 import { checkSpelling, SAFE_WORDS } from './spellchecker.js';
 import { NLPEngine } from './nlp/nlp-engine.js';
 import { CORE_RULES } from './rules/index.js';
+import { filterRulesByContext, type WritingContext } from './rules/context-filter.js';
 
 /**
  * Past participles commonly used as adjectives.
@@ -34,7 +35,7 @@ export class RuleBasedAnalyzer {
   private static dictionary: Set<string> = new Set();
   private static customRules: CustomRule[] = [];
 
-  static analyze(text: string, options?: { dictionary?: string[]; customRules?: CustomRule[] }): Issue[] {
+  static analyze(text: string, options?: { dictionary?: string[]; customRules?: CustomRule[]; writingContext?: WritingContext }): Issue[] {
     const issues: Issue[] = [];
 
     if (options?.dictionary) {
@@ -56,8 +57,12 @@ export class RuleBasedAnalyzer {
       console.warn('NLP Engine parsing disabled or failed:', e);
     }
 
-    // Run Modular CORE RULES
-    for (const rule of CORE_RULES) {
+    // Run Modular CORE RULES (filtered by writing context)
+    const activeRules = options?.writingContext
+      ? filterRulesByContext(CORE_RULES, options.writingContext)
+      : CORE_RULES;
+
+    for (const rule of activeRules) {
       try {
         if (rule.type === 'regex') {
           issues.push(...rule.check(text));
@@ -83,67 +88,72 @@ export class RuleBasedAnalyzer {
    * When two issues share the same offset+length, keep the higher priority one.
    * When one issue fully contains another, keep the more specific (shorter) one.
    */
-  private static deduplicateIssues(issues: Issue[]): Issue[] {
+  private static getPriority(type: string): number {
     const PRIORITY: Record<string, number> = { grammar: 4, spelling: 3, clarity: 2, style: 1 };
+    return PRIORITY[type] || 0;
+  }
 
-    // Sort by offset, then by priority (highest first)
-    const sorted = issues.sort((a, b) => {
+  private static deduplicateIssues(issues: Issue[]): Issue[] {
+    const sorted = [...issues].sort((a, b) => {
       if (a.offset !== b.offset) return a.offset - b.offset;
-      return (PRIORITY[b.type] || 0) - (PRIORITY[a.type] || 0);
+      return this.getPriority(b.type) - this.getPriority(a.type);
     });
 
     const result: Issue[] = [];
-    const seenSpans = new Map<string, Issue>(); // key: "offset:length" or normalized original
+    const seenSpans = new Map<string, Issue>();
 
     for (const issue of sorted) {
       const spanKey = `${issue.offset}:${issue.length}`;
-      const origKey = issue.original.toLowerCase().trim();
 
-      // Case 1: Exact same span — keep higher priority
-      if (seenSpans.has(spanKey)) {
-        const existing = seenSpans.get(spanKey)!;
-        if ((PRIORITY[issue.type] || 0) > (PRIORITY[existing.type] || 0)) {
-          // Replace with higher-priority version
-          const idx = result.indexOf(existing);
-          if (idx >= 0) result[idx] = issue;
-          seenSpans.set(spanKey, issue);
-        }
-        continue;
-      }
-
-      // Case 2: Same original text, same suggestion — skip duplicate
-      const dedupKey = `${origKey}→${(issue.suggestion || '').toLowerCase().trim()}`;
-      let isDuplicate = false;
-      for (const seen of result) {
-        const seenDedupKey = `${seen.original.toLowerCase().trim()}→${(seen.suggestion || '').toLowerCase().trim()}`;
-        if (dedupKey === seenDedupKey && Math.abs(issue.offset - seen.offset) < 3) {
-          isDuplicate = true;
-          break;
-        }
-      }
-      if (isDuplicate) continue;
-
-      // Case 3: Different rules flagging the same original text at the same position
-      let overlapping = false;
-      for (const seen of result) {
-        if (seen.original.toLowerCase().trim() === origKey &&
-            Math.abs(issue.offset - seen.offset) <= issue.original.length) {
-          overlapping = true;
-          // Keep the one with higher priority
-          if ((PRIORITY[issue.type] || 0) > (PRIORITY[seen.type] || 0)) {
-            const idx = result.indexOf(seen);
-            if (idx >= 0) result[idx] = issue;
-          }
-          break;
-        }
-      }
-      if (overlapping) continue;
+      if (this.handleExactSpanMatch(issue, spanKey, seenSpans, result)) continue;
+      if (this.isIdenticalSuggestionDuplicate(issue, result)) continue;
+      if (this.handleOverlappingSameText(issue, result)) continue;
 
       result.push(issue);
       seenSpans.set(spanKey, issue);
     }
 
     return result;
+  }
+
+  private static handleExactSpanMatch(issue: Issue, spanKey: string, seenSpans: Map<string, Issue>, result: Issue[]): boolean {
+    if (!seenSpans.has(spanKey)) return false;
+    
+    const existing = seenSpans.get(spanKey)!;
+    if (this.getPriority(issue.type) > this.getPriority(existing.type)) {
+      const idx = result.indexOf(existing);
+      if (idx >= 0) result[idx] = issue;
+      seenSpans.set(spanKey, issue);
+    }
+    return true;
+  }
+
+  private static isIdenticalSuggestionDuplicate(issue: Issue, result: Issue[]): boolean {
+    const origKey = issue.original.toLowerCase().trim();
+    const dedupKey = `${origKey}→${(issue.suggestion || '').toLowerCase().trim()}`;
+    
+    for (const seen of result) {
+      const seenDedupKey = `${seen.original.toLowerCase().trim()}→${(seen.suggestion || '').toLowerCase().trim()}`;
+      if (dedupKey === seenDedupKey && Math.abs(issue.offset - seen.offset) < 3) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static handleOverlappingSameText(issue: Issue, result: Issue[]): boolean {
+    const origKey = issue.original.toLowerCase().trim();
+    
+    for (const seen of result) {
+      if (seen.original.toLowerCase().trim() === origKey && Math.abs(issue.offset - seen.offset) <= issue.original.length) {
+        if (this.getPriority(issue.type) > this.getPriority(seen.type)) {
+          const idx = result.indexOf(seen);
+          if (idx >= 0) result[idx] = issue;
+        }
+        return true;
+      }
+    }
+    return false;
   }
 
 
