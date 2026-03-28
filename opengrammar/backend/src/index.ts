@@ -12,6 +12,7 @@ import type {
   Issue,
 } from './shared-types.js';
 import { PROVIDERS } from './shared-types.js';
+import { detectWritingContext } from './rules/context-filter.js';
 
 const app = new Hono();
 
@@ -98,8 +99,11 @@ app.post('/analyze', async (c) => {
       return c.json({ error: 'Text exceeds maximum length of 50,000 characters' }, 413);
     }
 
-    // Run rule-based analysis (always)
-    const ruleIssues = RuleBasedAnalyzer.analyze(text);
+    // Detect writing context for smart rule filtering
+    const writingContext = detectWritingContext(context?.domain);
+
+    // Run rule-based analysis with context-aware filtering
+    const ruleIssues = RuleBasedAnalyzer.analyze(text, { writingContext });
     let issues = enrichIssues(ruleIssues, 'rule', text, context);
 
     // Run LLM analysis if API key provided or using local Ollama
