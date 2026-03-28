@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'backend/**'
+      - 'opengrammar/backend/**'
       - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
     inputs:
@@ -38,9 +38,9 @@ jobs:
         with:
           bun-version: latest
       - name: Install dependencies
-        run: cd backend && bun install
+        run: cd opengrammar/backend && bun install
       - name: TypeScript check
-        run: cd backend && npx tsc --noEmit
+        run: cd opengrammar/backend && npx tsc --noEmit
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 2. Cloudflare Workers
@@ -62,13 +62,13 @@ jobs:
         with:
           bun-version: latest
       - name: Install dependencies
-        run: cd backend && bun install
+        run: cd opengrammar/backend && bun install
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: backend
+          workingDirectory: opengrammar/backend
           command: deploy --env production
 
   # ─────────────────────────────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ jobs:
         run: npm install -g vercel
       - name: Deploy to Vercel
         run: |
-          cd backend
+          cd opengrammar/backend
           vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
           vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
           vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
@@ -122,12 +122,12 @@ jobs:
         with:
           node-version: 20
       - name: Install dependencies
-        run: cd backend && npm install
+        run: cd opengrammar/backend && npm install
       - name: Install Netlify CLI
         run: npm install -g netlify-cli
       - name: Deploy to Netlify
         run: |
-          cd backend
+          cd opengrammar/backend
           netlify deploy --prod --dir=. --functions=netlify/functions \
             --auth=${{ secrets.NETLIFY_AUTH_TOKEN }} \
             --site=${{ secrets.NETLIFY_SITE_ID }}
@@ -155,7 +155,7 @@ jobs:
         uses: denoland/deployctl@v1
         with:
           project: opengrammar-backend
-          entrypoint: backend/server-deno.ts
+          entrypoint: opengrammar/backend/server-deno.ts
           root: .
         env:
           DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
@@ -194,8 +194,8 @@ jobs:
       - name: Build and push (multi-arch)
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
-          file: ./backend/Dockerfile
+          context: ./opengrammar/backend
+          file: ./opengrammar/backend/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -224,12 +224,12 @@ jobs:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
       - name: Install dependencies
-        run: cd backend && bun install
+        run: cd opengrammar/backend && bun install
       - name: Build bundle
-        run: cd backend && bun build server.ts --outdir dist --target node --format esm
+        run: cd opengrammar/backend && bun build server.ts --outdir dist --target node --format esm
       - name: Publish to npm
         run: |
-          cd backend
+          cd opengrammar/backend
           # Bump patch version based on commit SHA to avoid duplicate version errors
           node -e "
             const fs = require('fs');
