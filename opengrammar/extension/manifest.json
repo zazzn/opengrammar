@@ -52,6 +52,12 @@
       "run_at": "document_idle",
       "all_frames": true,
       "css": []
+    },
+    {
+      "matches": ["https://docs.google.com/document/*"],
+      "js": ["src/content/google-docs.ts"],
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ],
   "web_accessible_resources": [
