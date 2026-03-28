@@ -8,7 +8,7 @@
 
   [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
   [![NPM Package](https://img.shields.io/npm/v/opengrammar-server)](https://www.npmjs.com/package/opengrammar-server)
-  [![Docker Pulls](https://img.shields.io/docker/pulls/swadhinbiswas/opengrammar-backend)](https://hub.docker.com/r/swadhinbiswas/opengrammar-backend)
+  [![Docker Pulls](https://img.shields.io/docker/pulls/swdhinbiswas/opengrammar-backend)](https://hub.docker.com/r/swdhinbiswas/opengrammar-backend)
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
   🌐 **[Official Website](https://opengrammer.eu.cc)** | 📖 **[Documentation Site](https://opengrammer.eu.cc/docs)**
@@ -72,10 +72,10 @@ We maintain a highly optimized, multi-architecture Docker image. This is the rec
 
 ```bash
 # Pull the production image straight from Docker Hub
-docker pull swadhinbiswas/opengrammar-backend:latest
+docker pull swdhinbiswas/opengrammar-backend:latest
 
 # Run the container locally (exposes port 8787)
-docker run -d -p 8787:8787 --name opengrammar swadhinbiswas/opengrammar-backend:latest
+docker run -d -p 8787:8787 --name opengrammar swdhinbiswas/opengrammar-backend:latest
 ```
 </details>
 
