@@ -32,7 +32,7 @@ app.get('/providers', (c) => {
 app.post('/models', async (c) => {
   try {
     const { provider } = await c.req.json().catch(() => ({}));
-    const providerConfig = PROVIDERS.find(p => p.id === provider);
+    const providerConfig = PROVIDERS.find((p) => p.id === provider);
     return c.json({
       provider,
       models: providerConfig?.models || [],
@@ -49,7 +49,7 @@ app.post('/analyze', async (c) => {
 
   try {
     const body = await c.req.json();
-    const { text, apiKey, dictionary } = body;
+    const { text, dictionary } = body;
 
     // Validate input
     if (!text || typeof text !== 'string') {
@@ -81,11 +81,14 @@ app.post('/analyze', async (c) => {
     });
   } catch (error) {
     console.error('Analysis error:', error);
-    return c.json({
-      error: 'Failed to analyze text',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      issues: [],
-    }, 500);
+    return c.json(
+      {
+        error: 'Failed to analyze text',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        issues: [],
+      },
+      500,
+    );
   }
 });
 
@@ -99,7 +102,7 @@ app.post('/rewrite', async (c) => {
     }
 
     if (!apiKey) {
-      return c.json({ 
+      return c.json({
         error: 'API key required for rewriting',
         original: text,
         rewritten: text,
@@ -115,20 +118,26 @@ app.post('/rewrite', async (c) => {
     });
   } catch (error) {
     console.error('Rewrite error:', error);
-    return c.json({
-      error: 'Failed to rewrite text',
-      message: error instanceof Error ? error.message : 'Unknown error',
-    }, 500);
+    return c.json(
+      {
+        error: 'Failed to rewrite text',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      500,
+    );
   }
 });
 
 // Error handler
 app.onError((err, c) => {
   console.error('Unhandled error:', err);
-  return c.json({
-    error: 'Internal server error',
-    message: err.message
-  }, 500);
+  return c.json(
+    {
+      error: 'Internal server error',
+      message: err.message,
+    },
+    500,
+  );
 });
 
 // 404 handler
@@ -139,9 +148,12 @@ app.notFound((c) => {
 const port = 8787;
 console.log(`\n🪶 OpenGrammar Backend starting on http://localhost:${port}\n`);
 
-serve({
-  fetch: app.fetch,
-  port,
-}, (info) => {
-  console.log(`✅ Server ready on http://localhost:${info.port}`);
-});
+serve(
+  {
+    fetch: app.fetch,
+    port,
+  },
+  (info) => {
+    console.log(`✅ Server ready on http://localhost:${info.port}`);
+  },
+);

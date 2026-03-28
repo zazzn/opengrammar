@@ -15,3 +15,6 @@ opengrammar/backend/src/**/*.map
 opengrammar/backend/*.js
 opengrammar/backend/*.d.ts
 opengrammar/backend/*.map
+
+# Local Netlify folder
+.netlify

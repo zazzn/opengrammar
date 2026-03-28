@@ -1963,7 +1963,10 @@ let _wordSet: Set<string> | null = null;
 export function getEnglishDictionary(): Set<string> {
   if (!_wordSet) {
     _wordSet = new Set(
-      WORDS_RAW.trim().split(/[,\n]+/).map(w => w.trim().toLowerCase()).filter(w => w.length > 0)
+      WORDS_RAW.trim()
+        .split(/[,\n]+/)
+        .map((w) => w.trim().toLowerCase())
+        .filter((w) => w.length > 0),
     );
   }
   return _wordSet;

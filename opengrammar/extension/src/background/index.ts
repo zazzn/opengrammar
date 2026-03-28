@@ -1,16 +1,17 @@
 import type {
-  AnalyzeRequest,
-  AnalyzeResponse,
+  AnalysisContext,
   AnalyticsEventType,
   AnalyticsSummary,
+  AnalyzeRequest,
+  AnalyzeResponse,
   AutocompleteRequest,
   AutocompleteResponse,
-  AnalysisContext,
   EditorContext,
   LLMProvider,
   RewriteContext,
   RewriteRequest,
   RewriteResponse,
+  Issue,
 } from '../types';
 
 // Default backend URL
@@ -51,12 +52,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     handleGrammarCheck(request.text, request.context, sendResponse);
     return true;
   }
-  
+
   if (request.type === 'REWRITE_TEXT') {
     handleRewrite(request.text, request.tone, sendResponse);
     return true;
   }
-  
+
   if (request.type === 'GET_SELECTION') {
     // Get selected text from the current tab
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -139,22 +140,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   }
-  
+
   if (request.type === 'GET_PROVIDERS') {
-    getProviders().then(providers => sendResponse({ providers }));
+    getProviders().then((providers) => sendResponse({ providers }));
     return true;
   }
-  
+
   if (request.type === 'GET_MODELS') {
-    getModels(request.provider, request.apiKey, request.baseUrl).then(models => sendResponse({ models }));
+    getModels(request.provider, request.apiKey, request.baseUrl).then((models) =>
+      sendResponse({ models }),
+    );
     return true;
   }
-  
+
   if (request.type === 'GET_BACKEND_URL') {
-    getBackendUrl().then(url => sendResponse({ url }));
+    getBackendUrl().then((url) => sendResponse({ url }));
     return true;
   }
-  
+
   if (request.type === 'SET_BACKEND_URL') {
     chrome.storage.sync.set({ backendUrl: request.url }, () => {
       sendResponse({ success: true });
@@ -206,36 +209,61 @@ chrome.commands.onCommand.addListener((command) => {
   }
 });
 
+function filterIssues(issues: Issue[] | undefined, ignoredIssues: string[], dictionary: string[]): Issue[] {
+  if (!issues || issues.length === 0) return [];
+  let filtered = issues;
+
+  const normalizedIgnored = normalizeIgnoredIssues(ignoredIssues);
+  if (normalizedIgnored.length > 0) {
+    filtered = filtered.filter((issue) => {
+      const issueId = issue.id || `${issue.type}-${issue.offset}-${issue.original}`;
+      return !normalizedIgnored.includes(issueId);
+    });
+  }
+
+  if (dictionary && dictionary.length > 0) {
+    filtered = filtered.filter((issue) => {
+      if (issue.type !== 'spelling') return true;
+      const word = issue.original.toLowerCase().trim();
+      return !dictionary.includes(word);
+    });
+  }
+
+  return filtered;
+}
+
 async function handleGrammarCheck(
   text: string,
   context: AnalysisContext | undefined,
   sendResponse: (response: any) => void,
 ) {
   try {
-    const { 
-      apiKey, 
-      model, 
+    const {
+      apiKey,
+      model,
       enabled,
       ignoredIssues,
       dictionary,
       backendUrl,
       provider,
-      customBaseUrl
+      customBaseUrl,
+      disabledModules,
     } = await chrome.storage.sync.get([
-      'apiKey', 
-      'model', 
+      'apiKey',
+      'model',
       'enabled',
       'ignoredIssues',
       'dictionary',
       'backendUrl',
       'provider',
-      'customBaseUrl'
+      'customBaseUrl',
+      'disabledModules',
     ]);
 
     if (enabled === false) {
-      sendResponse({ 
-        issues: [], 
-        metadata: { textLength: text.length, issuesCount: 0, processingTimeMs: 0 } 
+      sendResponse({
+        issues: [],
+        metadata: { textLength: text.length, issuesCount: 0, processingTimeMs: 0 },
       });
       return;
     }
@@ -251,6 +279,7 @@ async function handleGrammarCheck(
       ignoredIssues: ignoredIssues || [],
       dictionary: dictionary || [],
       context,
+      disabledModules: disabledModules || [],
     };
 
     const response = await fetch(`${baseUrl}/analyze`, {
@@ -267,25 +296,8 @@ async function handleGrammarCheck(
     }
 
     const data: AnalyzeResponse = await response.json();
-    
-    // Filter out ignored issues
-    const normalizedIgnored = normalizeIgnoredIssues(ignoredIssues);
 
-    if (data.issues && normalizedIgnored.length > 0) {
-      data.issues = data.issues.filter(issue => {
-        const issueId = issue.id || `${issue.type}-${issue.offset}-${issue.original}`;
-        return !normalizedIgnored.includes(issueId);
-      });
-    }
-
-    // Filter out dictionary words
-    if (data.issues && dictionary && dictionary.length > 0) {
-      data.issues = data.issues.filter(issue => {
-        if (issue.type !== 'spelling') return true;
-        const word = issue.original.toLowerCase().trim();
-        return !dictionary.includes(word);
-      });
-    }
+    data.issues = filterIssues(data.issues, ignoredIssues || [], dictionary || []);
 
     await trackAnalyticsEvent('analysis_runs', {
       count: 1,
@@ -300,7 +312,7 @@ async function handleGrammarCheck(
         provider: provider || 'rule-only',
       });
     }
-    
+
     // D1: Update badge count after analysis
     const issueCount = data.issues?.length || 0;
     void updateBadge(issueCount, undefined);
@@ -308,10 +320,10 @@ async function handleGrammarCheck(
     sendResponse(data);
   } catch (error) {
     console.error('Grammar check failed:', error);
-    sendResponse({ 
+    sendResponse({
       error: 'Failed to check grammar',
       message: error instanceof Error ? error.message : 'Unknown error',
-      issues: []
+      issues: [],
     });
   }
 }
@@ -321,24 +333,24 @@ async function handleAutocomplete(
   sendResponse: (response: AutocompleteResponse) => void,
 ) {
   try {
-    const {
-      apiKey,
-      model,
-      backendUrl,
-      provider,
-      customBaseUrl,
-      autocompleteEnabled,
-    } = await chrome.storage.sync.get([
-      'apiKey',
-      'model',
-      'backendUrl',
-      'provider',
-      'customBaseUrl',
-      'autocompleteEnabled',
-    ]);
+    const { apiKey, model, backendUrl, provider, customBaseUrl, autocompleteEnabled } =
+      await chrome.storage.sync.get([
+        'apiKey',
+        'model',
+        'backendUrl',
+        'provider',
+        'customBaseUrl',
+        'autocompleteEnabled',
+      ]);
 
     if (autocompleteEnabled === false) {
-      sendResponse({ suggestion: '', confidence: 0, replaceStart: request.cursor, replaceEnd: request.cursor, source: 'heuristic' });
+      sendResponse({
+        suggestion: '',
+        confidence: 0,
+        replaceStart: request.cursor,
+        replaceEnd: request.cursor,
+        source: 'heuristic',
+      });
       return;
     }
 
@@ -382,24 +394,14 @@ async function handleAutocomplete(
   }
 }
 
-async function handleRewrite(
-  text: string, 
-  tone: string, 
-  sendResponse: (response: any) => void
-) {
+async function handleRewrite(text: string, tone: string, sendResponse: (response: any) => void) {
   try {
-    const { 
-      apiKey, 
-      model,
-      backendUrl,
-      provider,
-      customBaseUrl
-    } = await chrome.storage.sync.get([
-      'apiKey', 
+    const { apiKey, model, backendUrl, provider, customBaseUrl } = await chrome.storage.sync.get([
+      'apiKey',
       'model',
       'backendUrl',
       'provider',
-      'customBaseUrl'
+      'customBaseUrl',
     ]);
 
     const baseUrl = backendUrl || DEFAULT_BACKEND_URL;
@@ -430,7 +432,7 @@ async function handleRewrite(
     sendResponse(data);
   } catch (error) {
     console.error('Rewrite failed:', error);
-    sendResponse({ 
+    sendResponse({
       error: 'Failed to rewrite text',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
@@ -554,7 +556,10 @@ async function openStatsPage(): Promise<void> {
   await chrome.tabs.create({ url: chrome.runtime.getURL(STATS_PAGE_PATH) });
 }
 
-async function applyRewriteToSource(original: string, rewritten: string): Promise<{ success: boolean; error?: string }> {
+async function applyRewriteToSource(
+  original: string,
+  rewritten: string,
+): Promise<{ success: boolean; error?: string }> {
   const context = await getRewriteContext();
   if (!context?.sourceTabId) {
     return { success: false, error: 'No source tab available for rewrite.' };
@@ -588,7 +593,11 @@ async function trackRewriteApplyAndReturn(sourceTabId?: number) {
   return { success: true };
 }
 
-async function storeActiveContext(sourceTabId: number, text: string, issues: AnalyzeResponse['issues'] = []): Promise<void> {
+async function storeActiveContext(
+  sourceTabId: number,
+  text: string,
+  issues: AnalyzeResponse['issues'] = [],
+): Promise<void> {
   const payload: EditorContext = {
     text,
     issues,
@@ -656,7 +665,7 @@ async function checkBackendHealth() {
   try {
     const backendUrl = await getBackendUrl();
     const healthUrl = `${backendUrl}/health`;
-    
+
     const response = await fetch(healthUrl, { method: 'GET' });
     if (response.ok) {
       const health = await response.json();
@@ -735,7 +744,8 @@ async function saveWritingSession(payload: {
 
   // Rolling average of writing score
   existing.writingScore = Math.round(
-    ((existing.writingScore * (existing.sessionsCount - 1)) + payload.writingScore) / existing.sessionsCount
+    (existing.writingScore * (existing.sessionsCount - 1) + payload.writingScore) /
+      existing.sessionsCount,
   );
 
   // Aggregate error types
@@ -767,6 +777,6 @@ async function getWritingHistory(days: number = 30): Promise<WritingSessionEntry
   const cutoffStr = cutoff.toISOString().slice(0, 10);
 
   return Object.values(history)
-    .filter(entry => entry.date >= cutoffStr)
+    .filter((entry) => entry.date >= cutoffStr)
     .sort((a, b) => a.date.localeCompare(b.date));
 }

@@ -1,0 +1,273 @@
+name: 🚀 Deploy Backend — All Platforms
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Deploy to specific platform (leave empty for all)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - cloudflare
+          - vercel
+          - netlify
+          - deno
+          - docker
+
+concurrency:
+  group: deploy-backend-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 1. Type-check before any deployment
+  # ─────────────────────────────────────────────────────────────────────────────
+  typecheck:
+    name: ✅ Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: cd backend && bun install
+      - name: TypeScript check
+        run: cd backend && npx tsc --noEmit
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 2. Cloudflare Workers
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy-cloudflare:
+    name: ☁️ Deploy → Cloudflare Workers
+    runs-on: ubuntu-latest
+    needs: typecheck
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'cloudflare')
+      || github.event_name == 'push'
+    environment:
+      name: cloudflare
+      url: https://opengrammar-backend-production.thelabrats-dev.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: cd backend && bun install
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: backend
+          command: deploy --env production
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 3. Vercel
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy-vercel:
+    name: △ Deploy → Vercel
+    runs-on: ubuntu-latest
+    needs: typecheck
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'vercel')
+      || github.event_name == 'push'
+    environment:
+      name: vercel
+      url: https://opengrammar-backend-psi.vercel.app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+      - name: Deploy to Vercel
+        run: |
+          cd backend
+          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 4. Netlify
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy-netlify:
+    name: 🟩 Deploy → Netlify
+    runs-on: ubuntu-latest
+    needs: typecheck
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'netlify')
+      || github.event_name == 'push'
+    environment:
+      name: netlify
+      url: https://opengrammar-backend.netlify.app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: cd backend && npm install
+      - name: Install Netlify CLI
+        run: npm install -g netlify-cli
+      - name: Deploy to Netlify
+        run: |
+          cd backend
+          netlify deploy --prod --dir=. --functions=netlify/functions \
+            --auth=${{ secrets.NETLIFY_AUTH_TOKEN }} \
+            --site=${{ secrets.NETLIFY_SITE_ID }}
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 5. Deno Deploy
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy-deno:
+    name: 🦕 Deploy → Deno Deploy
+    runs-on: ubuntu-latest
+    needs: typecheck
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'deno')
+      || github.event_name == 'push'
+    permissions:
+      id-token: write
+      contents: read
+    environment:
+      name: deno
+      url: https://opengrammar-backend.deno.dev
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Deno Deploy
+        uses: denoland/deployctl@v1
+        with:
+          project: opengrammar-backend
+          entrypoint: backend/server-deno.ts
+          root: .
+        env:
+          DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 6. Docker Hub
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy-docker:
+    name: 🐳 Publish → Docker Hub
+    runs-on: ubuntu-latest
+    needs: typecheck
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'docker')
+      || github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: swadhinbiswas/opengrammar-backend
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=sha-
+            type=raw,value=2.0.0
+      - name: Build and push (multi-arch)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 7. npm Registry
+  # ─────────────────────────────────────────────────────────────────────────────
+  publish-npm:
+    name: 📦 Publish → npm
+    runs-on: ubuntu-latest
+    needs: typecheck
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'docker')
+      || github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install dependencies
+        run: cd backend && bun install
+      - name: Build bundle
+        run: cd backend && bun build server.ts --outdir dist --target node --format esm
+      - name: Publish to npm
+        run: |
+          cd backend
+          # Bump patch version based on commit SHA to avoid duplicate version errors
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json'));
+            const sha = process.env.GITHUB_SHA?.slice(0,7) || 'dev';
+            pkg.version = pkg.version.replace(/\\.\\d+$/, '') + '.' + Date.now().toString().slice(-6);
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+            console.log('Publishing version:', pkg.version);
+          "
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 8. Summary
+  # ─────────────────────────────────────────────────────────────────────────────
+  summary:
+    name: 📋 Deployment Summary
+    runs-on: ubuntu-latest
+    needs:
+      - deploy-cloudflare
+      - deploy-vercel
+      - deploy-netlify
+      - deploy-deno
+      - deploy-docker
+      - publish-npm
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## 🚀 Deployment Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| ☁️ Cloudflare Workers | ${{ needs.deploy-cloudflare.result == 'success' && '✅ Deployed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| △ Vercel | ${{ needs.deploy-vercel.result == 'success' && '✅ Deployed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🟩 Netlify | ${{ needs.deploy-netlify.result == 'success' && '✅ Deployed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🦕 Deno Deploy | ${{ needs.deploy-deno.result == 'success' && '✅ Deployed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🐳 Docker Hub | ${{ needs.deploy-docker.result == 'success' && '✅ Published' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY

@@ -17,10 +17,20 @@
           "language_register": "formal",
           "pattern_description": "Match singular indefinite (everyone, someone, anybody, each, every, nobody, anyone, no one) followed by plural pronoun (they, them, their, themselves) in formal register.",
           "examples": {
-            "incorrect": ["Everyone should bring their own lunch.", "Somebody left their bag.", "Each student must submit their work."],
-            "correct": ["Everyone should bring his or her own lunch.", "Somebody left his or her bag.", "Each student must submit his or her work."]
+            "incorrect": [
+              "Everyone should bring their own lunch.",
+              "Somebody left their bag.",
+              "Each student must submit their work."
+            ],
+            "correct": [
+              "Everyone should bring his or her own lunch.",
+              "Somebody left his or her bag.",
+              "Each student must submit his or her work."
+            ]
           },
-          "exceptions": ["Singular they is widely accepted in modern English and is mandatory when referring to non-binary individuals. Flag only in very formal/academic register."],
+          "exceptions": [
+            "Singular they is widely accepted in modern English and is mandatory when referring to non-binary individuals. Flag only in very formal/academic register."
+          ],
           "fix_hint": "In formal writing, use 'his or her' or restructure (pluralize the antecedent).",
           "british_variant": "Singular they more widely accepted in British English."
         },
@@ -34,8 +44,18 @@
           "language_register": "both",
           "pattern_description": "Regex: /\\b(between|beside|except|for|from|to|with|without|about|against|among)\\s+(you|him|her|them|us)\\s+and\\s+(I|he|she|they|we)\\b/i",
           "examples": {
-            "incorrect": ["Between you and I, it's wrong.", "This is for you and I.", "Come with she and I.", "It's between he and I."],
-            "correct": ["Between you and me, it's wrong.", "This is for you and me.", "Come with her and me.", "It's between him and me."]
+            "incorrect": [
+              "Between you and I, it's wrong.",
+              "This is for you and I.",
+              "Come with she and I.",
+              "It's between he and I."
+            ],
+            "correct": [
+              "Between you and me, it's wrong.",
+              "This is for you and me.",
+              "Come with her and me.",
+              "It's between him and me."
+            ]
           },
           "exceptions": [],
           "fix_hint": "Replace the subject pronoun with the corresponding object pronoun.",
@@ -51,8 +71,18 @@
           "language_register": "both",
           "pattern_description": "Regex: /\\b(me|him|her|them|us)\\s+and\\s+(I|he|she|they|we)\\s+(is|are|was|were|went|had|has|have|will|would|can|could|shall|should|did|do|does)\\b/i",
           "examples": {
-            "incorrect": ["Me and him went to the store.", "Her and I went out.", "Him and me are friends.", "Us and them are different."],
-            "correct": ["He and I went to the store.", "She and I went out.", "He and I are friends.", "We and they are different."]
+            "incorrect": [
+              "Me and him went to the store.",
+              "Her and I went out.",
+              "Him and me are friends.",
+              "Us and them are different."
+            ],
+            "correct": [
+              "He and I went to the store.",
+              "She and I went out.",
+              "He and I are friends.",
+              "We and they are different."
+            ]
           },
           "exceptions": ["Informal speech widely uses object pronouns in compound subjects."],
           "fix_hint": "Replace object pronouns with subject pronouns when used as the subject.",
@@ -68,10 +98,22 @@
           "language_register": "formal",
           "pattern_description": "Regex: /\\b(to|for|with|by|about|from|at|of|between|among)\\s+who\\b/i",
           "examples": {
-            "incorrect": ["To who did you give it?", "For who is this?", "With who are you going?", "By who was it made?"],
-            "correct": ["To whom did you give it?", "For whom is this?", "With whom are you going?", "By whom was it made?"]
+            "incorrect": [
+              "To who did you give it?",
+              "For who is this?",
+              "With who are you going?",
+              "By who was it made?"
+            ],
+            "correct": [
+              "To whom did you give it?",
+              "For whom is this?",
+              "With whom are you going?",
+              "By whom was it made?"
+            ]
           },
-          "exceptions": ["Informal English widely uses 'who' in all positions. Flag only in formal register."],
+          "exceptions": [
+            "Informal English widely uses 'who' in all positions. Flag only in formal register."
+          ],
           "fix_hint": "Replace 'who' with 'whom' after prepositions.",
           "british_variant": "No significant difference."
         },
@@ -85,10 +127,22 @@
           "language_register": "formal",
           "pattern_description": "Regex: /\\b(contact|call|email|reach|send|give|tell|ask|invite|join)\\s+(myself|yourself|himself|herself|themselves|ourselves)\\b/i or sentence-initial /\\b(myself|yourself)\\s+(and|will|am|have|had)\\b/i",
           "examples": {
-            "incorrect": ["Please contact myself for details.", "Myself and John went to the meeting.", "Send it to myself.", "Please join myself for dinner."],
-            "correct": ["Please contact me for details.", "John and I went to the meeting.", "Send it to me.", "Please join me for dinner."]
+            "incorrect": [
+              "Please contact myself for details.",
+              "Myself and John went to the meeting.",
+              "Send it to myself.",
+              "Please join myself for dinner."
+            ],
+            "correct": [
+              "Please contact me for details.",
+              "John and I went to the meeting.",
+              "Send it to me.",
+              "Please join me for dinner."
+            ]
           },
-          "exceptions": ["Correct: 'I hurt myself.' (subject = object). 'I myself did it.' (emphasis)."],
+          "exceptions": [
+            "Correct: 'I hurt myself.' (subject = object). 'I myself did it.' (emphasis)."
+          ],
           "fix_hint": "Replace the reflexive pronoun with 'me', 'I', etc. as appropriate.",
           "british_variant": "No significant difference."
         },
@@ -102,10 +156,24 @@
           "language_register": "both",
           "pattern_description": "Match (a|an) + uncountable noun or uncountable noun + plural -s. Uncountable nouns: information, advice, furniture, equipment, luggage, baggage, news, progress, research, work, homework, evidence, knowledge, traffic, weather, money, music, art, luck, fun, happiness, sadness, anger, water, rice, bread, sugar, milk, coffee, tea, gold, silver, oxygen, electricity, software, hardware, feedback, data (in formal usage), clothing, scenery, poetry, machinery, vocabulary.",
           "examples": {
-            "incorrect": ["I need an information.", "She gave me advices.", "We bought new furnitures.", "He has many luggages.", "There are too many traffics."],
-            "correct": ["I need some information.", "She gave me advice.", "We bought new furniture.", "He has a lot of luggage.", "There is too much traffic."]
+            "incorrect": [
+              "I need an information.",
+              "She gave me advices.",
+              "We bought new furnitures.",
+              "He has many luggages.",
+              "There are too many traffics."
+            ],
+            "correct": [
+              "I need some information.",
+              "She gave me advice.",
+              "We bought new furniture.",
+              "He has a lot of luggage.",
+              "There is too much traffic."
+            ]
           },
-          "exceptions": ["Some nouns can be both: 'a coffee' (= a cup of coffee), 'works' (literary/artistic works), 'waters' (bodies of water)."],
+          "exceptions": [
+            "Some nouns can be both: 'a coffee' (= a cup of coffee), 'works' (literary/artistic works), 'waters' (bodies of water)."
+          ],
           "fix_hint": "Remove the article or use a quantifier (some, a piece of, much). Remove plural -s.",
           "british_variant": "No significant difference."
         },
@@ -119,10 +187,24 @@
           "language_register": "both",
           "pattern_description": "Match wrong plurals: childs→children, mans→men, womans→women, tooths→teeth, foots→feet, mouses→mice, gooses→geese, oxes→oxen, persons→people (in general sense), criterions→criteria, phenomenons→phenomena, datums→data, alumnus→alumni, cactuses→cacti (both accepted), funguses→fungi, syllabuses→syllabi, appendixs→appendices.",
           "examples": {
-            "incorrect": ["The childs are playing.", "There were many mans.", "She has two tooths missing.", "The mouses escaped.", "The criterions are strict."],
-            "correct": ["The children are playing.", "There were many men.", "She has two teeth missing.", "The mice escaped.", "The criteria are strict."]
+            "incorrect": [
+              "The childs are playing.",
+              "There were many mans.",
+              "She has two tooths missing.",
+              "The mouses escaped.",
+              "The criterions are strict."
+            ],
+            "correct": [
+              "The children are playing.",
+              "There were many men.",
+              "She has two teeth missing.",
+              "The mice escaped.",
+              "The criteria are strict."
+            ]
           },
-          "exceptions": ["'Persons' is valid in legal/formal contexts. 'Cactuses' and 'cacti' both accepted."],
+          "exceptions": [
+            "'Persons' is valid in legal/formal contexts. 'Cactuses' and 'cacti' both accepted."
+          ],
           "fix_hint": "Replace the incorrect plural with the correct irregular form.",
           "british_variant": "No significant difference."
         }
@@ -142,10 +224,26 @@
           "language_register": "both",
           "pattern_description": "Check the next word's initial sound. Words starting with silent h (hour, honest, honor, heir, herb) need 'an'. Words with consonant-sounding vowels (university, uniform, united, unique, European, one, once, useful) need 'a'. Acronyms depend on pronunciation (an FBI, a NASA, an HTML, a URL).",
           "examples": {
-            "incorrect": ["A honest man.", "A hour ago.", "An university.", "An European city.", "A FBI agent.", "An one-time offer."],
-            "correct": ["An honest man.", "An hour ago.", "A university.", "A European city.", "An FBI agent.", "A one-time offer."]
+            "incorrect": [
+              "A honest man.",
+              "A hour ago.",
+              "An university.",
+              "An European city.",
+              "A FBI agent.",
+              "An one-time offer."
+            ],
+            "correct": [
+              "An honest man.",
+              "An hour ago.",
+              "A university.",
+              "A European city.",
+              "An FBI agent.",
+              "A one-time offer."
+            ]
           },
-          "exceptions": ["Historical or regional pronunciation may vary: 'a/an historic' (both accepted)."],
+          "exceptions": [
+            "Historical or regional pronunciation may vary: 'a/an historic' (both accepted)."
+          ],
           "fix_hint": "Switch 'a' to 'an' or vice versa based on the following word's SOUND.",
           "british_variant": "'An hotel' and 'an historic' are sometimes used in formal British English."
         },
@@ -159,10 +257,22 @@
           "language_register": "both",
           "pattern_description": "Regex: /\\bthe\\s+(life|love|death|nature|society|education|music|art|science|politics|history|time|happiness|freedom|democracy|justice|beauty|truth|knowledge|information|water|air)\\s+(is|are|was|were|has|can|will|should|must)\\b/i — when used in general philosophical sense.",
           "examples": {
-            "incorrect": ["The life is beautiful.", "The music is my passion.", "The education is important.", "The love conquers all."],
-            "correct": ["Life is beautiful.", "Music is my passion.", "Education is important.", "Love conquers all."]
+            "incorrect": [
+              "The life is beautiful.",
+              "The music is my passion.",
+              "The education is important.",
+              "The love conquers all."
+            ],
+            "correct": [
+              "Life is beautiful.",
+              "Music is my passion.",
+              "Education is important.",
+              "Love conquers all."
+            ]
           },
-          "exceptions": ["'The life of the party' (specific). 'The music was too loud' (specific instance). 'The education system' (specific system)."],
+          "exceptions": [
+            "'The life of the party' (specific). 'The music was too loud' (specific instance). 'The education system' (specific system)."
+          ],
           "fix_hint": "Remove 'the' when referring to the concept in general.",
           "british_variant": "No significant difference."
         },
@@ -176,10 +286,22 @@
           "language_register": "both",
           "pattern_description": "Regex: /\\b(play|plays|played|playing)\\s+the\\s+(tennis|football|soccer|basketball|baseball|cricket|golf|volleyball|badminton|hockey|rugby|chess)\\b/i and /\\bhad\\s+the\\s+(breakfast|lunch|dinner|supper|brunch)\\b/i",
           "examples": {
-            "incorrect": ["She plays the tennis.", "He plays the football.", "We had the dinner at home.", "I had the lunch at noon."],
-            "correct": ["She plays tennis.", "He plays football.", "We had dinner at home.", "I had lunch at noon."]
+            "incorrect": [
+              "She plays the tennis.",
+              "He plays the football.",
+              "We had the dinner at home.",
+              "I had the lunch at noon."
+            ],
+            "correct": [
+              "She plays tennis.",
+              "He plays football.",
+              "We had dinner at home.",
+              "I had lunch at noon."
+            ]
           },
-          "exceptions": ["'Play the piano/guitar' — musical instruments DO take 'the'. 'The dinner was excellent' (specific dinner)."],
+          "exceptions": [
+            "'Play the piano/guitar' — musical instruments DO take 'the'. 'The dinner was excellent' (specific dinner)."
+          ],
           "fix_hint": "Remove 'the' before sport or meal names in general usage.",
           "british_variant": "No significant difference."
         },
@@ -193,10 +315,22 @@
           "language_register": "formal",
           "pattern_description": "Regex: /\\bless\\s+(items|things|people|words|books|cars|houses|dogs|cats|students|teachers|errors|problems|questions|answers|options|choices|opportunities|minutes|hours|days|weeks|months|years|dollars|euros|points|runs|goals|votes|members|employees|customers|passengers|participants|applicants|candidates|complaints|accidents|mistakes|changes|differences|similarities|examples|instances|cases|reasons|factors|elements|features|aspects|details|steps|stages|levels|layers|pieces|parts|sections|chapters|pages|paragraphs|sentences|lines|rows|columns|files|folders|tabs|windows|buttons|clicks|downloads|uploads|messages|emails|calls|meetings|events|tasks|projects|assignments|lessons|classes|courses|subjects|topics|ideas|concepts|theories|models|versions|updates|releases|issues|bugs|tickets|stories|articles|posts|comments|reviews|ratings|likes|shares|followers|subscribers|users|accounts|transactions|payments|orders|shipments|deliveries)\\b/i",
           "examples": {
-            "incorrect": ["Less people came.", "There are less options.", "10 items or less.", "Less mistakes this time."],
-            "correct": ["Fewer people came.", "There are fewer options.", "10 items or fewer.", "Fewer mistakes this time."]
+            "incorrect": [
+              "Less people came.",
+              "There are less options.",
+              "10 items or less.",
+              "Less mistakes this time."
+            ],
+            "correct": [
+              "Fewer people came.",
+              "There are fewer options.",
+              "10 items or fewer.",
+              "Fewer mistakes this time."
+            ]
           },
-          "exceptions": ["'Less than' with numbers/amounts is acceptable: 'less than 10 miles', 'less than $50'. Supermarket '10 items or less' is traditional."],
+          "exceptions": [
+            "'Less than' with numbers/amounts is acceptable: 'less than 10 miles', 'less than $50'. Supermarket '10 items or less' is traditional."
+          ],
           "fix_hint": "Replace 'less' with 'fewer' before countable plural nouns.",
           "british_variant": "No significant difference."
         },
@@ -210,10 +344,24 @@
           "language_register": "both",
           "pattern_description": "Match 'much' + countable plural noun or 'many' + uncountable noun.",
           "examples": {
-            "incorrect": ["How much people?", "Too much books.", "How many information?", "Many money.", "Much problems."],
-            "correct": ["How many people?", "Too many books.", "How much information?", "Much money.", "Many problems."]
+            "incorrect": [
+              "How much people?",
+              "Too much books.",
+              "How many information?",
+              "Many money.",
+              "Much problems."
+            ],
+            "correct": [
+              "How many people?",
+              "Too many books.",
+              "How much information?",
+              "Much money.",
+              "Many problems."
+            ]
           },
-          "exceptions": ["'Much' in questions/negatives: 'Not much time.' is natural. 'How much time?' is correct."],
+          "exceptions": [
+            "'Much' in questions/negatives: 'Not much time.' is natural. 'How much time?' is correct."
+          ],
           "fix_hint": "Replace 'much' with 'many' for countable nouns and vice versa.",
           "british_variant": "No significant difference."
         },
@@ -227,10 +375,20 @@
           "language_register": "formal",
           "pattern_description": "Regex: /\\b(amount|amounts)\\s+of\\s+(people|items|things|students|books|cars|errors|problems|words|pages|files|changes|members|employees|customers|users|tasks|steps|questions|answers|ideas|options|choices|reasons|factors|examples|cases|details|features|attempts|complaints)\\b/i",
           "examples": {
-            "incorrect": ["The amount of people was large.", "A large amount of errors.", "The amount of students increased."],
-            "correct": ["The number of people was large.", "A large number of errors.", "The number of students increased."]
+            "incorrect": [
+              "The amount of people was large.",
+              "A large amount of errors.",
+              "The amount of students increased."
+            ],
+            "correct": [
+              "The number of people was large.",
+              "A large number of errors.",
+              "The number of students increased."
+            ]
           },
-          "exceptions": ["'Amount of' is increasingly accepted with countable nouns in informal English."],
+          "exceptions": [
+            "'Amount of' is increasingly accepted with countable nouns in informal English."
+          ],
           "fix_hint": "Replace 'amount of' with 'number of' before countable nouns.",
           "british_variant": "No significant difference."
         },
@@ -244,10 +402,22 @@
           "language_register": "both",
           "pattern_description": "Regex: /\\benough\\s+(big|tall|good|strong|fast|old|young|smart|rich|warm|cold|hot|cool|large|small|high|low|wide|deep|long|short|loud|quiet|hard|soft|bright|dark|clean|clear|safe|brave|kind|nice|sweet|easy|difficult|important|interesting|cheap|expensive)\\b/i",
           "examples": {
-            "incorrect": ["It's not enough big.", "She is enough old.", "He is enough strong.", "The room is enough warm."],
-            "correct": ["It's not big enough.", "She is old enough.", "He is strong enough.", "The room is warm enough."]
+            "incorrect": [
+              "It's not enough big.",
+              "She is enough old.",
+              "He is enough strong.",
+              "The room is enough warm."
+            ],
+            "correct": [
+              "It's not big enough.",
+              "She is old enough.",
+              "He is strong enough.",
+              "The room is warm enough."
+            ]
           },
-          "exceptions": ["Before nouns: 'enough money', 'enough time', 'enough space' — this is correct."],
+          "exceptions": [
+            "Before nouns: 'enough money', 'enough time', 'enough space' — this is correct."
+          ],
           "fix_hint": "Move 'enough' to after the adjective/adverb.",
           "british_variant": "No significant difference."
         }
@@ -267,10 +437,24 @@
           "language_register": "both",
           "pattern_description": "Match action verb + adjective where adverb is needed: 'runs quick'→'runs quickly', 'speaks loud'→'speaks loudly', 'drives slow'→'drives slowly', 'writes bad'→'writes badly'.",
           "examples": {
-            "incorrect": ["She sings beautiful.", "He runs quick.", "They spoke loud.", "She drives slow.", "He writes bad."],
-            "correct": ["She sings beautifully.", "He runs quickly.", "They spoke loudly.", "She drives slowly.", "He writes badly."]
+            "incorrect": [
+              "She sings beautiful.",
+              "He runs quick.",
+              "They spoke loud.",
+              "She drives slow.",
+              "He writes bad."
+            ],
+            "correct": [
+              "She sings beautifully.",
+              "He runs quickly.",
+              "They spoke loudly.",
+              "She drives slowly.",
+              "He writes badly."
+            ]
           },
-          "exceptions": ["Flat adverbs: 'drive fast' (not 'fastly'), 'work hard' (not 'hardly', which means 'barely'). After linking verbs: 'She looks good' (adjective is correct)."],
+          "exceptions": [
+            "Flat adverbs: 'drive fast' (not 'fastly'), 'work hard' (not 'hardly', which means 'barely'). After linking verbs: 'She looks good' (adjective is correct)."
+          ],
           "fix_hint": "Add -ly to the adjective to form the correct adverb.",
           "british_variant": "'Slow/slowly' — both accepted as adverbs in British English."
         },
@@ -284,8 +468,18 @@
           "language_register": "both",
           "pattern_description": "Regex: /\\bmore\\s+(bigger|smaller|taller|shorter|faster|slower|older|younger|easier|harder|simpler|wider|narrower|louder|quieter|nicer|safer|cleaner|closer|newer|darker|brighter|stronger|weaker|smarter|cheaper|richer|poorer|thinner|thicker|longer|lighter|heavier|cooler|warmer|hotter|colder|drier|wetter)\\b/i and /\\bmost\\s+(biggest|smallest|tallest|shortest|fastest|slowest|oldest|youngest|easiest|hardest|simplest|widest|narrowest|loudest|quietest|nicest|safest|cleanest|closest|newest|darkest|brightest|strongest|weakest|smartest|cheapest|richest|poorest|thinnest|thickest|longest|lightest|heaviest|coolest|warmest|hottest|coldest|driest|wettest)\\b/i",
           "examples": {
-            "incorrect": ["He is more taller.", "She is the most tallest.", "This is more better.", "That is the most fastest."],
-            "correct": ["He is taller.", "She is the tallest.", "This is better.", "That is the fastest."]
+            "incorrect": [
+              "He is more taller.",
+              "She is the most tallest.",
+              "This is more better.",
+              "That is the most fastest."
+            ],
+            "correct": [
+              "He is taller.",
+              "She is the tallest.",
+              "This is better.",
+              "That is the fastest."
+            ]
           },
           "exceptions": [],
           "fix_hint": "Remove 'more' or 'most' — the -er/-est form already expresses comparison.",
@@ -301,10 +495,24 @@
           "language_register": "both",
           "pattern_description": "Match: gooder→better, goodest→best, badder→worse, baddest→worst, more good→better, most good→best, more bad→worse, most bad→worst, more well→better, most well→best, littler→less, farer→farther/further.",
           "examples": {
-            "incorrect": ["This is gooder.", "That was the baddest day.", "She is more good at math.", "This is the most good solution.", "It's badder than before."],
-            "correct": ["This is better.", "That was the worst day.", "She is better at math.", "This is the best solution.", "It's worse than before."]
+            "incorrect": [
+              "This is gooder.",
+              "That was the baddest day.",
+              "She is more good at math.",
+              "This is the most good solution.",
+              "It's badder than before."
+            ],
+            "correct": [
+              "This is better.",
+              "That was the worst day.",
+              "She is better at math.",
+              "This is the best solution.",
+              "It's worse than before."
+            ]
           },
-          "exceptions": ["'Baddest' is slang for 'toughest/coolest'. 'Littler' is sometimes used informally for 'smaller'."],
+          "exceptions": [
+            "'Baddest' is slang for 'toughest/coolest'. 'Littler' is sometimes used informally for 'smaller'."
+          ],
           "fix_hint": "Replace with the correct irregular form.",
           "british_variant": "farther (distance) vs further (degree/metaphorical) — British uses 'further' for both."
         },
@@ -318,10 +526,24 @@
           "language_register": "formal",
           "pattern_description": "Regex: /\\b(more|most|very|extremely|really|somewhat|rather|slightly|fairly|absolutely)\\s+(unique|perfect|complete|dead|infinite|impossible|universal|absolute|essential|fatal|final|total|eternal|entire|supreme|unanimous|empty|full|equal|round|square|true|false|pregnant|correct|incorrect)\\b/i",
           "examples": {
-            "incorrect": ["This is very unique.", "A more perfect union.", "The most complete list.", "He is very dead.", "This is more impossible."],
-            "correct": ["This is unique.", "A nearly perfect union.", "The most nearly complete list.", "He is dead.", "This is impossible."]
+            "incorrect": [
+              "This is very unique.",
+              "A more perfect union.",
+              "The most complete list.",
+              "He is very dead.",
+              "This is more impossible."
+            ],
+            "correct": [
+              "This is unique.",
+              "A nearly perfect union.",
+              "The most nearly complete list.",
+              "He is dead.",
+              "This is impossible."
+            ]
           },
-          "exceptions": ["'A more perfect union' — from US Constitution, accepted as established phrase. 'Very' can sometimes mean 'truly/in every sense': 'the very essence'."],
+          "exceptions": [
+            "'A more perfect union' — from US Constitution, accepted as established phrase. 'Very' can sometimes mean 'truly/in every sense': 'the very essence'."
+          ],
           "fix_hint": "Remove the modifier or use 'nearly', 'almost', or 'virtually' instead.",
           "british_variant": "No significant difference."
         },
@@ -335,10 +557,24 @@
           "language_register": "both",
           "pattern_description": "Match person/pronoun + 'is/am/are/was/were/feel/felt' + wrong form: 'I am boring' (should be bored), 'The movie is bored' (should be boring).",
           "examples": {
-            "incorrect": ["I am boring.", "He is interesting in science.", "She was confusing.", "The students are tiring.", "We are exciting about the trip."],
-            "correct": ["I am bored.", "He is interested in science.", "She was confused.", "The students are tired.", "We are excited about the trip."]
+            "incorrect": [
+              "I am boring.",
+              "He is interesting in science.",
+              "She was confusing.",
+              "The students are tiring.",
+              "We are exciting about the trip."
+            ],
+            "correct": [
+              "I am bored.",
+              "He is interested in science.",
+              "She was confused.",
+              "The students are tired.",
+              "We are excited about the trip."
+            ]
           },
-          "exceptions": ["'She is boring' can be correct if describing her personality (she causes boredom). Context is key."],
+          "exceptions": [
+            "'She is boring' can be correct if describing her personality (she causes boredom). Context is key."
+          ],
           "fix_hint": "Use -ed when describing a person's feelings, -ing when describing the cause.",
           "british_variant": "No significant difference."
         },
@@ -352,10 +588,24 @@
           "language_register": "both",
           "pattern_description": "Match action verbs + 'good' where 'well' is needed: 'plays good', 'writes good', 'performs good', 'works good', 'functions good', 'runs good', 'speaks good', 'sings good', 'dances good', 'cooks good'.",
           "examples": {
-            "incorrect": ["She plays good.", "He speaks English good.", "The car runs good.", "They work good together.", "She sings real good."],
-            "correct": ["She plays well.", "He speaks English well.", "The car runs well.", "They work well together.", "She sings really well."]
+            "incorrect": [
+              "She plays good.",
+              "He speaks English good.",
+              "The car runs good.",
+              "They work good together.",
+              "She sings real good."
+            ],
+            "correct": [
+              "She plays well.",
+              "He speaks English well.",
+              "The car runs well.",
+              "They work well together.",
+              "She sings really well."
+            ]
           },
-          "exceptions": ["After linking verbs: 'I feel good' (emotional state — correct). 'I feel well' (health — also correct). 'She looks good' (appearance — correct)."],
+          "exceptions": [
+            "After linking verbs: 'I feel good' (emotional state — correct). 'I feel well' (health — also correct). 'She looks good' (appearance — correct)."
+          ],
           "fix_hint": "Replace 'good' with 'well' after action verbs.",
           "british_variant": "No significant difference."
         }
@@ -375,10 +625,26 @@
           "language_register": "both",
           "pattern_description": "Match: 'discuss about'→'discuss', 'reach to'→'reach', 'return back'→'return', 'enter into' (room)→'enter', 'cope up with'→'cope with', 'comprise of'→'comprise'/'is composed of', 'emphasize on'→'emphasize', 'mention about'→'mention', 'explain me'→'explain to me', 'request for'→'request', 'demand for'→'demand', 'order for'→'order', 'approach to'→'approach'.",
           "examples": {
-            "incorrect": ["Let's discuss about this.", "She reached to the shelf.", "He returned back.", "We entered into the building.", "I can't cope up with it.", "The team comprises of five members."],
-            "correct": ["Let's discuss this.", "She reached the shelf.", "He returned.", "We entered the building.", "I can't cope with it.", "The team comprises five members."]
+            "incorrect": [
+              "Let's discuss about this.",
+              "She reached to the shelf.",
+              "He returned back.",
+              "We entered into the building.",
+              "I can't cope up with it.",
+              "The team comprises of five members."
+            ],
+            "correct": [
+              "Let's discuss this.",
+              "She reached the shelf.",
+              "He returned.",
+              "We entered the building.",
+              "I can't cope with it.",
+              "The team comprises five members."
+            ]
           },
-          "exceptions": ["'enter into' is correct for agreements: 'enter into a contract'. 'return to' (destination) is correct."],
+          "exceptions": [
+            "'enter into' is correct for agreements: 'enter into a contract'. 'return to' (destination) is correct."
+          ],
           "fix_hint": "Remove the unnecessary preposition or replace with the correct one.",
           "british_variant": "No significant difference."
         },
@@ -392,10 +658,24 @@
           "language_register": "both",
           "pattern_description": "Match: 'in Monday'→'on Monday', 'at January'→'in January', 'on 5 o'clock'→'at 5 o'clock', 'in Monday morning'→'on Monday morning', 'at 2024'→'in 2024'.",
           "examples": {
-            "incorrect": ["I'll see you in Monday.", "She was born at January.", "The meeting is on 3 PM.", "We met at 2024.", "In Christmas Day, we celebrate."],
-            "correct": ["I'll see you on Monday.", "She was born in January.", "The meeting is at 3 PM.", "We met in 2024.", "On Christmas Day, we celebrate."]
+            "incorrect": [
+              "I'll see you in Monday.",
+              "She was born at January.",
+              "The meeting is on 3 PM.",
+              "We met at 2024.",
+              "In Christmas Day, we celebrate."
+            ],
+            "correct": [
+              "I'll see you on Monday.",
+              "She was born in January.",
+              "The meeting is at 3 PM.",
+              "We met in 2024.",
+              "On Christmas Day, we celebrate."
+            ]
           },
-          "exceptions": ["'At Christmas/Easter' (the holiday period) vs 'on Christmas Day' (the specific day). 'At night' (not 'in the night' in AmE). 'In the morning/afternoon/evening' but 'at night'."],
+          "exceptions": [
+            "'At Christmas/Easter' (the holiday period) vs 'on Christmas Day' (the specific day). 'At night' (not 'in the night' in AmE). 'In the morning/afternoon/evening' but 'at night'."
+          ],
           "fix_hint": "Replace with at (specific times/points), on (days/dates), in (months/years/periods).",
           "british_variant": "'At the weekend' (BrE) vs 'on the weekend' (AmE)."
         },
@@ -409,10 +689,22 @@
           "language_register": "both",
           "pattern_description": "Match common errors: 'in the bus stop'→'at the bus stop', 'at the room'→'in the room', 'in the table'→'on the table', 'in a chair' (usually 'on').",
           "examples": {
-            "incorrect": ["I'll meet you in the bus stop.", "She is at the bed.", "The book is in the table.", "He lives at London."],
-            "correct": ["I'll meet you at the bus stop.", "She is in the bed.", "The book is on the table.", "He lives in London."]
+            "incorrect": [
+              "I'll meet you in the bus stop.",
+              "She is at the bed.",
+              "The book is in the table.",
+              "He lives at London."
+            ],
+            "correct": [
+              "I'll meet you at the bus stop.",
+              "She is in the bed.",
+              "The book is on the table.",
+              "He lives in London."
+            ]
           },
-          "exceptions": ["'In the car' but 'on the bus/train/plane'. 'At home/work/school' (no 'the')."],
+          "exceptions": [
+            "'In the car' but 'on the bus/train/plane'. 'At home/work/school' (no 'the')."
+          ],
           "fix_hint": "Use 'at' for specific locations/points, 'in' for enclosed areas, 'on' for surfaces.",
           "british_variant": "'In hospital' (BrE) vs 'in the hospital' (AmE)."
         },
@@ -426,10 +718,24 @@
           "language_register": "both",
           "pattern_description": "Regex: /\\b(interested in|good at|afraid of|tired of|capable of|fond of|instead of|in spite of|look forward to|accustomed to|used to|object to|committed to|dedicated to|devoted to|in addition to|prior to|with regard to|insist on|focus on|depend on|rely on|concentrate on|apologize for|responsible for|famous for|known for|apply for|accuse of|approve of|consist of|dream of|think of|talk about|worry about|care about|complain about|forget about|argue about|succeed in|believe in|participate in|result in|specialize in)\\s+to\\s+([a-z]+)\\b/i — where the 'to' leads to a bare infinitive instead of gerund.",
           "examples": {
-            "incorrect": ["I look forward to meet you.", "She is interested in to learn.", "He insisted on to go.", "Thank you for to help.", "I am used to to wake early."],
-            "correct": ["I look forward to meeting you.", "She is interested in learning.", "He insisted on going.", "Thank you for helping.", "I am used to waking early."]
+            "incorrect": [
+              "I look forward to meet you.",
+              "She is interested in to learn.",
+              "He insisted on to go.",
+              "Thank you for to help.",
+              "I am used to to wake early."
+            ],
+            "correct": [
+              "I look forward to meeting you.",
+              "She is interested in learning.",
+              "He insisted on going.",
+              "Thank you for helping.",
+              "I am used to waking early."
+            ]
           },
-          "exceptions": ["'Used to + infinitive' (past habit) is different from 'be used to + gerund' (accustomed to)."],
+          "exceptions": [
+            "'Used to + infinitive' (past habit) is different from 'be used to + gerund' (accustomed to)."
+          ],
           "fix_hint": "Replace the infinitive with the -ing form after prepositions.",
           "british_variant": "No significant difference."
         },
@@ -443,10 +749,24 @@
           "language_register": "both",
           "pattern_description": "Regex: /\\b(return)\\s+back\\b|\\b(repeat)\\s+again\\b|\\b(revert)\\s+back\\b|\\b(continue)\\s+on\\b|\\b(combine)\\s+together\\b|\\b(connect)\\s+together\\b|\\b(join)\\s+together\\b|\\b(merge)\\s+together\\b|\\b(mix)\\s+together\\b|\\b(penetrate)\\s+into\\b|\\b(rise)\\s+up\\b|\\b(descend)\\s+down\\b|\\b(advance)\\s+forward\\b|\\b(circle)\\s+around\\b|\\b(lift)\\s+up\\b|\\b(raise)\\s+up\\b/i",
           "examples": {
-            "incorrect": ["Please return back the book.", "Could you repeat that again?", "Let's revert back to the old version.", "They continued on walking.", "Mix the ingredients together."],
-            "correct": ["Please return the book.", "Could you repeat that?", "Let's revert to the old version.", "They continued walking.", "Mix the ingredients."]
+            "incorrect": [
+              "Please return back the book.",
+              "Could you repeat that again?",
+              "Let's revert back to the old version.",
+              "They continued on walking.",
+              "Mix the ingredients together."
+            ],
+            "correct": [
+              "Please return the book.",
+              "Could you repeat that?",
+              "Let's revert to the old version.",
+              "They continued walking.",
+              "Mix the ingredients."
+            ]
           },
-          "exceptions": ["'Repeat again' can be valid when emphasizing doing it a second time. Some are idiomatic and widely accepted."],
+          "exceptions": [
+            "'Repeat again' can be valid when emphasizing doing it a second time. Some are idiomatic and widely accepted."
+          ],
           "fix_hint": "Remove the redundant preposition/adverb.",
           "british_variant": "No significant difference."
         },
@@ -460,10 +780,22 @@
           "language_register": "both",
           "pattern_description": "Match movement verbs (walked, ran, jumped, dove, climbed, went, came, fell, stepped, rushed, stormed, burst, threw) + 'in the' where 'into the' is correct.",
           "examples": {
-            "incorrect": ["She walked in the room.", "He jumped in the pool.", "They ran in the building.", "The cat climbed in the box."],
-            "correct": ["She walked into the room.", "He jumped into the pool.", "They ran into the building.", "The cat climbed into the box."]
+            "incorrect": [
+              "She walked in the room.",
+              "He jumped in the pool.",
+              "They ran in the building.",
+              "The cat climbed in the box."
+            ],
+            "correct": [
+              "She walked into the room.",
+              "He jumped into the pool.",
+              "They ran into the building.",
+              "The cat climbed into the box."
+            ]
           },
-          "exceptions": ["'Walk in the park' (location, not entering). Context determines meaning."],
+          "exceptions": [
+            "'Walk in the park' (location, not entering). Context determines meaning."
+          ],
           "fix_hint": "Use 'into' with movement verbs when indicating entering a space.",
           "british_variant": "No significant difference."
         }

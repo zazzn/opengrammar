@@ -59,7 +59,9 @@ const TARGETS: Record<number, number> = {
 console.log(`\n╔══════════════════════════════════════════════════╗`);
 console.log(`║  OpenGrammar Performance Benchmark               ║`);
 console.log(`╠══════════════════════════════════════════════════╣`);
-console.log(`║  Rules loaded: ${CORE_RULES.length.toString().padStart(4)}                             ║`);
+console.log(
+  `║  Rules loaded: ${CORE_RULES.length.toString().padStart(4)}                             ║`,
+);
 console.log(`╚══════════════════════════════════════════════════╝\n`);
 
 const sizes = [100, 500, 1000, 5000, 10000];
@@ -75,7 +77,9 @@ const results: Array<{
 
 // Warm up (first run compiles regexes, loads dictionary, etc.)
 console.log('Warming up...');
-RuleBasedAnalyzer.analyze('This is a warm up sentence with gonna and buyed.', { writingContext: 'general' });
+RuleBasedAnalyzer.analyze('This is a warm up sentence with gonna and buyed.', {
+  writingContext: 'general',
+});
 console.log('Warm-up complete.\n');
 
 for (const wordCount of sizes) {
@@ -111,22 +115,28 @@ for (const wordCount of sizes) {
   });
 
   const status = passed ? '✅ PASS' : '❌ FAIL';
-  console.log(`${status}  ${actualWords.toString().padStart(6)} words | ${formatBytes(chars).padStart(8)} | ${formatMs(medianMs).padStart(8)} (target: ${formatMs(target)}) | ${issues} issues`);
+  console.log(
+    `${status}  ${actualWords.toString().padStart(6)} words | ${formatBytes(chars).padStart(8)} | ${formatMs(medianMs).padStart(8)} (target: ${formatMs(target)}) | ${issues} issues`,
+  );
 }
 
 // Summary table
 console.log(`\n${'─'.repeat(80)}`);
-console.log(`${'Words'.padStart(8)} | ${'Chars'.padStart(8)} | ${'Time'.padStart(8)} | ${'Target'.padStart(8)} | ${'Status'.padStart(8)} | Issues | Rules/ms`);
+console.log(
+  `${'Words'.padStart(8)} | ${'Chars'.padStart(8)} | ${'Time'.padStart(8)} | ${'Target'.padStart(8)} | ${'Status'.padStart(8)} | Issues | Rules/ms`,
+);
 console.log(`${'─'.repeat(80)}`);
 for (const r of results) {
   console.log(
-    `${r.words.toString().padStart(8)} | ${formatBytes(r.chars).padStart(8)} | ${formatMs(r.timeMs).padStart(8)} | ${formatMs(r.target).padStart(8)} | ${(r.passed ? '✅ PASS' : '❌ FAIL').padStart(8)} | ${r.issues.toString().padStart(6)} | ${r.rulesPerMs.toFixed(1)}`
+    `${r.words.toString().padStart(8)} | ${formatBytes(r.chars).padStart(8)} | ${formatMs(r.timeMs).padStart(8)} | ${formatMs(r.target).padStart(8)} | ${(r.passed ? '✅ PASS' : '❌ FAIL').padStart(8)} | ${r.issues.toString().padStart(6)} | ${r.rulesPerMs.toFixed(1)}`,
   );
 }
 console.log(`${'─'.repeat(80)}`);
 
-const allPassed = results.every(r => r.passed);
-console.log(`\n${allPassed ? '🎉 ALL BENCHMARKS PASSED!' : '⚠️  SOME BENCHMARKS FAILED — optimization needed'}\n`);
+const allPassed = results.every((r) => r.passed);
+console.log(
+  `\n${allPassed ? '🎉 ALL BENCHMARKS PASSED!' : '⚠️  SOME BENCHMARKS FAILED — optimization needed'}\n`,
+);
 
 // Breakdown: measure individual component times for the largest document
 console.log('─── Component Breakdown (10K words) ───');
@@ -142,8 +152,8 @@ console.log(`  Spellchecker:    ${formatMs(spellTime)}`);
 // 2. NLP parse only
 const nlpStart = performance.now();
 try {
-  const { NLPEngine } = await import('./src/nlp/nlp-engine.js');
-  NLPEngine.parse(bigText);
+  const { parseNLP } = await import('./src/nlp/nlp-engine.js');
+  parseNLP(bigText);
 } catch {}
 const nlpTime = performance.now() - nlpStart;
 console.log(`  NLP Parse:       ${formatMs(nlpTime)}`);

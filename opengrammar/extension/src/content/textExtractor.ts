@@ -9,26 +9,26 @@ export function extractText(element: HTMLElement): string {
     const docsText = extractGoogleDocsText(element);
     if (docsText) return docsText;
   }
-  
+
   if (element.tagName === 'INPUT') {
     return (element as HTMLInputElement).value;
   }
-  
+
   if (element.tagName === 'TEXTAREA') {
     return (element as HTMLTextAreaElement).value;
   }
-  
+
   if (element.isContentEditable) {
     // For contenteditable, use innerText for better text representation
     // This handles line breaks and formatting better than textContent
     return element.innerText || element.textContent || '';
   }
-  
+
   // Check for role="textbox"
   if (element.getAttribute('role') === 'textbox') {
     return element.getAttribute('aria-valuetext') || element.innerText || '';
   }
-  
+
   return '';
 }
 
@@ -38,16 +38,18 @@ export function extractText(element: HTMLElement): string {
  */
 export function getElementFromTarget(target: EventTarget | null): HTMLElement | null {
   if (!target) return null;
-  
+
   if (target instanceof HTMLElement) {
     if (window.location.hostname.includes('docs.google.com')) {
-      const docsTarget = target.closest('[contenteditable="true"], [role="textbox"], .kix-appview-editor') as HTMLElement | null;
+      const docsTarget = target.closest(
+        '[contenteditable="true"], [role="textbox"], .kix-appview-editor',
+      ) as HTMLElement | null;
       if (docsTarget) return docsTarget;
     }
 
     return target;
   }
-  
+
   return null;
 }
 
@@ -60,7 +62,9 @@ function extractGoogleDocsText(element: HTMLElement): string {
 
   if (!docsRoot) return '';
 
-  const wordNodes = docsRoot.querySelectorAll('.kix-wordhtmlgenerator-word-node, .kix-lineview-text-block');
+  const wordNodes = docsRoot.querySelectorAll(
+    '.kix-wordhtmlgenerator-word-node, .kix-lineview-text-block',
+  );
   if (wordNodes.length > 0) {
     return Array.from(wordNodes)
       .map((node) => (node.textContent || '').trim())
@@ -80,19 +84,19 @@ export function getCaretPosition(element: HTMLElement): number {
   if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
     return (element as HTMLInputElement | HTMLTextAreaElement).selectionStart || 0;
   }
-  
+
   if (element.isContentEditable) {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return 0;
-    
+
     const range = selection.getRangeAt(0);
     const preCaretRange = range.cloneRange();
     preCaretRange.selectNodeContents(element);
     preCaretRange.setEnd(range.endContainer, range.endOffset);
-    
+
     return preCaretRange.toString().length;
   }
-  
+
   return 0;
 }
 
@@ -104,21 +108,21 @@ export function setCaretPosition(element: HTMLElement, position: number) {
     (element as HTMLInputElement | HTMLTextAreaElement).setSelectionRange(position, position);
     return;
   }
-  
+
   if (element.isContentEditable) {
     const range = document.createRange();
     const selection = window.getSelection();
-    
+
     if (!selection) return;
-    
+
     // Find the node and offset for the position
     let currentPos = 0;
     const treeWalker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-    
+
     let node: Node | null = treeWalker.nextNode();
     while (node) {
       const nodeLength = node.textContent?.length || 0;
-      
+
       if (currentPos + nodeLength >= position) {
         range.setStart(node, position - currentPos);
         range.collapse(true);
@@ -126,7 +130,7 @@ export function setCaretPosition(element: HTMLElement, position: number) {
         selection.addRange(range);
         return;
       }
-      
+
       currentPos += nodeLength;
       node = treeWalker.nextNode();
     }
@@ -138,17 +142,17 @@ export function setCaretPosition(element: HTMLElement, position: number) {
  */
 export function isElementVisible(element: HTMLElement): boolean {
   const style = window.getComputedStyle(element);
-  
+
   // Check if element is hidden
   if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
     return false;
   }
-  
+
   // Check if element is in viewport
   const rect = element.getBoundingClientRect();
   const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
   const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-  
+
   return (
     rect.top >= -rect.height &&
     rect.left >= -rect.width &&
@@ -161,12 +165,14 @@ export function isElementVisible(element: HTMLElement): boolean {
  * Gets the visible text ranges in an element
  * Useful for complex contenteditable elements with nested structures
  */
-export function getVisibleTextRanges(element: HTMLElement): Array<{ text: string; start: number; end: number; rect: DOMRect }> {
+export function getVisibleTextRanges(
+  element: HTMLElement,
+): Array<{ text: string; start: number; end: number; rect: DOMRect }> {
   const ranges: Array<{ text: string; start: number; end: number; rect: DOMRect }> = [];
   let currentOffset = 0;
-  
+
   const treeWalker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-  
+
   let node: Node | null = treeWalker.nextNode();
   while (node) {
     const text = node.textContent || '';
@@ -174,7 +180,7 @@ export function getVisibleTextRanges(element: HTMLElement): Array<{ text: string
       const range = document.createRange();
       range.selectNodeContents(node);
       const rect = range.getBoundingClientRect();
-      
+
       // Only include visible text
       if (rect.width > 0 && rect.height > 0) {
         ranges.push({
@@ -185,10 +191,10 @@ export function getVisibleTextRanges(element: HTMLElement): Array<{ text: string
         });
       }
     }
-    
+
     currentOffset += text.length;
     node = treeWalker.nextNode();
   }
-  
+
   return ranges;
 }

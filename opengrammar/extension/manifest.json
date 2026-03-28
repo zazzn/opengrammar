@@ -3,15 +3,8 @@
   "name": "OpenGrammar",
   "version": "2.0.0",
   "description": "Your privacy-first, open-source writing assistant. Check grammar, spelling, and style everywhere on the web.",
-  "permissions": [
-    "storage",
-    "activeTab",
-    "scripting",
-    "contextMenus"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "src/background/index.ts",
     "type": "module"
@@ -52,6 +45,12 @@
       "run_at": "document_idle",
       "all_frames": true,
       "css": []
+    },
+    {
+      "matches": ["https://docs.google.com/document/*"],
+      "js": ["src/content/google-docs.ts"],
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ],
   "web_accessible_resources": [

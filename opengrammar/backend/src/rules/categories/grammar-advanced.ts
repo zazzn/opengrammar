@@ -1,5 +1,5 @@
-import { type Rule, createRegexRule } from '../types.js';
 import type { Issue } from '../../shared-types.js';
+import { createRegexRule, type Rule } from '../types.js';
 
 export const advancedGrammarRules: Rule[] = [
   // Spacing Errors
@@ -8,44 +8,47 @@ export const advancedGrammarRules: Rule[] = [
     category: 'grammar',
     pattern: /[^.](\s{2,})/g,
     suggestion: ' ',
-    reason: 'Multiple spaces detected. Use single space.'
+    reason: 'Multiple spaces detected. Use single space.',
   }),
   createRegexRule({
     id: 'space-before-punct',
     category: 'grammar',
     pattern: /\s+([.,!?;:])/g,
     suggestion: (match) => match[1] || '',
-    reason: 'Remove space before punctuation.'
+    reason: 'Remove space before punctuation.',
   }),
   createRegexRule({
     id: 'no-space-after-punct',
     category: 'grammar',
     pattern: /([.,!?;:])([A-Z][a-z])/g,
     suggestion: (match) => `${match[1] || ''} ${match[2] || ''}`,
-    reason: 'Add space after punctuation.'
+    reason: 'Add space after punctuation.',
   }),
 
   // Apostrophe Errors
   createRegexRule({
     id: 'its-possessive',
     category: 'grammar',
-    pattern: /\bits\s+(name|own|color|size|shape|kind|type|way|purpose|function|role|effect|impact|result|content|source|code|data|file|path|url|id|user|item|object|property|value|element|node|parent|child|sibling)\b/i,
+    pattern:
+      /\bits\s+(name|own|color|size|shape|kind|type|way|purpose|function|role|effect|impact|result|content|source|code|data|file|path|url|id|user|item|object|property|value|element|node|parent|child|sibling)\b/i,
     suggestion: (match) => `it's ${match[1]}`,
-    reason: "Use 'it's' (contraction of 'it is') here."
+    reason: "Use 'it's' (contraction of 'it is') here.",
   }),
   createRegexRule({
     id: 'youre-verb',
     category: 'grammar',
-    pattern: /\byour\s+(welcome|going|right|wrong|reading|writing|working|looking|sounding|feeling|thinking|doing|making|taking|getting|having|being|becoming|seeming|appearing)\b/i,
+    pattern:
+      /\byour\s+(welcome|going|right|wrong|reading|writing|working|looking|sounding|feeling|thinking|doing|making|taking|getting|having|being|becoming|seeming|appearing)\b/i,
     suggestion: (match) => `you're ${match[1]}`,
-    reason: "Use 'you're' (contraction of 'you are') here."
+    reason: "Use 'you're' (contraction of 'you are') here.",
   }),
   createRegexRule({
     id: 'theyre-verb',
     category: 'grammar',
-    pattern: /\btheir\s+(going|coming|working|doing|making|taking|getting|having|being|becoming|seeming|looking|sounding|feeling|thinking)\b/i,
+    pattern:
+      /\btheir\s+(going|coming|working|doing|making|taking|getting|having|being|becoming|seeming|looking|sounding|feeling|thinking)\b/i,
     suggestion: (match) => `they're ${match[1]}`,
-    reason: "Use 'they're' (contraction of 'they are') here."
+    reason: "Use 'they're' (contraction of 'they are') here.",
   }),
 
   // That vs Which
@@ -54,16 +57,17 @@ export const advancedGrammarRules: Rule[] = [
     category: 'grammar',
     pattern: /([^,]\s+)which\s+(is|are|was|were|has|have|had|does|do|did)\b/i,
     suggestion: (match) => `${match[1].trim()}, which ${match[2]}`,
-    reason: "Non-restrictive clauses need a comma before 'which'."
+    reason: "Non-restrictive clauses need a comma before 'which'.",
   }),
 
   // Less vs Fewer
   createRegexRule({
     id: 'less-fewer',
     category: 'grammar',
-    pattern: /\bless\s+(items|things|people|words|sentences|paragraphs|pages|books|cars|houses|dogs|cats|students|teachers|errors|problems|questions|answers|ideas|concepts|rules|examples|cases|instances|occasions|times|days|weeks|months|years)\b/i,
+    pattern:
+      /\bless\s+(items|things|people|words|sentences|paragraphs|pages|books|cars|houses|dogs|cats|students|teachers|errors|problems|questions|answers|ideas|concepts|rules|examples|cases|instances|occasions|times|days|weeks|months|years)\b/i,
     suggestion: (match) => `fewer ${match[1]}`,
-    reason: "Use 'fewer' with countable nouns."
+    reason: "Use 'fewer' with countable nouns.",
   }),
 
   // Comma Splices (Requires more manual custom check logic)
@@ -94,7 +98,7 @@ export const advancedGrammarRules: Rule[] = [
         }
       }
       return issues;
-    }
+    },
   },
 
   // Double Negatives
@@ -107,12 +111,30 @@ export const advancedGrammarRules: Rule[] = [
     suggestion: 'Remove one negative',
     check: (text: string): Issue[] => {
       const issues: Issue[] = [];
-      const negativeWords = ["don't", "doesn't", "didn't", "won't", "wouldn't", "couldn't", "shouldn't", "can't", "cannot", "no", "not", "never", "nothing", "nobody", "nowhere", "neither", "nor"];
+      const negativeWords = [
+        "don't",
+        "doesn't",
+        "didn't",
+        "won't",
+        "wouldn't",
+        "couldn't",
+        "shouldn't",
+        "can't",
+        'cannot',
+        'no',
+        'not',
+        'never',
+        'nothing',
+        'nobody',
+        'nowhere',
+        'neither',
+        'nor',
+      ];
       const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
       let currentIndex = 0;
       sentences.forEach((sentence) => {
         const lowerSentence = sentence.toLowerCase();
-        const foundNegatives = negativeWords.filter(word => lowerSentence.includes(word));
+        const foundNegatives = negativeWords.filter((word) => lowerSentence.includes(word));
         if (foundNegatives.length >= 2) {
           issues.push({
             id: `double-neg-${currentIndex}`,
@@ -127,7 +149,7 @@ export const advancedGrammarRules: Rule[] = [
         currentIndex += sentence.length;
       });
       return issues;
-    }
+    },
   },
 
   // Article Errors
@@ -145,7 +167,7 @@ export const advancedGrammarRules: Rule[] = [
       let match: RegExpExecArray | null;
       while ((match = aBeforeVowelRegex.exec(text)) !== null) {
         const nextWord = (match[1] || '').toLowerCase();
-        const isException = Array.from(vowelExceptions).some(ex => nextWord.startsWith(ex));
+        const isException = Array.from(vowelExceptions).some((ex) => nextWord.startsWith(ex));
         if (!isException) {
           issues.push({
             id: `article-a-${match.index}`,
@@ -163,7 +185,7 @@ export const advancedGrammarRules: Rule[] = [
       const anBeforeConsonantRegex = /\ban\s+([bcdfghjklmnpqrstvwxyz]\w*)\b/gi;
       while ((match = anBeforeConsonantRegex.exec(text)) !== null) {
         const nextWord = (match[1] || '').toLowerCase();
-        const isException = Array.from(consonantExceptions).some(ex => nextWord.startsWith(ex));
+        const isException = Array.from(consonantExceptions).some((ex) => nextWord.startsWith(ex));
         if (!isException) {
           issues.push({
             id: `article-an-${match.index}`,
@@ -177,7 +199,7 @@ export const advancedGrammarRules: Rule[] = [
         }
       }
       return issues;
-    }
+    },
   },
 
   // Missing Commas
@@ -190,8 +212,24 @@ export const advancedGrammarRules: Rule[] = [
     suggestion: '',
     check: (text: string): Issue[] => {
       const issues: Issue[] = [];
-      const introWords = ['however', 'therefore', 'furthermore', 'moreover', 'nevertheless', 'meanwhile', 'consequently', 'additionally', 'similarly', 'accordingly', 'unfortunately', 'fortunately', 'finally', 'obviously', 'clearly'];
-      
+      const introWords = [
+        'however',
+        'therefore',
+        'furthermore',
+        'moreover',
+        'nevertheless',
+        'meanwhile',
+        'consequently',
+        'additionally',
+        'similarly',
+        'accordingly',
+        'unfortunately',
+        'fortunately',
+        'finally',
+        'obviously',
+        'clearly',
+      ];
+
       for (const word of introWords) {
         const regex = new RegExp(`(?:^|[.!?]\\s+)${word}\\s+(?!,)([A-Za-z])`, 'gi');
         let match: RegExpExecArray | null;
@@ -211,9 +249,9 @@ export const advancedGrammarRules: Rule[] = [
         }
       }
       return issues;
-    }
+    },
   },
-  
+
   // Sentence Fragments
   {
     id: 'sentence-fragments',
@@ -226,7 +264,8 @@ export const advancedGrammarRules: Rule[] = [
       const issues: Issue[] = [];
       const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
       let currentIndex = 0;
-      const subordinators = /^\s*(because|although|though|even though|while|whereas|since|unless|until|if|when|whenever|wherever|after|before|as soon as|in order to|so that)\b/i;
+      const subordinators =
+        /^\s*(because|although|though|even though|while|whereas|since|unless|until|if|when|whenever|wherever|after|before|as soon as|in order to|so that)\b/i;
 
       for (const sentence of sentences) {
         const trimmed = sentence.trim();
@@ -250,6 +289,6 @@ export const advancedGrammarRules: Rule[] = [
         currentIndex += sentence.length;
       }
       return issues;
-    }
-  }
+    },
+  },
 ];
