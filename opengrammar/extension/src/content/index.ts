@@ -454,6 +454,32 @@ const checkGrammar = async (element: HTMLElement) => {
       }
       void syncActiveContext(text, response.issues);
       highlightIssues(element, response.issues);
+
+      // D1: Update badge count
+      void chrome.runtime.sendMessage({
+        type: 'UPDATE_BADGE_COUNT',
+        count: response.issues.length,
+      });
+
+      // D4: Save writing session data
+      const wordCount = text.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+      const errorTypes: Record<string, number> = {};
+      for (const issue of response.issues) {
+        errorTypes[issue.type] = (errorTypes[issue.type] || 0) + 1;
+      }
+      // Simple writing score: correctness component (scale 0-100)
+      const issuesPerHundred = wordCount > 0 ? (response.issues.length / wordCount) * 100 : 0;
+      const writingScore = Math.round(Math.max(0, Math.min(100, 100 - (issuesPerHundred * 10))));
+      void chrome.runtime.sendMessage({
+        type: 'SAVE_WRITING_SESSION',
+        payload: {
+          wordsChecked: wordCount,
+          issuesFound: response.issues.length,
+          issuesFixed: 0,
+          writingScore,
+          errorTypes,
+        },
+      });
     } else {
       console.log("[OpenGrammar] No issues found or empty response");
       const editableElement = activeElements.get(element);
@@ -461,6 +487,12 @@ const checkGrammar = async (element: HTMLElement) => {
         editableElement.lastIssues = [];
       }
       void syncActiveContext(text, []);
+
+      // D1: Clear badge when no issues
+      void chrome.runtime.sendMessage({
+        type: 'UPDATE_BADGE_COUNT',
+        count: 0,
+      });
     }
   } catch (err) {
     if (err instanceof Error && err.message.includes("context invalidated")) {
