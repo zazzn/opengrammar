@@ -81,14 +81,50 @@ const COMMON_ABBREVIATIONS = new Set([
   'http', 'https', 'www', 'io', 'id', 'pdf', 'json', 'xml', 'csv',
 ]);
 
-// Words that look like misspellings but are legitimate
+// Words that look like misspellings but are legitimate.
+// Also includes words our rule engine handles intentionally —
+// they shouldn't be double-flagged by the spellchecker with garbled suggestions.
 const SAFE_WORDS = new Set([
+  // Common valid short words
   'seed', 'feed', 'weed', 'breed', 'speed', 'bleed', 'freed', 'treed',
-  'nice', 'stuff', 'gonna', 'ain',
+  'nice', 'stuff', 'ain',
+
+  // Tech / Internet
   'email', 'emails', 'online', 'offline', 'website', 'username',
-  'inbox', 'login', 'logout', 'signup', 'signup',
+  'inbox', 'login', 'logout', 'signup',
   'podcast', 'hashtag', 'emoji', 'selfie', 'bitcoin', 'crypto',
-  'startup', 'app', 'apps', 'blog', 'blogs', 'wifi',
+  'startup', 'app', 'apps', 'blog', 'blogs', 'wifi', 'backend', 'frontend',
+  'middleware', 'webhook', 'localhost', 'devops', 'repo', 'changelog',
+  'dataset', 'workflow', 'timestamp', 'configs', 'endpoints',
+
+  // Words handled by our formality/style rules (DO NOT spellcheck-flag these)
+  'gonna', 'wanna', 'gotta', 'kinda', 'sorta', 'lemme', 'gimme',
+  'dunno', 'outta', 'lotsa', 'coulda', 'shoulda', 'woulda', 'musta', 'hafta',
+  'btw', 'tbh', 'fyi', 'wrt', 'imo', 'lol', 'omg', 'ngl', 'bruh', 'nah',
+
+  // Words handled by our inclusive language rules
+  'policeman', 'policemen', 'policewoman', 'fireman', 'firemen',
+  'chairman', 'chairwoman', 'stewardess', 'mailman', 'mankind', 'manpower',
+  'businessman', 'businessmen', 'spokesman', 'congressman', 'craftsman',
+  'salesman', 'waitress', 'actress', 'housewife', 'manhole',
+
+  // Words handled by our business/readability rules
+  'ameliorate', 'ascertain', 'cognizant', 'elucidate', 'expedite',
+  'remuneration', 'disseminate', 'promulgate', 'effectuate', 'incentivize',
+  'operationalize', 'onboard', 'onboarding',
+  'heretofore', 'aforementioned', 'henceforth', 'notwithstanding',
+  'inasmuch', 'commensurate', 'dichotomy', 'juxtapose', 'ubiquitous',
+  'quintessential', 'multifaceted', 'exacerbate', 'proliferate',
+
+  // Words handled by confused-words rules
+  'irregardless', 'conversate', 'orientate', 'preventative', 'alright',
+
+  // Inclusive language targets
+  'handicapped', 'ableist',
+
+  // Stative verbs in progressive (we flag "is knowing" → "knows", not "knowing" itself)
+  'knowing', 'believing', 'owning', 'belonging', 'consisting',
+  'containing', 'depending', 'preferring', 'seeming', 'appearing',
 ]);
 
 // Cache for Soundex values to speed up suggestions
