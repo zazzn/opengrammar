@@ -394,6 +394,46 @@ function handleKeyDown(event: Event) {
 /**
  * Check grammar for an element
  */
+function handleGrammarSuccess(element: HTMLElement, text: string, issues: Issue[]) {
+  const editableElement = activeElements.get(element);
+  if (issues && issues.length > 0) {
+    if (editableElement) editableElement.lastIssues = issues;
+    void syncActiveContext(text, issues);
+    highlightIssues(element, issues);
+
+    const statsPerType = { grammar: 0, spelling: 0, clarity: 0, style: 0 };
+    for (const issue of issues) {
+      if (issue.type in statsPerType) statsPerType[issue.type as keyof typeof statsPerType]++;
+    }
+    void chrome.storage.local.set({
+      lastIssueStats: {
+        grammar: statsPerType.grammar + statsPerType.spelling,
+        style: statsPerType.style,
+        clarity: statsPerType.clarity,
+        total: issues.length,
+      },
+    });
+
+    void chrome.runtime.sendMessage({ type: 'UPDATE_BADGE_COUNT', count: issues.length });
+
+    const wordCount = text.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+    const errorTypes: Record<string, number> = {};
+    for (const issue of issues) {
+      errorTypes[issue.type] = (errorTypes[issue.type] || 0) + 1;
+    }
+    const issuesPerHundred = wordCount > 0 ? (issues.length / wordCount) * 100 : 0;
+    const writingScore = Math.round(Math.max(0, Math.min(100, 100 - issuesPerHundred * 10)));
+    void chrome.runtime.sendMessage({
+      type: 'SAVE_WRITING_SESSION',
+      payload: { wordsChecked: wordCount, issuesFound: issues.length, issuesFixed: 0, writingScore, errorTypes },
+    });
+  } else {
+    if (editableElement) editableElement.lastIssues = [];
+    void syncActiveContext(text, []);
+    void chrome.runtime.sendMessage({ type: 'UPDATE_BADGE_COUNT', count: 0 });
+  }
+}
+
 const checkGrammar = async (element: HTMLElement) => {
   if (!checkContext()) return;
 
@@ -403,12 +443,7 @@ const checkGrammar = async (element: HTMLElement) => {
   }
 
   const text = extractText(element);
-
-  console.log('[OpenGrammar] Checking grammar for text:', text.substring(0, 100));
-
-  // Skip very short text
   if (!text || text.trim().length < 5) {
-    console.log('[OpenGrammar] Text too short, skipping');
     clearHighlights();
     return;
   }
@@ -421,83 +456,12 @@ const checkGrammar = async (element: HTMLElement) => {
       context: buildAnalysisContext(element, text),
     });
 
-    const duration = Date.now() - startTime;
-    console.log('[OpenGrammar] Grammar check took:', duration, 'ms');
-
     if (response?.error) {
-      console.warn('[OpenGrammar] Grammar check error:', response.error);
       showNotification('Grammar check failed: ' + response.error, 'error');
       return;
     }
 
-    if (response?.issues) {
-      console.log('[OpenGrammar] Found', response.issues.length, 'issues');
-      if (response.issues.length > 0) {
-        console.log('[OpenGrammar] First issue:', response.issues[0]);
-      }
-      const editableElement = activeElements.get(element);
-      if (editableElement) {
-        editableElement.lastIssues = response.issues;
-      }
-      void syncActiveContext(text, response.issues);
-      highlightIssues(element, response.issues);
-
-      // Save issue stats for popup score ring
-      const statsPerType = { grammar: 0, spelling: 0, clarity: 0, style: 0 };
-      for (const issue of response.issues) {
-        if (issue.type in statsPerType) statsPerType[issue.type as keyof typeof statsPerType]++;
-      }
-      void chrome.storage.local.set({
-        lastIssueStats: {
-          grammar: statsPerType.grammar + statsPerType.spelling,
-          style: statsPerType.style,
-          clarity: statsPerType.clarity,
-          total: response.issues.length,
-        },
-      });
-
-      // D1: Update badge count
-      void chrome.runtime.sendMessage({
-        type: 'UPDATE_BADGE_COUNT',
-        count: response.issues.length,
-      });
-
-      // D4: Save writing session data
-      const wordCount = text
-        .trim()
-        .split(/\s+/)
-        .filter((w: string) => w.length > 0).length;
-      const errorTypes: Record<string, number> = {};
-      for (const issue of response.issues) {
-        errorTypes[issue.type] = (errorTypes[issue.type] || 0) + 1;
-      }
-      // Simple writing score: correctness component (scale 0-100)
-      const issuesPerHundred = wordCount > 0 ? (response.issues.length / wordCount) * 100 : 0;
-      const writingScore = Math.round(Math.max(0, Math.min(100, 100 - issuesPerHundred * 10)));
-      void chrome.runtime.sendMessage({
-        type: 'SAVE_WRITING_SESSION',
-        payload: {
-          wordsChecked: wordCount,
-          issuesFound: response.issues.length,
-          issuesFixed: 0,
-          writingScore,
-          errorTypes,
-        },
-      });
-    } else {
-      console.log('[OpenGrammar] No issues found or empty response');
-      const editableElement = activeElements.get(element);
-      if (editableElement) {
-        editableElement.lastIssues = [];
-      }
-      void syncActiveContext(text, []);
-
-      // D1: Clear badge when no issues
-      void chrome.runtime.sendMessage({
-        type: 'UPDATE_BADGE_COUNT',
-        count: 0,
-      });
-    }
+    handleGrammarSuccess(element, text, response?.issues || []);
   } catch (err) {
     if (err instanceof Error && err.message.includes('context invalidated')) {
       isContextInvalidated = true;
