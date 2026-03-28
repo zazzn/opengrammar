@@ -7,105 +7,142 @@
   *The completely free, zero-compromise Grammarly alternative you can host yourself.*
 
   [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-  [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
-  [![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://reactjs.org/)
-  [![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+  [![NPM Package](https://img.shields.io/npm/v/opengrammar-server)](https://www.npmjs.com/package/opengrammar-server)
+  [![Docker Pulls](https://img.shields.io/docker/pulls/swdhinbiswas/opengrammar-backend)](https://hub.docker.com/r/swdhinbiswas/opengrammar-backend)
+  [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+
+  🌐 **[Official Website](https://opengrammer.eu.cc)** | 📖 **[Documentation Site](https://opengrammer.eu.cc/docs)**
 </div>
 
 ---
 
 Writing clearly matters. But achieving perfect grammar shouldn't mean sacrificing your privacy or paying a premium monthly subscription to a tech giant. 
 
-Welcome to **OpenGrammar**—a powerful, robust browser extension built from the ground up to match the premium writing tools you already know, but with one massive difference: **You own your data, and it runs completely for free.**
+**OpenGrammar** is a powerful intelligent writing assistant built to match the premium writing tools you already know, but with one massive difference: **You own your data, and it runs completely for free.**
 
 ## 🌟 Why OpenGrammar?
 
-For too long, the industry standard has been to quietly siphon every keystroke you type to remote servers, locking advanced features behind hefty paywalls. OpenGrammar is our answer to that:
-
 1. **The Zero-Cost Foundation:** Out of the box, our core engine runs 100% locally in your browser. With a massive 156,000-word offline dictionary, it instantly catches misspellings, passive voice, and weak phrasing without ever pinging a server.
-2. **Bring Your Own Brain (BYOK):** Want deep, context-aware AI corrections? Just plug in your own API key (OpenAI, Groq, Together, OpenRouter, or even local open-source models via Ollama). You pay fractions of a cent exclusively for what you use, cutting out the middleman entirely.
-3. **Paranoid-Level Privacy:** We don't have a database. We don't want your user data. Your API key never leaves your browser storage. If you choose to use the AI features, your text is processed through a stateless edge function and immediately deleted. 
-4. **Deploy It Yourself:** Trust no one? Perfect. You can deploy our lightweight backend to Cloudflare Workers or Vercel Edge for free, in a single command. You own the entire pipeline.
+2. **Bring Your Own Brain (BYOK):** Want deep, context-aware AI corrections? Just plug in your own API key (OpenAI, Groq, Together, OpenRouter, or local models via Ollama). You pay fractions of a cent exclusively for what you use.
+3. **Paranoid-Level Privacy:** We don't have a database. We don't want your data. Your API key never leaves your browser storage. Text processed through the AI is immediately deleted via stateless edge functions.
+4. **Deploy It Yourself:** You own the entire pipeline. Host our lightweight backend instantly via Docker, NPM, Cloudflare, Vercel, or Netlify.
 
-## ✨ Under The Hood
+---
 
-OpenGrammar 2.0 isn't just a wrapper—it's a dual-engine powerhouse.
+## 🚀 Live Production Endpoints
 
-- **Blazing Fast & Works Everywhere:** We seamlessly inject directly into text inputs, textareas, and complex rich-text editors (Gmail, Google Docs, Notion, Reddit). Built on React, Vite, and Manifest V3 so it never bogs down your browser.
-- **The Dual-Engine Architecture:**
-  1. *The Offline Sentinel:* A Damerau-Levenshtein edit-distance and phonetic matching spellchecker catches immediate typos. 40+ granular grammar rules instantly flag subject-verb agreement issues, sentence fragments, and commonly confused words (like affect/effect). 
-  2. *The AI Enforcer:* An intelligent LLM router. Thanks to our **Deduplication Logic**, the AI is completely aware of what the Offline Sentinel already caught. It *never* wastes expensive tokens repeating basic fixes.
-- **Smart Context Awareness:** Are you writing a casual tweet, a highly technical documentation page, or a formal business email? The engine automatically detects your domain and scales its strictness appropriately.
-- **Deep Analytics & History:**
-  - **Dynamic Writing Score:** Evaluates your text dynamically from 0-100 based on your Correctness, Readability, Engagement (vocabulary diversity), and Sentence Delivery variation.
-  - **Private Daily Tracking:** Silently logs your writing history, words checked, and average daily score directly to your local extension storage.
-- **Tone & Style Rewriting:** Right-click context menus or a quick `Ctrl+Shift+R` to instantly rethink highlighted text into 8 different tones.
-- **Flawless UI:** The classic red, yellow, and blue squiggly underlines you grew up with, paired with slick, interactive click-to-apply tooltips and a gorgeous stats dashboard.
+Don't want to host the backend yourself? OpenGrammar comes with incredibly fast, globally-distributed public edge deployments that you can connect your browser extension to instantly:
 
-## 🚀 Getting Started (For Users)
+- ☁️ **Cloudflare Workers:** [`https://cf.opengrammer.eu.cc/`](https://cf.opengrammer.eu.cc/)
+- △ **Vercel Edge:** [`https://vercel.opengrammer.eu.cc/`](https://vercel.opengrammer.eu.cc/)
+- 🟩 **Netlify Functions:** [`https://nl.opengrammer.eu.cc/`](https://nl.opengrammer.eu.cc/)
 
-*Note: As an open-source tool in active development, OpenGrammar is currently installed via developer mode.*
+---
 
-1. **Download the Extension:** Grab the latest release or clone this repository.
-2. **Open Extensions Page:** In Chrome/Brave/Edge, navigate to `chrome://extensions/`.
-3. **Enable Developer Mode:** Toggle the switch in the top right corner.
-4. **Load Unpacked:** Click the "Load unpacked" button and select the `opengrammar/extension/dist` folder you built or downloaded.
-5. **Configure:** Click the OpenGrammar feather icon in your browser toolbar. Paste in your OpenAI, Groq, or OpenRouter API key to unlock the advanced AI engine.
+## 🛠️ Usage & Installation Environments
 
-## 💻 Developer Guide: Build & Deploy
+Our backend is natively multi-platform. Choose the environment that best fits your workflow.
 
-Want to build OpenGrammar from scratch or deploy your own serverless backend? Let's get to it.
+<details>
+<summary><b>📦 1. NPM / Mobile / Node Environments (Recommended for easy local use)</b></summary>
 
-### Prerequisites
-
-- Node.js (v18 or newer)
-- [Bun](https://bun.sh/) (Highly Recommended) or npm/pnpm
-
-### 1. Set up the Backend (Serverless Edge API)
-
-Our backend isn't a bloated server. It's an ultra-lightweight Hono API that securely masks and handles AI routing.
+Run the OpenGrammar server on any machine with Node.js. You can effortlessly run this on an old laptop, a Raspberry Pi, or even an Android phone using **Termux**!
 
 ```bash
-# Navigate to the backend folder
-cd opengrammar/backend
+# Run instantly without installing
+npx opengrammar-server
 
-# Install dependencies lightning fast with Bun
-bun install
+# Or install globally for persistent usage
+npm i -g opengrammar-server
 
-# Run locally for testing (runs on http://localhost:8787)
-bun run dev
-
-# Deploy globally to Cloudflare Workers (requires a free Cloudflare account)
-bun run deploy
+# Start the server on port 8787
+opengrammar-server --port 8787
 ```
 
-### 2. Set up the Chrome Extension
+**📱 Android (Termux) Setup:**
+1. Install Termux.
+2. Run `pkg update && pkg install nodejs`.
+3. Run `npx opengrammar-server`. Your phone is now a local grammar API!
+</details>
+
+<details>
+<summary><b>🐳 2. Docker Setup</b></summary>
+
+We maintain a highly optimized, multi-architecture Docker image. This is the recommended route for standard server environments or local homelabs.
 
 ```bash
-# Navigate to the extension folder
-cd opengrammar/extension
+# Pull the production image straight from Docker Hub
+docker pull swdhinbiswas/opengrammar-backend:latest
 
-# Install dependencies
-bun install
+# Run the container locally (exposes port 8787)
+docker run -d -p 8787:8787 --name opengrammar swdhinbiswas/opengrammar-backend:latest
+```
+</details>
 
-# Build the extension into an optimized bundle
-bun run build
+<details>
+<summary><b>🧩 3. Browser Extension (For End Users)</b></summary>
+
+1. Download the latest release from the `opengrammar/extension/dist` build.
+2. Open Chrome/Brave/Edge and navigate to `chrome://extensions/`.
+3. Enable **Developer Mode**.
+4. Click **Load unpacked** and select the extension folder.
+5. Click the OpenGrammar feather icon in your toolbar, input your custom AI API keys, and optionally link the Server URL to one of our **Live Production Endpoints** above!
+</details>
+
+---
+
+## 🔌 API Reference & Environment Variables
+
+If you are hosting OpenGrammar yourself via Docker or NPM, you have full access to its modular REST API endpoints.
+
+### Environment Variables (.env)
+Create a `.env` file in your runtime directory to configure the AI routing logic.
+
+| Variable | Description |
+|----------|-------------|
+| `PORT` | Server port (default: `8787`) |
+| `GROQ_API_KEY` | Groq API key for ultra-fast AI grammar rewriting |
+| `OPENAI_API_KEY` | OpenAI API key for premium AI models |
+
+### Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET`  | `/`            | Status dashboard & Engine Version |
+| `GET`  | `/health`      | Server health check |
+| `POST` | `/analyze`     | Advanced grammar analysis |
+| `POST` | `/autocomplete`| AI Context-aware text completion |
+| `GET`  | `/providers`   | Returns configured AI providers |
+
+**Example Request:**
+```bash
+curl -X POST http://localhost:8787/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Me and him went to store yesterday."}'
 ```
 
-The build process will generate a `dist/` folder. Load this folder into your browser following the user instructions above!
+---
 
-## 🤝 Join the Rebellion 
+## ✨ Application Features
+
+- **The Dual-Engine Architecture:** A blazing fast local (offline) RegEx + Dictionary matching engine, paired securely with a configurable LLM router framework for tone rewriting and smart context adjustments.
+- **Deduplication Logic:** The AI is fully synchronized with the local spellchecker. It never wastes expensive AI tokens re-checking typos already caught locally.
+- **Smart Context Awareness:** Automatically detects if you are writing a casual tweet, a technical document, or a formal business email, scaling its strictness appropriately.
+- **Dynamic Writing Score:** Evaluates your text dynamically (0-100) based on Correctness, Readability, Engagement, and Sentence Delivery.
+- **Flawless Integrations:** Securely injects into rich-text editors including Gmail, GoogleDocs, Notion, and Reddit.
+
+---
+
+## 🤝 Contributing
 
 **We need your help to unseat the monopolies and make OpenGrammar the definitive open-source writing assistant.**
 
-Our biggest mission right now is building the ultimate library of local (offline) grammar and style rules. You don't even need to be a software engineer to contribute—if you're a language nerd with a good eye for grammar, we want you!
+Whether you are a TypeScript developer wanting to optimize Vercel Edge latency, or a language nerd looking to build out our offline Regex `GRAMMAR_RULES.md`—we want you! 
 
-- **📚 Add Grammar Rules:** Help us expand `analyzer.ts` with more regex-based rules for common mistakes, style improvements, and clarity checks. See our [GRAMMAR_RULES.md](./GRAMMAR_RULES.md) guide.
-- **🐛 Hunt Bugs:** Found a weird website where the text highlighting breaks? Open an issue.
-- **💡 Dream Up Features:** Have an idea for something cool? Start a thread in our Discussions tab.
-
-Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) and peek at the `ROADMAP.md` to see where we're headed next.
+- Read our [CONTRIBUTING.md](./CONTRIBUTING.md) guide to get started locally.
+- Check our `ROADMAP.md` to see what features we are currently building.
+- Found a bug? Open an Issue. Have an idea? Start a thread in our Discussions tab.
 
 ## 📄 License
 
-This project is open-source and proudly licensed under the Apache 2.0 License. See the LICENSE file for details. Let's build the future of writing together.
+This project is proudly open-source under the **Apache 2.0 License**. See the `LICENSE` file for details. Let's build the future of writing together.
