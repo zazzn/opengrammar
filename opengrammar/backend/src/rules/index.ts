@@ -11,6 +11,7 @@ import { formalityRules } from './categories/formality.js';
 import { formattingIdiomRules } from './categories/formatting-idioms.js';
 // ═══ Phase 1 — Foundation ═══
 import { basicGrammarRules } from './categories/grammar.js';
+import { commonErrorRules } from './categories/common-errors.js';
 import { advancedGrammarRules } from './categories/grammar-advanced.js';
 import { inclusiveLanguageRules } from './categories/inclusive-language.js';
 import { nounsPronouns } from './categories/nouns-pronouns.js';
@@ -24,6 +25,7 @@ import { spellingAdvancedRules } from './categories/spelling-advanced.js';
 import { styleRules } from './categories/style.js';
 import { styleToneRules } from './categories/style-tone.js';
 import { verbTenseRules } from './categories/verb-tense.js';
+import { quantityAgreementRules } from './categories/quantity-agreement.js';
 import type { Rule } from './types.js';
 
 /**
@@ -48,7 +50,8 @@ import type { Rule } from './types.js';
  * ╚══════════════════════════════════════════════════════════════╝
  */
 export const CORE_RULES: Rule[] = [
-  // Phase 1 — Foundation
+  // Phase 1 — Foundation (highest priority)
+  ...commonErrorRules,
   ...basicGrammarRules,
   ...spellingRules,
   ...styleRules,
@@ -65,6 +68,7 @@ export const CORE_RULES: Rule[] = [
   ...prepositionRules,
   ...conjunctionRules,
   ...punctuationRules,
+  ...quantityAgreementRules,
 
   // Phase 3 — Style, Confused Words, Formality, Idioms
   ...confusedWordsRules,
