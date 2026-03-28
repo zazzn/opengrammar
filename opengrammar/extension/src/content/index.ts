@@ -1,8 +1,18 @@
-import { clearHighlights, highlightIssues, isUIActive, refreshFloatingDecorations } from "./highlighter";
-import type { AnalysisContext, AutocompleteResponse, Issue } from "../types";
-import { extractText, getCaretPosition, getElementFromTarget, setCaretPosition } from "./textExtractor";
-import { debounce } from "./utils";
-import { autocompleteManager } from "./autocomplete";
+import type { AnalysisContext, AutocompleteResponse, Issue } from '../types';
+import { autocompleteManager } from './autocomplete';
+import {
+  clearHighlights,
+  highlightIssues,
+  isUIActive,
+  refreshFloatingDecorations,
+} from './highlighter';
+import {
+  extractText,
+  getCaretPosition,
+  getElementFromTarget,
+  setCaretPosition,
+} from './textExtractor';
+import { debounce } from './utils';
 
 interface EditableElement {
   element: HTMLElement;
@@ -37,9 +47,7 @@ function checkContext(): boolean {
 
   if (!chrome.runtime?.id) {
     if (!isContextInvalidated) {
-      console.warn(
-        "[OpenGrammar] Extension context invalidated. Please refresh the page.",
-      );
+      console.warn('[OpenGrammar] Extension context invalidated. Please refresh the page.');
       isContextInvalidated = true;
       deactivateAll();
     }
@@ -62,13 +70,13 @@ function deactivateAll() {
  * Initialize the content script
  */
 function initialize() {
-  console.log("🚀 [OpenGrammar] Content script starting...");
+  console.log('🚀 [OpenGrammar] Content script starting...');
 
   // Check context immediately
   if (!checkContext()) return;
 
   // Check for file:// protocol
-  if (window.location.protocol === "file:") {
+  if (window.location.protocol === 'file:') {
     console.warn(
       '⚠️ [OpenGrammar] You are using file:// protocol. Make sure "Allow access to file URLs" is enabled in chrome://extensions for OpenGrammar.',
     );
@@ -78,42 +86,39 @@ function initialize() {
   loadUserSettings();
 
   // Listen for focus events on editable elements
-  document.addEventListener("focusin", handleFocusIn, true);
-  document.addEventListener("focusout", handleFocusOut, true);
+  document.addEventListener('focusin', handleFocusIn, true);
+  document.addEventListener('focusout', handleFocusOut, true);
 
   // Handle scroll events to reposition highlights
-  window.addEventListener("scroll", debounce(handleScroll, 100), true);
-  window.addEventListener("resize", debounce(handleScroll, 100), true);
+  window.addEventListener('scroll', debounce(handleScroll, 100), true);
+  window.addEventListener('resize', debounce(handleScroll, 100), true);
 
   // Check for already focused elements on page load
   setTimeout(checkExistingFocusedElement, 500);
 
   // Verify connection to background script
   try {
-    chrome.runtime.sendMessage({ type: "GET_BACKEND_URL" }, (response) => {
+    chrome.runtime.sendMessage({ type: 'GET_BACKEND_URL' }, (response) => {
       if (chrome.runtime.lastError) {
-        if (chrome.runtime.lastError.message?.includes("context invalidated")) {
+        if (chrome.runtime.lastError.message?.includes('context invalidated')) {
           isContextInvalidated = true;
         }
         console.error(
-          "❌ [OpenGrammar] Cannot connect to background script:",
+          '❌ [OpenGrammar] Cannot connect to background script:',
           chrome.runtime.lastError.message,
         );
       } else {
-        console.log(
-          "✅ [OpenGrammar] Connected to background script. Backend URL:",
-          response?.url,
-        );
+        console.log('✅ [OpenGrammar] Connected to background script. Backend URL:', response?.url);
       }
     });
   } catch (e) {
-    console.error("❌ [OpenGrammar] Fatal error connecting to background:", e);
+    console.error('❌ [OpenGrammar] Fatal error connecting to background:', e);
     isContextInvalidated = true;
   }
 
   console.log(
-    "[OpenGrammar] Content script initialized on",
-    window.location.hostname || "local file",
+    '[OpenGrammar] Content script initialized on',
+    window.location.hostname || 'local file',
   );
 
   chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
@@ -149,20 +154,20 @@ async function loadUserSettings() {
 
   try {
     const result = await chrome.storage.sync.get([
-      "disabledDomains",
-      "checkAsYouType",
-      "showNotifications",
-      "autocompleteEnabled",
+      'disabledDomains',
+      'checkAsYouType',
+      'showNotifications',
+      'autocompleteEnabled',
     ]);
     disabledDomains = result.disabledDomains || [];
     checkAsYouTypeEnabled = result.checkAsYouType !== false;
     showNotificationsEnabled = result.showNotifications !== false;
     autocompleteEnabled = result.autocompleteEnabled !== false;
   } catch (e) {
-    if (e instanceof Error && e.message.includes("context invalidated")) {
+    if (e instanceof Error && e.message.includes('context invalidated')) {
       isContextInvalidated = true;
     }
-    console.debug("[OpenGrammar] Could not load disabled domains");
+    console.debug('[OpenGrammar] Could not load disabled domains');
   }
 }
 
@@ -181,16 +186,13 @@ function isDomainDisabled(): boolean {
 function checkExistingFocusedElement() {
   if (!checkContext()) return;
   if (isDomainDisabled()) {
-    console.log("[OpenGrammar] Domain is disabled, skipping");
+    console.log('[OpenGrammar] Domain is disabled, skipping');
     return;
   }
 
   const activeElement = document.activeElement as HTMLElement;
   if (activeElement && isEditable(activeElement)) {
-    console.log(
-      "[OpenGrammar] Found active element on load:",
-      activeElement.tagName,
-    );
+    console.log('[OpenGrammar] Found active element on load:', activeElement.tagName);
     activateElement(activeElement);
   }
 }
@@ -205,7 +207,7 @@ function handleFocusIn(event: FocusEvent) {
   const target = getElementFromTarget(event.target);
   const normalizedTarget = normalizeEditableTarget(target);
   if (normalizedTarget && isEditable(normalizedTarget)) {
-    console.log("[OpenGrammar] Focus in:", normalizedTarget.tagName, normalizedTarget.className);
+    console.log('[OpenGrammar] Focus in:', normalizedTarget.tagName, normalizedTarget.className);
     activateElement(normalizedTarget);
   }
 }
@@ -222,12 +224,12 @@ function handleFocusOut(event: FocusEvent) {
   // If we're moving focus to something inside our own UI, don't deactivate
   if (
     relatedTarget &&
-    (relatedTarget.closest(".opengrammar-tooltip") ||
-      relatedTarget.closest(".opengrammar-badge") ||
-      relatedTarget.closest(".opengrammar-highlight") ||
-      relatedTarget.classList.contains("opengrammar-highlight"))
+    (relatedTarget.closest('.opengrammar-tooltip') ||
+      relatedTarget.closest('.opengrammar-badge') ||
+      relatedTarget.closest('.opengrammar-highlight') ||
+      relatedTarget.classList.contains('opengrammar-highlight'))
   ) {
-    console.log("[OpenGrammar] Focus moving to UI, staying active");
+    console.log('[OpenGrammar] Focus moving to UI, staying active');
     return;
   }
 
@@ -242,16 +244,16 @@ function handleFocusOut(event: FocusEvent) {
       const currentActive = document.activeElement;
       if (
         currentActive &&
-        (currentActive.closest(".opengrammar-tooltip") ||
-          currentActive.closest(".opengrammar-badge") ||
-          currentActive.closest(".opengrammar-highlight") ||
-          currentActive.classList.contains("opengrammar-highlight"))
+        (currentActive.closest('.opengrammar-tooltip') ||
+          currentActive.closest('.opengrammar-badge') ||
+          currentActive.closest('.opengrammar-highlight') ||
+          currentActive.classList.contains('opengrammar-highlight'))
       ) {
         return;
       }
 
       if (document.activeElement !== target) {
-        console.log("[OpenGrammar] Focus out:", target.tagName);
+        console.log('[OpenGrammar] Focus out:', target.tagName);
         deactivateElement(target);
       }
     }, 200);
@@ -281,17 +283,13 @@ function activateElement(element: HTMLElement) {
   };
 
   // Set up mutation observer for contenteditable elements
-  if (
-    element.isContentEditable &&
-    element.tagName !== "INPUT" &&
-    element.tagName !== "TEXTAREA"
-  ) {
+  if (element.isContentEditable && element.tagName !== 'INPUT' && element.tagName !== 'TEXTAREA') {
     const observer = new MutationObserver(
       debounce((mutations) => {
         const newText = extractText(element);
         if (newText !== editableElement.lastText) {
           editableElement.lastText = newText;
-          console.log("[OpenGrammar] Content changed, checking grammar...");
+          console.log('[OpenGrammar] Content changed, checking grammar...');
           debouncedCheck(element);
         }
       }, 500),
@@ -307,14 +305,14 @@ function activateElement(element: HTMLElement) {
   }
 
   // Listen for input events
-  element.addEventListener("input", handleInput as EventListener);
-  element.addEventListener("keydown", handleKeyDown as EventListener);
+  element.addEventListener('input', handleInput as EventListener);
+  element.addEventListener('keydown', handleKeyDown as EventListener);
 
   activeElements.set(element, editableElement);
 
   // Initial check
   console.log(
-    "[OpenGrammar] Activated element, initial text:",
+    '[OpenGrammar] Activated element, initial text:',
     editableElement.lastText.substring(0, 50),
   );
   void syncActiveContext(editableElement.lastText, editableElement.lastIssues || []);
@@ -336,15 +334,14 @@ function deactivateElement(element: HTMLElement) {
   }
 
   // Remove event listeners
-  element.removeEventListener("input", handleInput as EventListener);
-  element.removeEventListener("keydown", handleKeyDown as EventListener);
+  element.removeEventListener('input', handleInput as EventListener);
+  element.removeEventListener('keydown', handleKeyDown as EventListener);
 
   // Clear highlights only if NOT currently interacting with a tooltip
   const currentActive = document.activeElement;
   const isInteractingWithUI =
     currentActive &&
-    (currentActive.closest(".opengrammar-tooltip") ||
-      currentActive.closest(".opengrammar-badge"));
+    (currentActive.closest('.opengrammar-tooltip') || currentActive.closest('.opengrammar-badge'));
 
   if (!isInteractingWithUI && !isUIActive()) {
     clearHighlights();
@@ -356,7 +353,7 @@ function deactivateElement(element: HTMLElement) {
     currentFocusElement = null;
   }
 
-  console.log("[OpenGrammar] Deactivated element");
+  console.log('[OpenGrammar] Deactivated element');
   autocompleteManager.hide();
 }
 
@@ -401,20 +398,17 @@ const checkGrammar = async (element: HTMLElement) => {
   if (!checkContext()) return;
 
   if (!activeElements.has(element)) {
-    console.log("[OpenGrammar] Element not active, skipping check");
+    console.log('[OpenGrammar] Element not active, skipping check');
     return;
   }
 
   const text = extractText(element);
 
-  console.log(
-    "[OpenGrammar] Checking grammar for text:",
-    text.substring(0, 100),
-  );
+  console.log('[OpenGrammar] Checking grammar for text:', text.substring(0, 100));
 
   // Skip very short text
   if (!text || text.trim().length < 5) {
-    console.log("[OpenGrammar] Text too short, skipping");
+    console.log('[OpenGrammar] Text too short, skipping');
     clearHighlights();
     return;
   }
@@ -422,24 +416,24 @@ const checkGrammar = async (element: HTMLElement) => {
   try {
     const startTime = Date.now();
     const response = await chrome.runtime.sendMessage({
-      type: "CHECK_GRAMMAR",
+      type: 'CHECK_GRAMMAR',
       text,
       context: buildAnalysisContext(element, text),
     });
 
     const duration = Date.now() - startTime;
-    console.log("[OpenGrammar] Grammar check took:", duration, "ms");
+    console.log('[OpenGrammar] Grammar check took:', duration, 'ms');
 
     if (response?.error) {
-      console.warn("[OpenGrammar] Grammar check error:", response.error);
-      showNotification("Grammar check failed: " + response.error, "error");
+      console.warn('[OpenGrammar] Grammar check error:', response.error);
+      showNotification('Grammar check failed: ' + response.error, 'error');
       return;
     }
 
     if (response?.issues) {
-      console.log("[OpenGrammar] Found", response.issues.length, "issues");
+      console.log('[OpenGrammar] Found', response.issues.length, 'issues');
       if (response.issues.length > 0) {
-        console.log("[OpenGrammar] First issue:", response.issues[0]);
+        console.log('[OpenGrammar] First issue:', response.issues[0]);
       }
       const editableElement = activeElements.get(element);
       if (editableElement) {
@@ -455,14 +449,17 @@ const checkGrammar = async (element: HTMLElement) => {
       });
 
       // D4: Save writing session data
-      const wordCount = text.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+      const wordCount = text
+        .trim()
+        .split(/\s+/)
+        .filter((w: string) => w.length > 0).length;
       const errorTypes: Record<string, number> = {};
       for (const issue of response.issues) {
         errorTypes[issue.type] = (errorTypes[issue.type] || 0) + 1;
       }
       // Simple writing score: correctness component (scale 0-100)
       const issuesPerHundred = wordCount > 0 ? (response.issues.length / wordCount) * 100 : 0;
-      const writingScore = Math.round(Math.max(0, Math.min(100, 100 - (issuesPerHundred * 10))));
+      const writingScore = Math.round(Math.max(0, Math.min(100, 100 - issuesPerHundred * 10)));
       void chrome.runtime.sendMessage({
         type: 'SAVE_WRITING_SESSION',
         payload: {
@@ -474,7 +471,7 @@ const checkGrammar = async (element: HTMLElement) => {
         },
       });
     } else {
-      console.log("[OpenGrammar] No issues found or empty response");
+      console.log('[OpenGrammar] No issues found or empty response');
       const editableElement = activeElements.get(element);
       if (editableElement) {
         editableElement.lastIssues = [];
@@ -488,16 +485,16 @@ const checkGrammar = async (element: HTMLElement) => {
       });
     }
   } catch (err) {
-    if (err instanceof Error && err.message.includes("context invalidated")) {
+    if (err instanceof Error && err.message.includes('context invalidated')) {
       isContextInvalidated = true;
       deactivateAll();
       return;
     }
 
-    console.error("[OpenGrammar] Grammar check failed:", err);
+    console.error('[OpenGrammar] Grammar check failed:', err);
     showNotification(
-      "Cannot connect to grammar service. Make sure the backend is running.",
-      "error",
+      'Cannot connect to grammar service. Make sure the backend is running.',
+      'error',
     );
   }
 };
@@ -511,25 +508,18 @@ function isEditable(el: HTMLElement): boolean {
   if (!el) return false;
 
   // Check for input/textarea
-  if (el.tagName === "INPUT") {
+  if (el.tagName === 'INPUT') {
     const inputType = (el as HTMLInputElement).type.toLowerCase();
     if (
-      ![
-        "button",
-        "submit",
-        "reset",
-        "image",
-        "checkbox",
-        "radio",
-        "file",
-        "hidden",
-      ].includes(inputType)
+      !['button', 'submit', 'reset', 'image', 'checkbox', 'radio', 'file', 'hidden'].includes(
+        inputType,
+      )
     ) {
       return true;
     }
   }
 
-  if (el.tagName === "TEXTAREA") {
+  if (el.tagName === 'TEXTAREA') {
     return true;
   }
 
@@ -539,8 +529,8 @@ function isEditable(el: HTMLElement): boolean {
   }
 
   // Check for role attribute indicating editability
-  const role = el.getAttribute("role");
-  if (role === "textbox") {
+  const role = el.getAttribute('role');
+  if (role === 'textbox') {
     return true;
   }
 
@@ -550,22 +540,22 @@ function isEditable(el: HTMLElement): boolean {
 /**
  * Show a notification to the user
  */
-function showNotification(message: string, type: "error" | "warning" | "info") {
+function showNotification(message: string, type: 'error' | 'warning' | 'info') {
   if (!showNotificationsEnabled) return;
 
   // Remove existing notifications
-  const existing = document.getElementById("opengrammar-notification");
+  const existing = document.getElementById('opengrammar-notification');
   if (existing) existing.remove();
 
-  const notification = document.createElement("div");
-  notification.id = "opengrammar-notification";
+  const notification = document.createElement('div');
+  notification.id = 'opengrammar-notification';
   notification.style.cssText = `
     position: fixed;
     bottom: 20px;
     right: 20px;
     max-width: 400px;
     padding: 14px 18px;
-    background: ${type === "error" ? "#dc2626" : type === "warning" ? "#f59e0b" : "#2563eb"};
+    background: ${type === 'error' ? '#dc2626' : type === 'warning' ? '#f59e0b' : '#2563eb'};
     color: white;
     border-radius: 8px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
@@ -581,8 +571,8 @@ function showNotification(message: string, type: "error" | "warning" | "info") {
 
   // Auto-remove after 5 seconds
   setTimeout(() => {
-    notification.style.opacity = "0";
-    notification.style.transition = "opacity 0.3s";
+    notification.style.opacity = '0';
+    notification.style.transition = 'opacity 0.3s';
     setTimeout(() => notification.remove(), 300);
   }, 5000);
 }
@@ -605,7 +595,9 @@ function normalizeEditableTarget(target: HTMLElement | null): HTMLElement | null
   if (!target) return null;
   if (isEditable(target)) return target;
 
-  const closest = target.closest('input, textarea, [contenteditable="true"], [role="textbox"]') as HTMLElement | null;
+  const closest = target.closest(
+    'input, textarea, [contenteditable="true"], [role="textbox"]',
+  ) as HTMLElement | null;
   if (closest) return closest;
 
   if (window.location.hostname.includes('docs.google.com')) {
@@ -619,13 +611,18 @@ function buildAnalysisContext(element: HTMLElement, text: string): AnalysisConte
   const cursor = getCaretPosition(element);
   const previousText = text.slice(Math.max(0, cursor - 220), cursor).trim();
   const nextText = text.slice(cursor, Math.min(text.length, cursor + 220)).trim();
-  const activeSentence = text.slice(
-    Math.max(0, text.lastIndexOf('.', cursor - 1) + 1),
-    Math.min(text.length, (() => {
-      const nextPeriod = text.indexOf('.', cursor);
-      return nextPeriod === -1 ? text.length : nextPeriod + 1;
-    })()),
-  ).trim();
+  const activeSentence = text
+    .slice(
+      Math.max(0, text.lastIndexOf('.', cursor - 1) + 1),
+      Math.min(
+        text.length,
+        (() => {
+          const nextPeriod = text.indexOf('.', cursor);
+          return nextPeriod === -1 ? text.length : nextPeriod + 1;
+        })(),
+      ),
+    )
+    .trim();
 
   return {
     domain: window.location.hostname,
@@ -716,10 +713,7 @@ function applyRewrite(original: string, rewritten: string): { success: boolean; 
     const text = extractText(currentFocusElement);
     const index = text.indexOf(original);
     if (index !== -1) {
-      if (
-        currentFocusElement.tagName === 'INPUT' ||
-        currentFocusElement.tagName === 'TEXTAREA'
-      ) {
+      if (currentFocusElement.tagName === 'INPUT' || currentFocusElement.tagName === 'TEXTAREA') {
         const input = currentFocusElement as HTMLInputElement | HTMLTextAreaElement;
         input.value = `${text.slice(0, index)}${rewritten}${text.slice(index + original.length)}`;
         input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -752,12 +746,12 @@ const requestAutocomplete = async (element: HTMLElement) => {
   }
 
   try {
-    const response = await chrome.runtime.sendMessage({
+    const response = (await chrome.runtime.sendMessage({
       type: 'AUTOCOMPLETE_TEXT',
       text,
       cursor,
       context: buildAnalysisContext(element, text),
-    }) as AutocompleteResponse;
+    })) as AutocompleteResponse;
 
     if (!response?.suggestion || response.confidence < 0.35) {
       autocompleteManager.hide();
@@ -774,7 +768,7 @@ const requestAutocomplete = async (element: HTMLElement) => {
 const debouncedAutocomplete = debounce(requestAutocomplete, 700);
 
 // Add CSS animations
-const style = document.createElement("style");
+const style = document.createElement('style');
 style.textContent = `
   @keyframes opengrammar-fade-in {
     from { opacity: 0; transform: translateY(-4px); }
@@ -789,8 +783,8 @@ style.textContent = `
 document.head.appendChild(style);
 
 // Initialize on DOM ready
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initialize);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initialize);
 } else {
   initialize();
 }
@@ -799,7 +793,7 @@ if (document.readyState === "loading") {
 chrome.storage?.onChanged?.addListener((changes) => {
   if (changes.disabledDomains) {
     disabledDomains = changes.disabledDomains.newValue || [];
-    console.log("[OpenGrammar] Disabled domains updated:", disabledDomains);
+    console.log('[OpenGrammar] Disabled domains updated:', disabledDomains);
   }
   if (changes.checkAsYouType) {
     checkAsYouTypeEnabled = changes.checkAsYouType.newValue !== false;

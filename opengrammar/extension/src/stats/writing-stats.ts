@@ -6,28 +6,28 @@ export interface WritingStats {
   sentenceCount: number;
   paragraphCount: number;
   syllableCount: number;
-  
+
   // Readability scores
   fleschReadingEase: number;
   fleschKincaidGrade: number;
   automatedReadabilityIndex: number;
-  
+
   // Vocabulary metrics
   uniqueWords: number;
   vocabularyDiversity: number;
   averageWordLength: number;
   averageSentenceLength: number;
-  
+
   // Time estimates
   readingTimeSeconds: number;
   speakingTimeSeconds: number;
-  
+
   // Issue breakdown
   grammarIssues: number;
   spellingIssues: number;
   clarityIssues: number;
   styleIssues: number;
-  
+
   // Historical data (optional)
   sessionWordCount?: number;
   dailyAverage?: number;
@@ -37,34 +37,38 @@ export function calculateWritingStats(text: string, issues?: any[]): WritingStat
   // Basic counts
   const characterCount = text.length;
   const characterCountNoSpaces = text.replace(/\s/g, '').length;
-  
-  const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+
+  const words = text
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0);
   const wordCount = words.length;
-  
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+
+  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0);
   const sentenceCount = sentences.length || 1;
-  
-  const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+
+  const paragraphs = text.split(/\n\s*\n/).filter((p) => p.trim().length > 0);
   const paragraphCount = paragraphs.length || 1;
-  
+
   const syllableCount = countSyllables(text);
-  
+
   // Readability scores
   const fleschReadingEase = calculateFleschReadingEase(wordCount, sentenceCount, syllableCount);
   const fleschKincaidGrade = calculateFleschKincaidGrade(wordCount, sentenceCount, syllableCount);
   const automatedReadabilityIndex = calculateARI(characterCount, wordCount, sentenceCount);
-  
+
   // Vocabulary metrics
-  const uniqueWordsSet = new Set(words.map(w => w.toLowerCase()));
+  const uniqueWordsSet = new Set(words.map((w) => w.toLowerCase()));
   const uniqueWords = uniqueWordsSet.size;
   const vocabularyDiversity = wordCount > 0 ? (uniqueWords / wordCount) * 100 : 0;
-  const averageWordLength = wordCount > 0 ? words.reduce((acc, w) => acc + w.length, 0) / wordCount : 0;
+  const averageWordLength =
+    wordCount > 0 ? words.reduce((acc, w) => acc + w.length, 0) / wordCount : 0;
   const averageSentenceLength = sentenceCount > 0 ? wordCount / sentenceCount : 0;
-  
+
   // Time estimates (average: 200 wpm reading, 150 wpm speaking)
   const readingTimeSeconds = Math.ceil((wordCount / 200) * 60);
   const speakingTimeSeconds = Math.ceil((wordCount / 150) * 60);
-  
+
   // Issue breakdown
   const issueCounts = {
     grammarIssues: 0,
@@ -72,7 +76,7 @@ export function calculateWritingStats(text: string, issues?: any[]): WritingStat
     clarityIssues: 0,
     styleIssues: 0,
   };
-  
+
   if (issues) {
     issues.forEach((issue: any) => {
       if (issue.type === 'grammar') issueCounts.grammarIssues++;
@@ -81,7 +85,7 @@ export function calculateWritingStats(text: string, issues?: any[]): WritingStat
       else if (issue.type === 'style') issueCounts.styleIssues++;
     });
   }
-  
+
   return {
     characterCount,
     characterCountNoSpaces,
@@ -105,40 +109,40 @@ export function calculateWritingStats(text: string, issues?: any[]): WritingStat
 function countSyllables(text: string): number {
   let count = 0;
   const words = text.toLowerCase().split(/\s+/);
-  
+
   for (const word of words) {
     if (word.length <= 3) {
       count += 1;
       continue;
     }
-    
+
     // Count vowel groups
     const vowelGroups = word.match(/[aeiouy]+/g);
     if (vowelGroups) {
       count += vowelGroups.length;
     }
-    
+
     // Adjust for silent e
     if (word.endsWith('e') && !word.endsWith('le')) {
       count -= 1;
     }
-    
+
     // Minimum 1 syllable per word
     count = Math.max(1, count);
   }
-  
+
   return count;
 }
 
 function calculateFleschReadingEase(words: number, sentences: number, syllables: number): number {
   if (words === 0 || sentences === 0) return 0;
-  const score = 206.835 - (1.015 * (words / sentences)) - (84.6 * (syllables / words));
+  const score = 206.835 - 1.015 * (words / sentences) - 84.6 * (syllables / words);
   return Math.round(score * 10) / 10;
 }
 
 function calculateFleschKincaidGrade(words: number, sentences: number, syllables: number): number {
   if (words === 0 || sentences === 0) return 0;
-  const score = (0.39 * (words / sentences)) + (11.8 * (syllables / words)) - 15.59;
+  const score = 0.39 * (words / sentences) + 11.8 * (syllables / words) - 15.59;
   return Math.round(score * 10) / 10;
 }
 
@@ -169,21 +173,22 @@ export function getReadabilityLevel(score: number): string {
  */
 export interface WritingScoreBreakdown {
   overall: number;
-  correctness: number;   // 0-40
-  readability: number;   // 0-30
-  engagement: number;    // 0-15
-  delivery: number;      // 0-15
+  correctness: number; // 0-40
+  readability: number; // 0-30
+  engagement: number; // 0-15
+  delivery: number; // 0-15
   label: string;
   color: string;
 }
 
 export function calculateWritingScore(stats: WritingStats): WritingScoreBreakdown {
-  const totalIssues = stats.grammarIssues + stats.spellingIssues + stats.clarityIssues + stats.styleIssues;
+  const totalIssues =
+    stats.grammarIssues + stats.spellingIssues + stats.clarityIssues + stats.styleIssues;
 
   // 1. Correctness (40 pts)
   //    0 issues → 40, 1 issue per 20 words → 0
   const issuesPerHundred = stats.wordCount > 0 ? (totalIssues / stats.wordCount) * 100 : 0;
-  const correctness = Math.round(Math.max(0, Math.min(40, 40 - (issuesPerHundred * 8))));
+  const correctness = Math.round(Math.max(0, Math.min(40, 40 - issuesPerHundred * 8)));
 
   // 2. Readability (30 pts)
   //    Flesch score 0-100 mapped to 0-30 (sweet spot: 60-80 = full marks)
@@ -222,7 +227,8 @@ export function calculateWritingScore(stats: WritingStats): WritingScoreBreakdow
   } else {
     // Good writing has varied sentence lengths (avg 12-20 words, std dev 5-10)
     const avgLen = stats.averageSentenceLength;
-    const lenScore = avgLen >= 10 && avgLen <= 22 ? 8 : Math.max(0, 8 - Math.abs(avgLen - 16) * 0.5);
+    const lenScore =
+      avgLen >= 10 && avgLen <= 22 ? 8 : Math.max(0, 8 - Math.abs(avgLen - 16) * 0.5);
     // Bonus for having more than 1 sentence (shows structure)
     const structureBonus = Math.min(7, stats.sentenceCount);
     delivery = Math.round(lenScore + structureBonus);
@@ -257,4 +263,3 @@ function getScoreColor(score: number): string {
   if (score >= 40) return '#EA580C'; // orange
   return '#DC2626'; // red
 }
-

@@ -1,4 +1,4 @@
-import { debounce } from "./utils";
+import { debounce } from './utils';
 
 export class GoogleDocsHandler {
   private editorElement: HTMLElement | null = null;
@@ -8,7 +8,7 @@ export class GoogleDocsHandler {
 
   constructor() {
     this.init();
-    
+
     chrome.storage?.onChanged?.addListener((changes) => {
       if (changes.checkAsYouType) {
         this.checkAsYouTypeEnabled = changes.checkAsYouType.newValue !== false;
@@ -18,7 +18,7 @@ export class GoogleDocsHandler {
 
   private async init() {
     console.log('[OpenGrammar] Initializing Google Docs integration...');
-    
+
     // We need to wait for the iframe to be available
     for (let i = 0; i < 20; i++) {
       if (this.findEditor()) {
@@ -27,7 +27,7 @@ export class GoogleDocsHandler {
         this.runCheck();
         return;
       }
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 
@@ -42,11 +42,11 @@ export class GoogleDocsHandler {
 
   private extractText(): string {
     if (!this.editorElement) return '';
-    
+
     // Google Docs stores paragraphs in .kix-paragraphrenderer
     const paragraphs = this.editorElement.querySelectorAll('.kix-paragraphrenderer');
     return Array.from(paragraphs)
-      .map(p => {
+      .map((p) => {
         // Getting innerText is more reliable than textContent as it preserves visual breaks
         return (p as HTMLElement).innerText || p.textContent || '';
       })
@@ -59,13 +59,13 @@ export class GoogleDocsHandler {
     this.observer = new MutationObserver(
       debounce(() => {
         if (!this.checkAsYouTypeEnabled) return;
-        
+
         const newText = this.extractText();
         if (newText !== this.lastText) {
           this.lastText = newText;
           this.runCheck();
         }
-      }, 800)
+      }, 800),
     );
 
     this.observer.observe(this.editorElement, {
@@ -78,15 +78,17 @@ export class GoogleDocsHandler {
   private async runCheck() {
     if (!this.lastText || this.lastText.trim().length < 5) return;
 
-    console.log('[OpenGrammar] Analyzing Google Docs content (length: ' + this.lastText.length + ')');
+    console.log(
+      '[OpenGrammar] Analyzing Google Docs content (length: ' + this.lastText.length + ')',
+    );
 
     try {
       const response = await chrome.runtime.sendMessage({
-        type: "CHECK_GRAMMAR",
+        type: 'CHECK_GRAMMAR',
         text: this.lastText,
         context: {
-          domain: "docs.google.com",
-          editorType: "google-docs",
+          domain: 'docs.google.com',
+          editorType: 'google-docs',
           fullTextExcerpt: this.lastText.slice(0, 1500),
         },
       });
@@ -118,8 +120,8 @@ export class GoogleDocsHandler {
 }
 
 // Bootstrap
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => new GoogleDocsHandler());
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => new GoogleDocsHandler());
 } else {
   new GoogleDocsHandler();
 }

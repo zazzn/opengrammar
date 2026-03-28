@@ -1,10 +1,4 @@
-export type LLMProvider = 
-  | 'openai'
-  | 'openrouter'
-  | 'groq'
-  | 'together'
-  | 'ollama'
-  | 'custom';
+export type LLMProvider = 'openai' | 'openrouter' | 'groq' | 'together' | 'ollama' | 'custom';
 
 export interface ProviderConfig {
   id: LLMProvider;
@@ -80,7 +74,15 @@ export interface HighlightData {
 
 export interface RewriteRequest {
   text: string;
-  tone: 'formal' | 'casual' | 'professional' | 'friendly' | 'concise' | 'detailed' | 'persuasive' | 'neutral';
+  tone:
+    | 'formal'
+    | 'casual'
+    | 'professional'
+    | 'friendly'
+    | 'concise'
+    | 'detailed'
+    | 'persuasive'
+    | 'neutral';
   apiKey?: string;
   model?: string;
   provider?: LLMProvider;

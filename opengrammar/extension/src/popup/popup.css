@@ -19,7 +19,8 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   width: 320px;
   background: var(--bg-primary);
   color: var(--text-primary);
@@ -49,7 +50,9 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Header */
@@ -149,7 +152,7 @@ header {
 }
 
 .toggle-slider::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 2px;
   left: 2px;
@@ -198,7 +201,9 @@ header {
   font-weight: 600;
   color: var(--text-primary);
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -285,7 +290,9 @@ header {
   font-size: 13px;
   color: var(--text-primary);
   background: var(--bg-primary);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .text-input {

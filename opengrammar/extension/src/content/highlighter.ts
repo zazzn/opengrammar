@@ -1,4 +1,4 @@
-import type { IgnoredIssue, Issue } from "../types";
+import type { IgnoredIssue, Issue } from '../types';
 
 let currentTooltip: HTMLElement | null = null;
 let highlightContainer: HTMLElement | null = null;
@@ -22,8 +22,8 @@ export function isUIActive(): boolean {
  */
 function initHighlightContainer() {
   if (!highlightContainer) {
-    highlightContainer = document.createElement("div");
-    highlightContainer.id = "opengrammar-highlights";
+    highlightContainer = document.createElement('div');
+    highlightContainer.id = 'opengrammar-highlights';
     highlightContainer.style.cssText = `
       position: fixed;
       top: 0;
@@ -52,7 +52,7 @@ export function highlightIssues(element: HTMLElement, issues: Issue[]) {
 
   // For input/textarea, we can't show inline highlights
   // Show a mirrored overlay + badge on the element instead
-  if (element.tagName === "INPUT" || element.tagName === "TEXTAREA") {
+  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
     showInputMirror(element, issues);
     showInputBadge(element, issues);
     return;
@@ -64,7 +64,7 @@ export function highlightIssues(element: HTMLElement, issues: Issue[]) {
     try {
       wrapTextWithHighlight(element, issue, issueIndex);
     } catch (e) {
-      console.debug("Could not create highlight for issue:", issue, e);
+      console.debug('Could not create highlight for issue:', issue, e);
     }
   });
 }
@@ -72,11 +72,7 @@ export function highlightIssues(element: HTMLElement, issues: Issue[]) {
 /**
  * Wrap text nodes with highlighted spans - Grammarly's actual approach
  */
-function wrapTextWithHighlight(
-  root: HTMLElement,
-  issue: Issue,
-  issueIndex: number,
-) {
+function wrapTextWithHighlight(root: HTMLElement, issue: Issue, issueIndex: number) {
   const textNodes: Node[] = [];
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
 
@@ -95,18 +91,15 @@ function wrapTextWithHighlight(
     // Check if issue overlaps with this text node
     if (issue.offset < nodeEnd && issue.offset + issue.length > nodeStart) {
       const startInNode = Math.max(0, issue.offset - nodeStart);
-      const endInNode = Math.min(
-        nodeLength,
-        issue.offset + issue.length - nodeStart,
-      );
+      const endInNode = Math.min(nodeLength, issue.offset + issue.length - nodeStart);
 
       if (startInNode < endInNode && textNode.parentNode) {
         const range = document.createRange();
         range.setStart(textNode, startInNode);
         range.setEnd(textNode, endInNode);
 
-        const span = document.createElement("span");
-        span.className = "opengrammar-highlight";
+        const span = document.createElement('span');
+        span.className = 'opengrammar-highlight';
         span.style.cssText = `
           background: ${getInlineBackground(issue.type)};
           border-bottom: 2px wavy ${getColor(issue.type)};
@@ -119,17 +112,17 @@ function wrapTextWithHighlight(
         span.dataset.index = issueIndex.toString();
 
         // Add hover effect
-        span.addEventListener("mouseenter", (e) => {
+        span.addEventListener('mouseenter', (e) => {
           e.stopPropagation();
           span.style.background = getHoverBackground(issue.type);
         });
-        span.addEventListener("mouseleave", (e) => {
+        span.addEventListener('mouseleave', (e) => {
           e.stopPropagation();
           span.style.background = getInlineBackground(issue.type);
         });
 
         // Click to show tooltip
-        span.addEventListener("click", (e) => {
+        span.addEventListener('click', (e) => {
           e.stopPropagation();
           e.preventDefault();
           showTooltip(span, issue, root);
@@ -139,8 +132,8 @@ function wrapTextWithHighlight(
           range.surroundContents(span);
         } catch (e) {
           // If surrounding fails, try alternative approach
-          console.debug("surroundContents failed, using alternative:", e);
-          const text = textNode.textContent || "";
+          console.debug('surroundContents failed, using alternative:', e);
+          const text = textNode.textContent || '';
           const before = text.substring(0, startInNode);
           const middle = text.substring(startInNode, endInNode);
           const after = text.substring(endInNode);
@@ -150,8 +143,8 @@ function wrapTextWithHighlight(
             const frag = document.createDocumentFragment();
             if (before) frag.appendChild(document.createTextNode(before));
 
-            const highlightSpan = document.createElement("span");
-            highlightSpan.className = "opengrammar-highlight";
+            const highlightSpan = document.createElement('span');
+            highlightSpan.className = 'opengrammar-highlight';
             highlightSpan.style.cssText = `
               background: ${getInlineBackground(issue.type)};
               border-bottom: 2px wavy ${getColor(issue.type)};
@@ -162,13 +155,13 @@ function wrapTextWithHighlight(
             highlightSpan.textContent = middle;
             highlightSpan.dataset.issue = JSON.stringify(issue);
 
-            highlightSpan.addEventListener("mouseenter", () => {
+            highlightSpan.addEventListener('mouseenter', () => {
               highlightSpan.style.background = getHoverBackground(issue.type);
             });
-            highlightSpan.addEventListener("mouseleave", () => {
+            highlightSpan.addEventListener('mouseleave', () => {
               highlightSpan.style.background = getInlineBackground(issue.type);
             });
-            highlightSpan.addEventListener("click", (e) => {
+            highlightSpan.addEventListener('click', (e) => {
               e.stopPropagation();
               e.preventDefault();
               showTooltip(highlightSpan, issue, root);
@@ -189,29 +182,29 @@ function wrapTextWithHighlight(
 
 function getHoverBackground(type: string): string {
   switch (type) {
-    case "grammar":
-    case "spelling":
-      return "rgba(239, 68, 68, 0.2)";
-    case "clarity":
-      return "rgba(245, 158, 11, 0.25)";
-    case "style":
-      return "rgba(59, 130, 246, 0.2)";
+    case 'grammar':
+    case 'spelling':
+      return 'rgba(239, 68, 68, 0.2)';
+    case 'clarity':
+      return 'rgba(245, 158, 11, 0.25)';
+    case 'style':
+      return 'rgba(59, 130, 246, 0.2)';
     default:
-      return "rgba(239, 68, 68, 0.2)";
+      return 'rgba(239, 68, 68, 0.2)';
   }
 }
 
 function getInlineBackground(type: string): string {
   switch (type) {
-    case "grammar":
-    case "spelling":
-      return "rgba(239, 68, 68, 0.12)";
-    case "clarity":
-      return "rgba(245, 158, 11, 0.14)";
-    case "style":
-      return "rgba(59, 130, 246, 0.12)";
+    case 'grammar':
+    case 'spelling':
+      return 'rgba(239, 68, 68, 0.12)';
+    case 'clarity':
+      return 'rgba(245, 158, 11, 0.14)';
+    case 'style':
+      return 'rgba(59, 130, 246, 0.12)';
     default:
-      return "rgba(239, 68, 68, 0.1)";
+      return 'rgba(239, 68, 68, 0.1)';
   }
 }
 
@@ -220,18 +213,16 @@ function getInlineBackground(type: string): string {
  */
 export function clearHighlights() {
   // Remove all highlights and success-animation spans from the page
-  document
-    .querySelectorAll(".opengrammar-highlight, .opengrammar-success")
-    .forEach((el) => {
-      const parent = el.parentNode;
-      if (parent) {
-        parent.replaceChild(document.createTextNode(el.textContent || ""), el);
-        parent.normalize();
-      }
-    });
+  document.querySelectorAll('.opengrammar-highlight, .opengrammar-success').forEach((el) => {
+    const parent = el.parentNode;
+    if (parent) {
+      parent.replaceChild(document.createTextNode(el.textContent || ''), el);
+      parent.normalize();
+    }
+  });
 
   // Remove badge
-  document.querySelectorAll(".opengrammar-badge").forEach((el) => el.remove());
+  document.querySelectorAll('.opengrammar-badge').forEach((el) => el.remove());
 
   destroyInputMirror();
 
@@ -261,7 +252,7 @@ export function refreshFloatingDecorations() {
     syncInputMirrorScroll(inputMirrorTarget);
   }
 
-  document.querySelectorAll(".opengrammar-badge").forEach((badge) => {
+  document.querySelectorAll('.opengrammar-badge').forEach((badge) => {
     const target = inputMirrorTarget;
     if (!target) return;
     const rect = target.getBoundingClientRect();
@@ -285,9 +276,9 @@ function showAssistantBubble(element: HTMLElement, issues: Issue[]) {
     assistantBubble = null;
   }
 
-  const bubble = document.createElement("button");
-  bubble.className = "opengrammar-assistant";
-  bubble.type = "button";
+  const bubble = document.createElement('button');
+  bubble.className = 'opengrammar-assistant';
+  bubble.type = 'button';
   bubble.style.cssText = `
     position: fixed;
     right: 24px;
@@ -316,26 +307,26 @@ function showAssistantBubble(element: HTMLElement, issues: Issue[]) {
     </span>
   `;
 
-  bubble.addEventListener("mouseenter", () => {
-    bubble.style.transform = "scale(1.1) rotate(5deg)";
+  bubble.addEventListener('mouseenter', () => {
+    bubble.style.transform = 'scale(1.1) rotate(5deg)';
   });
-  bubble.addEventListener("mouseleave", () => {
-    bubble.style.transform = "scale(1) rotate(0deg)";
+  bubble.addEventListener('mouseleave', () => {
+    bubble.style.transform = 'scale(1) rotate(0deg)';
   });
 
-  bubble.addEventListener("mousedown", (e) => {
+  bubble.addEventListener('mousedown', (e) => {
     e.preventDefault();
   });
 
-  bubble.addEventListener("click", (e) => {
+  bubble.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (element.tagName === "INPUT" || element.tagName === "TEXTAREA") {
+    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
       showIssuePanel(bubble, issues, element, 0, () => undefined);
       return;
     }
 
-    const firstHighlight = document.querySelector(".opengrammar-highlight") as HTMLElement | null;
+    const firstHighlight = document.querySelector('.opengrammar-highlight') as HTMLElement | null;
     if (firstHighlight) {
       showTooltip(firstHighlight, issues[0]!, element);
     }
@@ -480,9 +471,7 @@ function getElementText(element: HTMLElement): string {
 }
 
 function escapeHtmlPreservingWhitespace(text: string): string {
-  return escapeHtml(text)
-    .replace(/\n/g, '<br>')
-    .replace(/ {2}/g, ' &nbsp;');
+  return escapeHtml(text).replace(/\n/g, '<br>').replace(/ {2}/g, ' &nbsp;');
 }
 
 /**
@@ -499,8 +488,8 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
   const anchorRect = anchor.getBoundingClientRect();
 
   // Create tooltip
-  const tooltip = document.createElement("div");
-  tooltip.className = "opengrammar-tooltip";
+  const tooltip = document.createElement('div');
+  tooltip.className = 'opengrammar-tooltip';
 
   // Calculate position - show below the highlight, or above if near bottom
   let top = anchorRect.bottom + window.scrollY + 10;
@@ -526,8 +515,11 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
   const typeColor = getColor(issue.type);
   const typeLabel = getTypeLabel(issue.type);
   const typeBg = getTypeBg(issue.type);
-  const confidence = typeof issue.confidence === "number" ? `${Math.round(issue.confidence * 100)}% confidence` : "Suggested";
-  const sourceLabel = issue.source ? issue.source.toUpperCase() : "RULE";
+  const confidence =
+    typeof issue.confidence === 'number'
+      ? `${Math.round(issue.confidence * 100)}% confidence`
+      : 'Suggested';
+  const sourceLabel = issue.source ? issue.source.toUpperCase() : 'RULE';
 
   tooltip.innerHTML = `
     <div style="background: ${typeBg}; padding: 14px 16px; border-bottom: 1px solid #e5e7eb;">
@@ -594,19 +586,17 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
   `;
 
   // Add event listeners
-  const applyBtn = tooltip.querySelector(".og-apply-btn") as HTMLButtonElement;
-  const ignoreBtn = tooltip.querySelector(
-    ".og-ignore-btn",
-  ) as HTMLButtonElement;
+  const applyBtn = tooltip.querySelector('.og-apply-btn') as HTMLButtonElement;
+  const ignoreBtn = tooltip.querySelector('.og-ignore-btn') as HTMLButtonElement;
 
-  applyBtn.addEventListener("click", (e) => {
+  applyBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     e.preventDefault();
     applySuggestion(element, issue, anchor);
     hideTooltip();
   });
 
-  ignoreBtn.addEventListener("click", (e) => {
+  ignoreBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     e.preventDefault();
     ignoreIssue(issue, anchor);
@@ -614,37 +604,34 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
   });
 
   // Button hover effects
-  applyBtn.addEventListener("mouseenter", () => {
-    applyBtn.style.background = "#1d4ed8";
+  applyBtn.addEventListener('mouseenter', () => {
+    applyBtn.style.background = '#1d4ed8';
   });
-  applyBtn.addEventListener("mouseleave", () => {
-    applyBtn.style.background = "#2563eb";
+  applyBtn.addEventListener('mouseleave', () => {
+    applyBtn.style.background = '#2563eb';
   });
 
-  ignoreBtn.addEventListener("mouseenter", () => {
-    ignoreBtn.style.background = "#f9fafb";
+  ignoreBtn.addEventListener('mouseenter', () => {
+    ignoreBtn.style.background = '#f9fafb';
   });
-  ignoreBtn.addEventListener("mouseleave", () => {
-    ignoreBtn.style.background = "#ffffff";
+  ignoreBtn.addEventListener('mouseleave', () => {
+    ignoreBtn.style.background = '#ffffff';
   });
 
   // Close tooltip when clicking outside
   const closeOnOutsideClick = (e: MouseEvent) => {
-    if (
-      !tooltip.contains(e.target as Node) &&
-      !anchor.contains(e.target as Node)
-    ) {
+    if (!tooltip.contains(e.target as Node) && !anchor.contains(e.target as Node)) {
       hideTooltip();
-      document.removeEventListener("click", closeOnOutsideClick);
+      document.removeEventListener('click', closeOnOutsideClick);
     }
   };
 
   setTimeout(() => {
-    document.addEventListener("click", closeOnOutsideClick);
+    document.addEventListener('click', closeOnOutsideClick);
   }, 100);
 
   // Prevent focus loss from target element when interacting with tooltip
-  tooltip.addEventListener("mousedown", (e) => {
+  tooltip.addEventListener('mousedown', (e) => {
     e.preventDefault();
   });
 
@@ -654,30 +641,30 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
 
 function getTypeLabel(type: string): string {
   switch (type) {
-    case "grammar":
-      return "Grammar";
-    case "spelling":
-      return "Spelling";
-    case "clarity":
-      return "Clarity";
-    case "style":
-      return "Style";
+    case 'grammar':
+      return 'Grammar';
+    case 'spelling':
+      return 'Spelling';
+    case 'clarity':
+      return 'Clarity';
+    case 'style':
+      return 'Style';
     default:
-      return "Suggestion";
+      return 'Suggestion';
   }
 }
 
 function getTypeBg(type: string): string {
   switch (type) {
-    case "grammar":
-    case "spelling":
-      return "#fef2f2";
-    case "clarity":
-      return "#fffbeb";
-    case "style":
-      return "#eff6ff";
+    case 'grammar':
+    case 'spelling':
+      return '#fef2f2';
+    case 'clarity':
+      return '#fffbeb';
+    case 'style':
+      return '#eff6ff';
     default:
-      return "#fef2f2";
+      return '#fef2f2';
   }
 }
 
@@ -695,18 +682,14 @@ function hideTooltip() {
 /**
  * Apply suggestion to text
  */
-function applySuggestion(
-  element: HTMLElement,
-  issue: Issue,
-  highlightEl: HTMLElement,
-) {
+function applySuggestion(element: HTMLElement, issue: Issue, highlightEl: HTMLElement) {
   void chrome.runtime.sendMessage({
     type: 'TRACK_ANALYTICS_EVENT',
     eventType: 'suggestions_applied',
     payload: { count: 1, domain: window.location.hostname },
   });
 
-  if (element.tagName === "INPUT" || element.tagName === "TEXTAREA") {
+  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
     const input = element as HTMLInputElement | HTMLTextAreaElement;
     const text = input.value;
     const before = text.substring(0, issue.offset);
@@ -717,7 +700,7 @@ function applySuggestion(
     input.focus();
 
     // Trigger re-analysis
-    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
   } else if (element.isContentEditable) {
     // Replace the highlighted span with corrected text
     const textNode = document.createTextNode(issue.suggestion);
@@ -727,7 +710,7 @@ function applySuggestion(
     }
 
     // Trigger re-analysis
-    element.dispatchEvent(new Event("input", { bubbles: true }));
+    element.dispatchEvent(new Event('input', { bubbles: true }));
   }
 }
 
@@ -742,7 +725,7 @@ function ignoreIssue(issue: Issue, highlightEl: HTMLElement) {
   });
 
   // Save to storage
-  chrome.storage.sync.get(["ignoredIssues"], (result) => {
+  chrome.storage.sync.get(['ignoredIssues'], (result) => {
     const ignoredIssues = normalizeIgnoredIssues(result.ignoredIssues);
     const issueId = `${issue.type}-${issue.offset}-${issue.original}`;
     if (!ignoredIssues.some((entry) => entry.id === issueId)) {
@@ -758,16 +741,16 @@ function ignoreIssue(issue: Issue, highlightEl: HTMLElement) {
   });
 
   // For inline highlights (contenteditable)
-  if (highlightEl.classList.contains("opengrammar-highlight")) {
+  if (highlightEl.classList.contains('opengrammar-highlight')) {
     const parent = highlightEl.parentNode;
     if (parent) {
-      parent.replaceChild(document.createTextNode(highlightEl.textContent || ""), highlightEl);
+      parent.replaceChild(document.createTextNode(highlightEl.textContent || ''), highlightEl);
       parent.normalize();
     }
   }
 
   // For badge (textarea/input)
-  if (highlightEl.classList.contains("opengrammar-badge")) {
+  if (highlightEl.classList.contains('opengrammar-badge')) {
     highlightEl.remove();
   }
 }
@@ -810,12 +793,12 @@ function normalizeIgnoredIssues(value: unknown): IgnoredIssue[] {
  */
 function showInputBadge(element: HTMLElement, issues: Issue[]) {
   // Remove existing badge
-  document.querySelectorAll(".opengrammar-badge").forEach((el) => el.remove());
+  document.querySelectorAll('.opengrammar-badge').forEach((el) => el.remove());
 
   const rect = element.getBoundingClientRect();
 
-  const badge = document.createElement("div");
-  badge.className = "opengrammar-badge";
+  const badge = document.createElement('div');
+  badge.className = 'opengrammar-badge';
   badge.style.cssText = `
     position: fixed;
     left: ${rect.right - 35}px;
@@ -842,21 +825,21 @@ function showInputBadge(element: HTMLElement, issues: Issue[]) {
   badge.textContent = issues.length.toString();
   let currentIssueIndex = 0;
 
-  badge.addEventListener("mouseenter", () => {
-    badge.style.transform = "scale(1.1)";
-    badge.style.boxShadow = "0 4px 12px rgba(239, 68, 68, 0.6)";
+  badge.addEventListener('mouseenter', () => {
+    badge.style.transform = 'scale(1.1)';
+    badge.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.6)';
   });
-  badge.addEventListener("mouseleave", () => {
-    badge.style.transform = "scale(1)";
-    badge.style.boxShadow = "0 2px 8px rgba(239, 68, 68, 0.5)";
+  badge.addEventListener('mouseleave', () => {
+    badge.style.transform = 'scale(1)';
+    badge.style.boxShadow = '0 2px 8px rgba(239, 68, 68, 0.5)';
   });
 
   // Prevent textarea/input from losing focus when badge is clicked
-  badge.addEventListener("mousedown", (e) => {
+  badge.addEventListener('mousedown', (e) => {
     e.preventDefault();
   });
 
-  badge.addEventListener("click", (e) => {
+  badge.addEventListener('click', (e) => {
     e.stopPropagation();
     e.preventDefault();
     if (issues.length > 0) {
@@ -889,8 +872,8 @@ function showIssuePanel(
   const issue = issues[currentIndex];
   const anchorRect = anchor.getBoundingClientRect();
 
-  const panel = document.createElement("div");
-  panel.className = "opengrammar-tooltip";
+  const panel = document.createElement('div');
+  panel.className = 'opengrammar-tooltip';
 
   let top = anchorRect.bottom + 10;
   if (top + 280 > window.innerHeight) {
@@ -924,18 +907,18 @@ function showIssuePanel(
     <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f3f4f6; border-bottom: 1px solid #e5e7eb;">
       <button class="og-prev-btn" style="
         padding: 4px 10px; background: white; border: 1px solid #d1d5db; border-radius: 6px;
-        cursor: ${currentIndex === 0 ? "default" : "pointer"}; font-size: 12px; color: #374151;
-        opacity: ${currentIndex === 0 ? "0.4" : "1"};
+        cursor: ${currentIndex === 0 ? 'default' : 'pointer'}; font-size: 12px; color: #374151;
+        opacity: ${currentIndex === 0 ? '0.4' : '1'};
       ">&#8592;</button>
       <span style="font-size: 12px; color: #6b7280; font-weight: 600;">${currentIndex + 1} of ${issues.length} issues</span>
       <button class="og-next-btn" style="
         padding: 4px 10px; background: white; border: 1px solid #d1d5db; border-radius: 6px;
-        cursor: ${currentIndex >= issues.length - 1 ? "default" : "pointer"}; font-size: 12px; color: #374151;
-        opacity: ${currentIndex >= issues.length - 1 ? "0.4" : "1"};
+        cursor: ${currentIndex >= issues.length - 1 ? 'default' : 'pointer'}; font-size: 12px; color: #374151;
+        opacity: ${currentIndex >= issues.length - 1 ? '0.4' : '1'};
       ">&#8594;</button>
     </div>
     `
-        : ""
+        : ''
     }
     <div style="background: ${typeBg}; padding: 14px 16px; border-bottom: 1px solid #e5e7eb;">
       <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
@@ -978,32 +961,30 @@ function showIssuePanel(
   `;
 
   // Prevent focus loss from the textarea when interacting with the panel
-  panel.addEventListener("mousedown", (e) => {
+  panel.addEventListener('mousedown', (e) => {
     e.preventDefault();
   });
 
-  const applyBtn = panel.querySelector(".og-apply-btn") as HTMLButtonElement;
-  const ignoreBtn = panel.querySelector(".og-ignore-btn") as HTMLButtonElement;
-  const suggestionEl = panel.querySelector(
-    ".og-suggestion-click",
-  ) as HTMLElement;
+  const applyBtn = panel.querySelector('.og-apply-btn') as HTMLButtonElement;
+  const ignoreBtn = panel.querySelector('.og-ignore-btn') as HTMLButtonElement;
+  const suggestionEl = panel.querySelector('.og-suggestion-click') as HTMLElement;
 
   if (suggestionEl) {
-    suggestionEl.addEventListener("click", (e) => {
+    suggestionEl.addEventListener('click', (e) => {
       e.stopPropagation();
       applySuggestion(element, issue, anchor);
       hideTooltip();
     });
   }
 
-  applyBtn.addEventListener("click", (e) => {
+  applyBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     e.preventDefault();
     applySuggestion(element, issue, anchor);
     hideTooltip();
   });
 
-  ignoreBtn.addEventListener("click", (e) => {
+  ignoreBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     e.preventDefault();
     ignoreIssue(issue, anchor);
@@ -1012,11 +993,11 @@ function showIssuePanel(
 
   // Navigation for multiple issues
   if (hasMultiple) {
-    const prevBtn = panel.querySelector(".og-prev-btn") as HTMLButtonElement;
-    const nextBtn = panel.querySelector(".og-next-btn") as HTMLButtonElement;
+    const prevBtn = panel.querySelector('.og-prev-btn') as HTMLButtonElement;
+    const nextBtn = panel.querySelector('.og-next-btn') as HTMLButtonElement;
 
     if (prevBtn && currentIndex > 0) {
-      prevBtn.addEventListener("click", (e) => {
+      prevBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const newIndex = currentIndex - 1;
         onIndexChange(newIndex);
@@ -1024,7 +1005,7 @@ function showIssuePanel(
       });
     }
     if (nextBtn && currentIndex < issues.length - 1) {
-      nextBtn.addEventListener("click", (e) => {
+      nextBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const newIndex = currentIndex + 1;
         onIndexChange(newIndex);
@@ -1035,17 +1016,14 @@ function showIssuePanel(
 
   // Close on outside click
   const closeOnOutsideClick = (e: MouseEvent) => {
-    if (
-      !panel.contains(e.target as Node) &&
-      !anchor.contains(e.target as Node)
-    ) {
+    if (!panel.contains(e.target as Node) && !anchor.contains(e.target as Node)) {
       hideTooltip();
-      document.removeEventListener("click", closeOnOutsideClick);
+      document.removeEventListener('click', closeOnOutsideClick);
     }
   };
 
   setTimeout(() => {
-    document.addEventListener("click", closeOnOutsideClick);
+    document.addEventListener('click', closeOnOutsideClick);
   }, 100);
 
   document.body.appendChild(panel);
@@ -1057,16 +1035,16 @@ function showIssuePanel(
  */
 function getColor(type: string): string {
   switch (type) {
-    case "grammar":
-      return "#ef4444";
-    case "spelling":
-      return "#ef4444";
-    case "clarity":
-      return "#f59e0b";
-    case "style":
-      return "#3b82f6";
+    case 'grammar':
+      return '#ef4444';
+    case 'spelling':
+      return '#ef4444';
+    case 'clarity':
+      return '#f59e0b';
+    case 'style':
+      return '#3b82f6';
     default:
-      return "#ef4444";
+      return '#ef4444';
   }
 }
 
@@ -1074,14 +1052,14 @@ function getColor(type: string): string {
  * Escape HTML to prevent XSS
  */
 function escapeHtml(text: string): string {
-  const div = document.createElement("div");
+  const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
 
 // Initialize highlight container on load
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initHighlightContainer);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initHighlightContainer);
 } else {
   initHighlightContainer();
 }
