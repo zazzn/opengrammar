@@ -186,7 +186,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: swadhinbiswas/opengrammar-backend
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/opengrammar-backend
           tags: |
             type=raw,value=latest
             type=sha,prefix=sha-
