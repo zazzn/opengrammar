@@ -21,7 +21,7 @@ backend/src/index.ts          ← Shared Hono app (all routes & logic)
 |---|---|---|
 | ☁️ Cloudflare Workers | `https://opengrammar-backend-production.thelabrats-dev.workers.dev` | ✅ Primary |
 | △ Vercel | `https://opengrammar-backend-psi.vercel.app` | ✅ Live |
-| 🟩 Netlify | `https://opengrammar-backend.netlify.app` | ⏳ Pending setup |
+| 🟩 Netlify | `https://clinquant-sherbet-151cc5.netlify.app` | ✅ Live |
 | 🦕 Deno Deploy | `https://opengrammar-backend.deno.dev` | ⏳ Pending setup |
 | 🐳 Docker Hub | `docker pull swadhinbiswas/opengrammar-backend` | ⏳ Pending setup |
 
