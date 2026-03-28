@@ -80,7 +80,7 @@ const MODULE_PREFIXES: Record<string, string[]> = {
     // Common errors — grammar group
     'CE_GRT_', 'CE_REF_', 'CE_CPD_', 'CE_ART_', 'CE_CON_', 'QA_',
     // New grammar modules
-    'SVA_', 'MV_', 'GI_', 'PRX_', 'ART_',
+    'SVA_', 'MV_', 'GI_', 'PRX_', 'ART_', 'DM_',
   ],
   // Spelling
   spelling: ['SP_', 'CW_'],
@@ -150,8 +150,8 @@ const MODULE_PREFIXES: Record<string, string[]> = {
   readability: ['RD_'],
   // Clarity
   clarity: ['CLR_'],
-  // Style base
-  style: ['STY_'],
+  // Style base (TNR_ = tone rules — jargon, hedging, aggression)
+  style: ['STY_', 'TNR_'],
   // Grammar advanced
   'grammar-advanced': ['GR_'],
   // Spelling advanced

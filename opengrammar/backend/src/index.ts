@@ -3,6 +3,8 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import OpenAI from 'openai';
 import { LLMAnalyzer, RuleBasedAnalyzer } from './analyzer.js';
+import { analyzeTone } from './nlp/tone-analyzer.js';
+import { Rephraser, type RephraseGoal } from './rephraser.js';
 import { detectWritingContext } from './rules/context-filter.js';
 import type {
   AnalysisContext,
@@ -605,6 +607,65 @@ app.post('/analyze', async (c) => {
       },
       500,
     );
+  }
+});
+
+// ─── POST /tone — rule-based tone analysis ───────────────────────────────────
+app.post('/tone', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { text, context } = body as { text: string; context?: { domain?: string } };
+    if (!text || typeof text !== 'string') {
+      return c.json({ error: 'text is required' }, 400);
+    }
+    const writingContext = context?.domain
+      ? detectWritingContext(context.domain)
+      : undefined;
+    const result = analyzeTone(text, writingContext);
+    return c.json({
+      dominant: result.dominant,
+      score: result.score,
+      signals: result.signals,
+      tips: result.tips,
+    });
+  } catch (err) {
+    console.error('Tone analysis error:', err);
+    return c.json({ error: 'Failed to analyze tone' }, 500);
+  }
+});
+
+// ─── POST /rephrase — AI-powered sentence alternatives ────────────────────────
+app.post('/rephrase', async (c) => {
+  try {
+    const body = await c.req.json() as {
+      sentence: string;
+      goal?: RephraseGoal;
+      apiKey: string;
+      provider?: string;
+      model?: string;
+      baseUrl?: string;
+    };
+    const { sentence, goal = 'clarity', apiKey, provider = 'groq', model, baseUrl } = body;
+
+    if (!sentence || typeof sentence !== 'string') {
+      return c.json({ error: 'sentence is required' }, 400);
+    }
+    if (!apiKey) {
+      return c.json({ error: 'apiKey is required for rephrase' }, 400);
+    }
+
+    const result = await Rephraser.rephrase(
+      sentence,
+      goal,
+      apiKey,
+      provider as any,
+      model,
+      baseUrl,
+    );
+    return c.json(result);
+  } catch (err) {
+    console.error('Rephrase error:', err);
+    return c.json({ error: 'Failed to rephrase sentence' }, 500);
   }
 });
 
