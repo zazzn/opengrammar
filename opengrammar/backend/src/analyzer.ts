@@ -4,6 +4,7 @@ import { Groq } from 'groq-sdk';
 import { checkSpelling, SAFE_WORDS } from './spellchecker.js';
 import { NLPEngine } from './nlp/nlp-engine.js';
 import { CORE_RULES } from './rules/index.js';
+import { filterRulesByContext, type WritingContext } from './rules/context-filter.js';
 
 /**
  * Past participles commonly used as adjectives.
@@ -34,7 +35,7 @@ export class RuleBasedAnalyzer {
   private static dictionary: Set<string> = new Set();
   private static customRules: CustomRule[] = [];
 
-  static analyze(text: string, options?: { dictionary?: string[]; customRules?: CustomRule[] }): Issue[] {
+  static analyze(text: string, options?: { dictionary?: string[]; customRules?: CustomRule[]; writingContext?: WritingContext }): Issue[] {
     const issues: Issue[] = [];
 
     if (options?.dictionary) {
@@ -56,8 +57,12 @@ export class RuleBasedAnalyzer {
       console.warn('NLP Engine parsing disabled or failed:', e);
     }
 
-    // Run Modular CORE RULES
-    for (const rule of CORE_RULES) {
+    // Run Modular CORE RULES (filtered by writing context)
+    const activeRules = options?.writingContext
+      ? filterRulesByContext(CORE_RULES, options.writingContext)
+      : CORE_RULES;
+
+    for (const rule of activeRules) {
       try {
         if (rule.type === 'regex') {
           issues.push(...rule.check(text));

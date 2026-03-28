@@ -536,3 +536,94 @@ describe('False Positive Guards', () => {
     expectNoIssue('She ran into the room.', 'ran into');
   });
 });
+
+// ══════════════════════════════════════════════════
+//  Context-Aware Rule Filtering
+// ══════════════════════════════════════════════════
+describe('Context-Aware Filtering', () => {
+  const testText = 'Gonna go btw. He buyed a car. The chairman spoke. I think that this is true.';
+
+  test('general context catches everything', () => {
+    const issues = RuleBasedAnalyzer.analyze(testText, { writingContext: 'general' });
+    // Should catch: gonna, btw, buyed, chairman, "I think that"
+    expect(issues.length).toBeGreaterThanOrEqual(4);
+  });
+
+  test('chat context suppresses formality rules', () => {
+    const issues = RuleBasedAnalyzer.analyze(testText, { writingContext: 'chat' });
+    // Chat should still catch grammar errors (buyed → bought)
+    const grammarIssues = issues.filter(i => i.original.toLowerCase() === 'buyed');
+    expect(grammarIssues.length).toBeGreaterThanOrEqual(1);
+    // But should NOT flag "gonna" or "btw" (too informal for chat nagging)
+    const gonnaIssue = issues.find(i => i.original.toLowerCase() === 'gonna');
+    expect(gonnaIssue).toBeUndefined();
+  });
+
+  test('email context includes business rules', () => {
+    const emailText = 'I am writing to inform you that we need to facilitate the process.';
+    const issues = RuleBasedAnalyzer.analyze(emailText, { writingContext: 'email' });
+    // Should flag business writing issues
+    expect(issues.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test('academic context includes weasel word detection', () => {
+    const academicText = 'Some people say this is obvious. Studies show it works.';
+    const issues = RuleBasedAnalyzer.analyze(academicText, { writingContext: 'academic' });
+    const weaselIssue = issues.find(i => i.original.toLowerCase().includes('some people'));
+    expect(weaselIssue).toBeDefined();
+  });
+
+  test('grammar errors are caught in ALL contexts', () => {
+    const contexts: Array<'chat' | 'social' | 'email' | 'technical' | 'general'> = [
+      'chat', 'social', 'email', 'technical', 'general',
+    ];
+    for (const ctx of contexts) {
+      const issues = RuleBasedAnalyzer.analyze('He buyed a car.', { writingContext: ctx });
+      const buyedIssue = issues.find(i => i.original.toLowerCase() === 'buyed');
+      expect(buyedIssue).toBeDefined();
+    }
+  });
+
+  test('fewer rules active in chat vs general', () => {
+    const chatIssues = RuleBasedAnalyzer.analyze(testText, { writingContext: 'chat' });
+    const generalIssues = RuleBasedAnalyzer.analyze(testText, { writingContext: 'general' });
+    expect(chatIssues.length).toBeLessThan(generalIssues.length);
+  });
+});
+
+// ══════════════════════════════════════════════════
+//  Context Detection
+// ══════════════════════════════════════════════════
+describe('Context Detection', () => {
+  // Import directly for unit testing
+  const { detectWritingContext } = require('../src/rules/context-filter.js');
+
+  test('detects chat context', () => {
+    expect(detectWritingContext('app.slack.com')).toBe('chat');
+    expect(detectWritingContext('discord.com')).toBe('chat');
+  });
+
+  test('detects email context', () => {
+    expect(detectWritingContext('mail.google.com')).toBe('email');
+    expect(detectWritingContext('outlook.live.com')).toBe('email');
+  });
+
+  test('detects social context', () => {
+    expect(detectWritingContext('twitter.com')).toBe('social');
+    expect(detectWritingContext('reddit.com')).toBe('social');
+  });
+
+  test('detects technical context', () => {
+    expect(detectWritingContext('github.com')).toBe('technical');
+    expect(detectWritingContext('stackoverflow.com')).toBe('technical');
+  });
+
+  test('detects academic context', () => {
+    expect(detectWritingContext('overleaf.com')).toBe('academic');
+  });
+
+  test('returns general for unknown domains', () => {
+    expect(detectWritingContext('random-site.com')).toBe('general');
+    expect(detectWritingContext(undefined)).toBe('general');
+  });
+});
