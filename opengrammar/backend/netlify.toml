@@ -1,17 +1,14 @@
 [build]
-  command = "npm install"
+  command = "npm install && mkdir -p public"
   publish = "public"
+  functions = "netlify/functions"
 
 [functions]
-  directory = "netlify/functions"
   node_bundler = "esbuild"
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
-  status = 200
+  included_files = ["src/**"]
 
 [[redirects]]
   from = "/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
+  force = true

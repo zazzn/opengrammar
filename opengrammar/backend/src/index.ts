@@ -425,7 +425,7 @@ app.get('/', (c) => {
     const SERVERS = [
       { id: 'cf',     name: 'Cloudflare Edge', url: '/health',                                                              role: 'primary',  loc: 'Global CDN' },
       { id: 'vercel', name: 'Vercel',           url: 'https://opengrammar-backend-psi.vercel.app/health',            role: 'standby',  loc: 'US East'    },
-      { id: 'render', name: 'Render',           url: 'https://opengrammar-render-placeholder.onrender.com/health',          role: 'standby',  loc: 'Frankfurt'  }
+      { id: 'render', name: 'Netlify',           url: 'https://clinquant-sherbet-151cc5.netlify.app/health',              role: 'standby',  loc: 'US East'    }
     ];
 
     function badgeHTML(state, label) {
