@@ -105,16 +105,7 @@ function countMatches(text: string, patterns: RegExp[]): number {
   return patterns.filter((p) => p.test(text)).length;
 }
 
-/**
- * Analyze the tone of text based on rule signals.
- * Returns a ToneResult with detected signals and recommendations.
- */
-export function analyzeTone(text: string, context?: WritingContext): ToneResult {
-  const lowerText = text.toLowerCase();
-  const signals: ToneSignal[] = [];
-  const tips: string[] = [];
-
-  // ─── Count hedging ───
+function checkHedging(lowerText: string, signals: ToneSignal[], tips: string[]): number {
   const hedgeCount = HEDGING_WORDS.filter((w) => lowerText.includes(w)).length;
   if (hedgeCount >= 2) {
     const firstHedge = HEDGING_WORDS.find((w) => lowerText.includes(w)) || '';
@@ -126,59 +117,90 @@ export function analyzeTone(text: string, context?: WritingContext): ToneResult 
       suggestion: `Replace hedging language with direct statements. Instead of "${firstHedge}", use assertive phrasing.`,
       severity: hedgeCount >= 4 ? 'warning' : 'info',
     });
-    tips.push(
-      `Your text contains ${hedgeCount} hedging expressions. Try replacing "I think/maybe/perhaps" with direct statements for a more confident tone.`,
-    );
+    tips.push(`Your text contains ${hedgeCount} hedging expressions. Try replacing "I think/maybe/perhaps" with direct statements for a more confident tone.`);
   }
+  return hedgeCount;
+}
 
-  // ─── Passive aggression ───
-  for (const pattern of PASSIVE_AGGRESSION_PATTERNS) {
-    const found = findInText(text, pattern);
-    if (found) {
-      signals.push({
-        type: 'passive_aggression',
-        phrase: found.phrase,
-        offset: found.offset,
-        suggestion: `"${found.phrase}" can sound passive-aggressive. Consider a more direct alternative.`,
-        severity: 'warning',
-      });
-      tips.push('Avoid phrases that may sound passive-aggressive (e.g., "as I mentioned", "per my last email"). Be direct instead.');
-      break; // one tip per category
+function checkPatterns(
+  text: string,
+  patterns: RegExp[],
+  type: ToneSignal['type'],
+  severity: ToneSignal['severity'],
+  suggestionFn: (phrase: string) => string,
+  tipMsg?: string
+): number {
+  let count = 0;
+  let firstFound: { phrase: string; offset: number } | null = null;
+  for (const pattern of patterns) {
+    if (pattern.test(text)) {
+      count++;
+      if (!firstFound) {
+        firstFound = findInText(text, pattern);
+      }
     }
   }
+  return count;
+}
 
-  // ─── Apology fillers ───
-  const apologyCount = countMatches(text, APOLOGY_FILLER_PATTERNS);
-  if (apologyCount >= 1) {
-    const found = APOLOGY_FILLER_PATTERNS.map((p) => findInText(text, p)).find(Boolean);
+function processSignals(
+  text: string,
+  patterns: RegExp[],
+  type: ToneSignal['type'],
+  severity: ToneSignal['severity'],
+  suggestionFn: (phrase: string) => string,
+  signals: ToneSignal[],
+  tips: string[],
+  tipMsg?: string
+): number {
+  const count = countMatches(text, patterns);
+  if (count >= 1) {
+    const found = patterns.map((p) => findInText(text, p)).find(Boolean);
     if (found) {
       signals.push({
-        type: 'apology_filler',
+        type,
         phrase: found.phrase,
         offset: found.offset,
-        suggestion: `Remove "${found.phrase}" — it weakens your message unnecessarily.`,
-        severity: 'info',
+        suggestion: suggestionFn(found.phrase),
+        severity,
       });
-      tips.push('Apology fillers like "just wanted to", "sorry to bother", or "if that\'s okay" undermine your confidence. Remove them for a stronger message.');
+      if (tipMsg) tips.push(tipMsg);
     }
   }
+  return count;
+}
 
-  // ─── Confidence killers ───
-  const confKillCount = countMatches(text, CONFIDENCE_KILLER_PATTERNS);
-  if (confKillCount >= 1) {
-    const found = CONFIDENCE_KILLER_PATTERNS.map((p) => findInText(text, p)).find(Boolean);
-    if (found) {
-      signals.push({
-        type: 'confidence_killer',
-        phrase: found.phrase,
-        offset: found.offset,
-        suggestion: `"${found.phrase}" undermines your authority. State your point directly.`,
-        severity: 'info',
-      });
-    }
-  }
+/**
+ * Analyze the tone of text based on rule signals.
+ * Returns a ToneResult with detected signals and recommendations.
+ */
+export function analyzeTone(text: string, context?: WritingContext): ToneResult {
+  const lowerText = text.toLowerCase();
+  const signals: ToneSignal[] = [];
+  const tips: string[] = [];
 
-  // ─── Negativity overload ───
+  const hedgeCount = checkHedging(lowerText, signals, tips);
+
+  processSignals(
+    text, PASSIVE_AGGRESSION_PATTERNS, 'passive_aggression', 'warning',
+    (phrase) => `"${phrase}" can sound passive-aggressive. Consider a more direct alternative.`,
+    signals, tips,
+    'Avoid phrases that may sound passive-aggressive (e.g., "as I mentioned", "per my last email"). Be direct instead.'
+  );
+
+  processSignals(
+    text, APOLOGY_FILLER_PATTERNS, 'apology_filler', 'info',
+    (phrase) => `Remove "${phrase}" — it weakens your message unnecessarily.`,
+    signals, tips,
+    'Apology fillers like "just wanted to" or "if that\'s okay" undermine your confidence. Remove them for a stronger message.'
+  );
+
+  processSignals(
+    text, CONFIDENCE_KILLER_PATTERNS, 'confidence_killer', 'info',
+    (phrase) => `"${phrase}" undermines your authority. State your point directly.`,
+    signals, tips
+  );
+
   const negatives = (text.match(/\b(can'?t|won'?t|never|not|don'?t|doesn'?t|didn'?t|couldn'?t|wouldn'?t|shouldn'?t|haven'?t|hasn'?t|hadn'?t|no\s+one|nobody|nothing|nowhere|neither|nor)\b/gi) || []).length;
   if (negatives >= 4) {
     signals.push({
@@ -188,47 +210,26 @@ export function analyzeTone(text: string, context?: WritingContext): ToneResult 
       suggestion: 'Consider reframing some negative statements as positive alternatives.',
       severity: negatives >= 7 ? 'warning' : 'info',
     });
-    tips.push(`Your text has ${negatives} negative expressions. Reframing some as positive ("...will work if..." instead of "...won't work unless...") creates a more constructive tone.`);
+    tips.push(`Your text has ${negatives} negative expressions. Reframing some as positive creates a more constructive tone.`);
   }
 
-  // ─── Formality mismatch (only flag in email/document context) ───
   if (context === 'email' || context === 'document' || !context) {
-    const informalCount = countMatches(text, INFORMAL_PATTERNS);
-    if (informalCount >= 1) {
-      const found = INFORMAL_PATTERNS.map((p) => findInText(text, p)).find(Boolean);
-      if (found) {
-        signals.push({
-          type: 'formality_mismatch',
-          phrase: found.phrase,
-          offset: found.offset,
-          suggestion: `"${found.phrase}" is too informal for ${context === 'email' ? 'email' : 'formal writing'}. Use more formal language.`,
-          severity: 'warning',
-        });
-        tips.push('Informal words or abbreviations detected. Consider using formal language in this context.');
-      }
-    }
+    processSignals(
+      text, INFORMAL_PATTERNS, 'formality_mismatch', 'warning',
+      (phrase) => `"${phrase}" is too informal for formal writing. Use more formal language.`,
+      signals, tips,
+      'Informal words or abbreviations detected. Consider using formal language in this context.'
+    );
   }
 
-  // ─── Aggressive tone ───
-  const aggressiveCount = countMatches(text, AGGRESSIVE_PATTERNS);
-  if (aggressiveCount >= 1) {
-    const found = AGGRESSIVE_PATTERNS.map((p) => findInText(text, p)).find(Boolean);
-    if (found) {
-      signals.push({
-        type: 'aggressive',
-        phrase: found.phrase,
-        offset: found.offset,
-        suggestion: `"${found.phrase}" sounds aggressive. Try a more constructive phrasing.`,
-        severity: 'error',
-      });
-      tips.push('Your text may sound aggressive. Focus on the issue, not the person, and use collaborative language.');
-    }
-  }
+  const aggressiveCount = processSignals(
+    text, AGGRESSIVE_PATTERNS, 'aggressive', 'error',
+    (phrase) => `"${phrase}" sounds aggressive. Try a more constructive phrasing.`,
+    signals, tips,
+    'Your text may sound aggressive. Focus on the issue, not the person, and use collaborative language.'
+  );
 
-  // ─── Determine dominant tone ───
   const dominant = determineDominantTone(signals, hedgeCount, negatives, aggressiveCount);
-
-  // ─── Compute clarity score ───
   const score = computeScore(signals, hedgeCount, negatives, aggressiveCount);
 
   return { dominant, score, signals, tips };

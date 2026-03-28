@@ -11,6 +11,7 @@ import type {
   RewriteContext,
   RewriteRequest,
   RewriteResponse,
+  Issue,
 } from '../types';
 
 // Default backend URL
@@ -208,6 +209,29 @@ chrome.commands.onCommand.addListener((command) => {
   }
 });
 
+function filterIssues(issues: Issue[] | undefined, ignoredIssues: string[], dictionary: string[]): Issue[] {
+  if (!issues || issues.length === 0) return [];
+  let filtered = issues;
+
+  const normalizedIgnored = normalizeIgnoredIssues(ignoredIssues);
+  if (normalizedIgnored.length > 0) {
+    filtered = filtered.filter((issue) => {
+      const issueId = issue.id || `${issue.type}-${issue.offset}-${issue.original}`;
+      return !normalizedIgnored.includes(issueId);
+    });
+  }
+
+  if (dictionary && dictionary.length > 0) {
+    filtered = filtered.filter((issue) => {
+      if (issue.type !== 'spelling') return true;
+      const word = issue.original.toLowerCase().trim();
+      return !dictionary.includes(word);
+    });
+  }
+
+  return filtered;
+}
+
 async function handleGrammarCheck(
   text: string,
   context: AnalysisContext | undefined,
@@ -273,24 +297,7 @@ async function handleGrammarCheck(
 
     const data: AnalyzeResponse = await response.json();
 
-    // Filter out ignored issues
-    const normalizedIgnored = normalizeIgnoredIssues(ignoredIssues);
-
-    if (data.issues && normalizedIgnored.length > 0) {
-      data.issues = data.issues.filter((issue) => {
-        const issueId = issue.id || `${issue.type}-${issue.offset}-${issue.original}`;
-        return !normalizedIgnored.includes(issueId);
-      });
-    }
-
-    // Filter out dictionary words
-    if (data.issues && dictionary && dictionary.length > 0) {
-      data.issues = data.issues.filter((issue) => {
-        if (issue.type !== 'spelling') return true;
-        const word = issue.original.toLowerCase().trim();
-        return !dictionary.includes(word);
-      });
-    }
+    data.issues = filterIssues(data.issues, ignoredIssues || [], dictionary || []);
 
     await trackAnalyticsEvent('analysis_runs', {
       count: 1,
