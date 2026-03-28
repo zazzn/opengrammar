@@ -35,7 +35,7 @@ export class RuleBasedAnalyzer {
   private static dictionary: Set<string> = new Set();
   private static customRules: CustomRule[] = [];
 
-  static analyze(text: string, options?: { dictionary?: string[]; customRules?: CustomRule[]; writingContext?: WritingContext }): Issue[] {
+  static analyze(text: string, options?: { dictionary?: string[]; customRules?: CustomRule[]; writingContext?: WritingContext; disabledModules?: string[] }): Issue[] {
     const issues: Issue[] = [];
 
     if (options?.dictionary) {
@@ -46,8 +46,11 @@ export class RuleBasedAnalyzer {
       this.customRules = options.customRules;
     }
 
-    // Dictionary-based spell checking (real spell checker)
-    issues.push(...checkSpelling(text, this.dictionary));
+    // Dictionary-based spell checking (unless spelling module is disabled)
+    const isSpellingDisabled = options?.disabledModules?.some(m => m.toLowerCase() === 'spelling');
+    if (!isSpellingDisabled) {
+      issues.push(...checkSpelling(text, this.dictionary));
+    }
 
     // Initialize NLP Engine for Syntax Checks
     let doc: any = null;
@@ -57,9 +60,9 @@ export class RuleBasedAnalyzer {
       console.warn('NLP Engine parsing disabled or failed:', e);
     }
 
-    // Run Modular CORE RULES (filtered by writing context)
-    const activeRules = options?.writingContext
-      ? filterRulesByContext(CORE_RULES, options.writingContext)
+    // Run Modular CORE RULES (filtered by writing context and manual overrides)
+    const activeRules = options?.writingContext || options?.disabledModules
+      ? filterRulesByContext(CORE_RULES, options.writingContext || 'general', options.disabledModules)
       : CORE_RULES;
 
     for (const rule of activeRules) {

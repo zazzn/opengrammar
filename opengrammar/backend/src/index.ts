@@ -88,7 +88,7 @@ app.post('/analyze', async (c) => {
   
   try {
     const body: AnalyzeRequest = await c.req.json();
-    const { text, apiKey, model, provider, baseUrl, context } = body;
+    const { text, apiKey, model, provider, baseUrl, context, disabledModules } = body;
 
     // Validate input
     if (!text || typeof text !== 'string') {
@@ -103,7 +103,7 @@ app.post('/analyze', async (c) => {
     const writingContext = detectWritingContext(context?.domain);
 
     // Run rule-based analysis with context-aware filtering
-    const ruleIssues = RuleBasedAnalyzer.analyze(text, { writingContext });
+    const ruleIssues = RuleBasedAnalyzer.analyze(text, { writingContext, disabledModules });
     let issues = enrichIssues(ruleIssues, 'rule', text, context);
 
     // Run LLM analysis if API key provided or using local Ollama
