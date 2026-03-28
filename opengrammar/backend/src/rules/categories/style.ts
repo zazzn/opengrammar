@@ -1,5 +1,5 @@
-import { type Rule, createRegexRule } from '../types.js';
 import type { Issue } from '../../shared-types.js';
+import { createRegexRule, type Rule } from '../types.js';
 
 export const styleRules: Rule[] = [
   // Passive Voice via Regex (legacy)
@@ -8,16 +8,16 @@ export const styleRules: Rule[] = [
     category: 'style',
     pattern: /\b(am|are|is|was|were|be|been|being)\s+(\w+ed)\b/i,
     suggestion: 'Consider using active voice',
-    reason: 'Passive voice can make sentences weaker and less direct.'
+    reason: 'Passive voice can make sentences weaker and less direct.',
   }),
   createRegexRule({
     id: 'passive-voice-en',
     category: 'style',
     pattern: /\b(am|are|is|was|were|be|been|being)\s+(\w+en)\b/i,
     suggestion: 'Consider using active voice',
-    reason: 'Passive voice can make sentences weaker and less direct.'
+    reason: 'Passive voice can make sentences weaker and less direct.',
   }),
-  
+
   // NEW NLP Rule: Detect consecutive nouns (Noun String) which are hard to read
   {
     id: 'noun-string',
@@ -39,12 +39,12 @@ export const styleRules: Rule[] = [
             suggestion: 'Consider rephrasing',
             reason: 'Long strings of nouns are hard to read.',
             offset,
-            length: str.length
+            length: str.length,
           });
         }
       });
       return issues;
-    }
+    },
   },
 
   // NEW NLP Rule: Avoid starting sentences with coordinating conjunctions heavily
@@ -68,11 +68,11 @@ export const styleRules: Rule[] = [
             suggestion: 'Additionally, / However,',
             reason: 'Starting sentences with coordinating conjunctions is informal.',
             offset,
-            length: str.trim().length
+            length: str.trim().length,
           });
         }
       });
       return issues;
-    }
-  }
+    },
+  },
 ];

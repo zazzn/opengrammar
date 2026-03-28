@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeAll } from 'bun:test';
+import { beforeAll, describe, expect, test } from 'bun:test';
 import { RuleBasedAnalyzer } from '../src/analyzer.js';
 import { CORE_RULES } from '../src/rules/index.js';
 
@@ -10,10 +10,14 @@ import { CORE_RULES } from '../src/rules/index.js';
  */
 
 // Helper: assert that text produces an issue containing the expected original match
-function expectIssue(text: string, expectedOriginal: string, expectedType?: 'grammar' | 'spelling' | 'clarity' | 'style') {
+function expectIssue(
+  text: string,
+  expectedOriginal: string,
+  expectedType?: 'grammar' | 'spelling' | 'clarity' | 'style',
+) {
   const issues = RuleBasedAnalyzer.analyze(text);
-  const found = issues.find(i =>
-    i.original.toLowerCase().includes(expectedOriginal.toLowerCase())
+  const found = issues.find((i) =>
+    i.original.toLowerCase().includes(expectedOriginal.toLowerCase()),
   );
   expect(found).toBeDefined();
   if (expectedType && found) {
@@ -25,8 +29,8 @@ function expectIssue(text: string, expectedOriginal: string, expectedType?: 'gra
 // Helper: assert that text does NOT produce a false positive for the given string
 function expectNoIssue(text: string, notExpectedOriginal: string) {
   const issues = RuleBasedAnalyzer.analyze(text);
-  const found = issues.find(i =>
-    i.original.toLowerCase().includes(notExpectedOriginal.toLowerCase())
+  const found = issues.find((i) =>
+    i.original.toLowerCase().includes(notExpectedOriginal.toLowerCase()),
   );
   expect(found).toBeUndefined();
 }
@@ -49,7 +53,7 @@ describe('Engine Bootstrap', () => {
   });
 
   test('no duplicate rule IDs', () => {
-    const ids = CORE_RULES.map(r => r.id);
+    const ids = CORE_RULES.map((r) => r.id);
     const uniqueIds = new Set(ids);
     // Allow some duplicate IDs from spread arrays (e.g. dynamically-generated countable noun rules)
     // but flag truly identical rules
@@ -280,7 +284,7 @@ describe('Grammar: Nouns & Pronouns', () => {
 //  Grammar — Punctuation
 // ══════════════════════════════════════════════════
 describe('Grammar: Punctuation', () => {
-  test('dont → don\'t', () => {
+  test("dont → don't", () => {
     const issue = expectIssue('I dont know.', 'dont', 'grammar');
     expect(issue.suggestion).toBe("don't");
   });
@@ -383,9 +387,13 @@ describe('Style: Formality', () => {
   test('lemme → let me (no spellcheck false positive)', () => {
     const issues = RuleBasedAnalyzer.analyze('Lemme know.');
     // Should have formality flag but NOT a garbled spellcheck suggestion
-    const spellIssue = issues.find(i => i.type === 'spelling' && i.original.toLowerCase() === 'lemme');
+    const spellIssue = issues.find(
+      (i) => i.type === 'spelling' && i.original.toLowerCase() === 'lemme',
+    );
     expect(spellIssue).toBeUndefined(); // No more "leme" garbage
-    const styleIssue = issues.find(i => i.type === 'style' && i.original.toLowerCase() === 'lemme');
+    const styleIssue = issues.find(
+      (i) => i.type === 'style' && i.original.toLowerCase() === 'lemme',
+    );
     expect(styleIssue).toBeDefined();
     expect(styleIssue!.suggestion).toBe('let me');
   });
@@ -407,9 +415,11 @@ describe('Style: Inclusive Language', () => {
   test('chairman → chairperson (no spellcheck false positive)', () => {
     const issues = RuleBasedAnalyzer.analyze('The chairman spoke.');
     // Should get inclusive flag, NOT a spellcheck "placeman" suggestion
-    const spellIssue = issues.find(i => i.type === 'spelling' && i.original === 'chairman');
+    const spellIssue = issues.find((i) => i.type === 'spelling' && i.original === 'chairman');
     expect(spellIssue).toBeUndefined();
-    const styleIssue = issues.find(i => i.type === 'style' && i.original.toLowerCase().includes('chairman'));
+    const styleIssue = issues.find(
+      (i) => i.type === 'style' && i.original.toLowerCase().includes('chairman'),
+    );
     expect(styleIssue).toBeDefined();
     expect(styleIssue!.suggestion).toBe('chairperson');
   });
@@ -457,7 +467,11 @@ describe('Style: Academic Writing', () => {
 // ══════════════════════════════════════════════════
 describe('Style: Business Writing', () => {
   test('I am writing to inform you (empty opener)', () => {
-    expectIssue('I am writing to inform you that we need help.', 'I am writing to inform you', 'clarity');
+    expectIssue(
+      'I am writing to inform you that we need help.',
+      'I am writing to inform you',
+      'clarity',
+    );
   });
 
   test('facilitate → help', () => {
@@ -473,7 +487,9 @@ describe('Style: Business Writing', () => {
 
   test('ameliorate (no spellcheck false positive)', () => {
     const issues = RuleBasedAnalyzer.analyze('We should ameliorate the situation.');
-    const spellIssue = issues.find(i => i.type === 'spelling' && i.original.toLowerCase() === 'ameliorate');
+    const spellIssue = issues.find(
+      (i) => i.type === 'spelling' && i.original.toLowerCase() === 'ameliorate',
+    );
     expect(spellIssue).toBeUndefined(); // No garbled suggestion
   });
 });
@@ -483,9 +499,10 @@ describe('Style: Business Writing', () => {
 // ══════════════════════════════════════════════════
 describe('Readability', () => {
   test('long sentence detection (40+ words)', () => {
-    const longSentence = 'The extremely long and detailed report that was submitted by the committee on Thursday afternoon after the lengthy discussion about the project timeline and budget allocation was finally reviewed by the board of directors who decided to postpone the decision until next month.';
+    const longSentence =
+      'The extremely long and detailed report that was submitted by the committee on Thursday afternoon after the lengthy discussion about the project timeline and budget allocation was finally reviewed by the board of directors who decided to postpone the decision until next month.';
     const issues = RuleBasedAnalyzer.analyze(longSentence);
-    const longIssue = issues.find(i => i.reason.includes('words'));
+    const longIssue = issues.find((i) => i.reason.includes('words'));
     expect(longIssue).toBeDefined();
   });
 
@@ -506,13 +523,13 @@ describe('Deduplication', () => {
   test('same text span is not flagged twice', () => {
     // "ameliorate" used to be flagged by both style-tone and readability
     const issues = RuleBasedAnalyzer.analyze('We must ameliorate the situation.');
-    const amIssues = issues.filter(i => i.original.toLowerCase() === 'ameliorate');
+    const amIssues = issues.filter((i) => i.original.toLowerCase() === 'ameliorate');
     expect(amIssues.length).toBeLessThanOrEqual(1);
   });
 
   test('confused word not double-flagged by spellcheck + rule', () => {
     const issues = RuleBasedAnalyzer.analyze('I will loose my keys.');
-    const looseIssues = issues.filter(i => i.original.toLowerCase().includes('loose'));
+    const looseIssues = issues.filter((i) => i.original.toLowerCase().includes('loose'));
     // Should have at most 1 issue per occurrence, not 2-3
     expect(looseIssues.length).toBeLessThanOrEqual(2); // can be flagged by different patterns
   });
@@ -524,7 +541,7 @@ describe('Deduplication', () => {
 describe('False Positive Guards', () => {
   test('correct sentence produces no grammar errors', () => {
     const issues = RuleBasedAnalyzer.analyze('The cat sat on the mat.');
-    const grammarIssues = issues.filter(i => i.type === 'grammar');
+    const grammarIssues = issues.filter((i) => i.type === 'grammar');
     expect(grammarIssues.length).toBe(0);
   });
 
@@ -552,10 +569,10 @@ describe('Context-Aware Filtering', () => {
   test('chat context suppresses formality rules', () => {
     const issues = RuleBasedAnalyzer.analyze(testText, { writingContext: 'chat' });
     // Chat should still catch grammar errors (buyed → bought)
-    const grammarIssues = issues.filter(i => i.original.toLowerCase() === 'buyed');
+    const grammarIssues = issues.filter((i) => i.original.toLowerCase() === 'buyed');
     expect(grammarIssues.length).toBeGreaterThanOrEqual(1);
     // But should NOT flag "gonna" or "btw" (too informal for chat nagging)
-    const gonnaIssue = issues.find(i => i.original.toLowerCase() === 'gonna');
+    const gonnaIssue = issues.find((i) => i.original.toLowerCase() === 'gonna');
     expect(gonnaIssue).toBeUndefined();
   });
 
@@ -569,17 +586,21 @@ describe('Context-Aware Filtering', () => {
   test('academic context includes weasel word detection', () => {
     const academicText = 'Some people say this is obvious. Studies show it works.';
     const issues = RuleBasedAnalyzer.analyze(academicText, { writingContext: 'academic' });
-    const weaselIssue = issues.find(i => i.original.toLowerCase().includes('some people'));
+    const weaselIssue = issues.find((i) => i.original.toLowerCase().includes('some people'));
     expect(weaselIssue).toBeDefined();
   });
 
   test('grammar errors are caught in ALL contexts', () => {
     const contexts: Array<'chat' | 'social' | 'email' | 'technical' | 'general'> = [
-      'chat', 'social', 'email', 'technical', 'general',
+      'chat',
+      'social',
+      'email',
+      'technical',
+      'general',
     ];
     for (const ctx of contexts) {
       const issues = RuleBasedAnalyzer.analyze('He buyed a car.', { writingContext: ctx });
-      const buyedIssue = issues.find(i => i.original.toLowerCase() === 'buyed');
+      const buyedIssue = issues.find((i) => i.original.toLowerCase() === 'buyed');
       expect(buyedIssue).toBeDefined();
     }
   });
@@ -642,9 +663,9 @@ describe('Manual Rule Filtering (disabledModules)', () => {
     });
 
     // Should still catch 'buyed' (grammar)
-    expect(issues.some(i => i.original.toLowerCase() === 'buyed')).toBe(true);
+    expect(issues.some((i) => i.original.toLowerCase() === 'buyed')).toBe(true);
     // Should NOT catch 'gonna' (style/formality)
-    expect(issues.some(i => i.original.toLowerCase() === 'gonna')).toBe(false);
+    expect(issues.some((i) => i.original.toLowerCase() === 'gonna')).toBe(false);
   });
 
   test('disabling grammar ignores grammar-specific "buyed"', () => {
@@ -654,8 +675,10 @@ describe('Manual Rule Filtering (disabledModules)', () => {
     });
 
     // Should NOT catch 'buyed' as a grammar issue (though spellchecker still flags it)
-    expect(issues.some(i => i.original.toLowerCase() === 'buyed' && i.type === 'grammar')).toBe(false);
+    expect(issues.some((i) => i.original.toLowerCase() === 'buyed' && i.type === 'grammar')).toBe(
+      false,
+    );
     // Might still catch 'gonna' (style)
-    expect(issues.some(i => i.original.toLowerCase() === 'gonna')).toBe(true);
+    expect(issues.some((i) => i.original.toLowerCase() === 'gonna')).toBe(true);
   });
 });

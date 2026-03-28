@@ -40,7 +40,7 @@ export function createRegexRule({
   category,
   reason,
   pattern,
-  suggestion
+  suggestion,
 }: Omit<RegexRule, 'type' | 'check'>): RegexRule {
   return {
     id,
@@ -52,15 +52,21 @@ export function createRegexRule({
     check: (text: string): Issue[] => {
       const issues: Issue[] = [];
       let match: RegExpExecArray | null;
-      
+
       // Ensure the regex has the 'g' flag if we want all matches
-      const checkPattern = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g');
+      const checkPattern = new RegExp(
+        pattern.source,
+        pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g',
+      );
 
       while ((match = checkPattern.exec(text)) !== null) {
         issues.push({
           type: category,
           original: match[0],
-          suggestion: typeof suggestion === 'function' ? suggestion(match) : match[0].replace(pattern, suggestion),
+          suggestion:
+            typeof suggestion === 'function'
+              ? suggestion(match)
+              : match[0].replace(pattern, suggestion),
           reason,
           offset: match.index,
           length: match[0].length,
@@ -68,6 +74,6 @@ export function createRegexRule({
         });
       }
       return issues;
-    }
+    },
   };
 }

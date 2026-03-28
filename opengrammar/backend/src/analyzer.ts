@@ -1,69 +1,155 @@
-import type { AnalysisContext, Issue, CustomRule, LLMProvider } from './shared-types.js';
-import OpenAI from 'openai';
 import { Groq } from 'groq-sdk';
-import { checkSpelling, SAFE_WORDS } from './spellchecker.js';
-import { NLPEngine } from './nlp/nlp-engine.js';
-import { CORE_RULES } from './rules/index.js';
+import OpenAI from 'openai';
+import { parseNLP } from './nlp/nlp-engine.js';
 import { filterRulesByContext, type WritingContext } from './rules/context-filter.js';
+import { CORE_RULES } from './rules/index.js';
+import type { AnalysisContext, CustomRule, Issue, LLMProvider } from './shared-types.js';
+import { checkSpelling, SAFE_WORDS } from './spellchecker.js';
 
 /**
  * Past participles commonly used as adjectives.
  * These should NOT be flagged as passive voice.
  */
 const ADJECTIVE_PARTICIPLES = new Set([
-  'excited', 'interested', 'pleased', 'surprised', 'tired',
-  'bored', 'confused', 'disappointed', 'embarrassed', 'frightened',
-  'satisfied', 'worried', 'amazed', 'concerned', 'delighted',
-  'determined', 'exhausted', 'fascinated', 'relaxed', 'shocked',
-  'stressed', 'required', 'needed', 'expected', 'supposed',
-  'complicated', 'dedicated', 'educated', 'experienced', 'limited',
-  'married', 'organized', 'prepared', 'qualified', 'related',
-  'retired', 'scared', 'skilled', 'talented', 'united',
-  'advanced', 'balanced', 'broken', 'closed', 'combined',
-  'connected', 'convinced', 'crowded', 'damaged', 'depressed',
-  'detailed', 'developed', 'disabled', 'engaged', 'established',
-  'fixed', 'focused', 'hidden', 'improved', 'increased',
-  'involved', 'isolated', 'known', 'located', 'mixed',
-  'motivated', 'observed', 'opened', 'pleased', 'preferred',
-  'published', 'recognized', 'reduced', 'registered', 'renewed',
-  'repeated', 'reserved', 'satisfied', 'settled', 'shared',
-  'situated', 'specialized', 'supposed', 'troubled', 'updated',
-  'used', 'valued', 'varied', 'worried',
+  'excited',
+  'interested',
+  'pleased',
+  'surprised',
+  'tired',
+  'bored',
+  'confused',
+  'disappointed',
+  'embarrassed',
+  'frightened',
+  'satisfied',
+  'worried',
+  'amazed',
+  'concerned',
+  'delighted',
+  'determined',
+  'exhausted',
+  'fascinated',
+  'relaxed',
+  'shocked',
+  'stressed',
+  'required',
+  'needed',
+  'expected',
+  'supposed',
+  'complicated',
+  'dedicated',
+  'educated',
+  'experienced',
+  'limited',
+  'married',
+  'organized',
+  'prepared',
+  'qualified',
+  'related',
+  'retired',
+  'scared',
+  'skilled',
+  'talented',
+  'united',
+  'advanced',
+  'balanced',
+  'broken',
+  'closed',
+  'combined',
+  'connected',
+  'convinced',
+  'crowded',
+  'damaged',
+  'depressed',
+  'detailed',
+  'developed',
+  'disabled',
+  'engaged',
+  'established',
+  'fixed',
+  'focused',
+  'hidden',
+  'improved',
+  'increased',
+  'involved',
+  'isolated',
+  'known',
+  'located',
+  'mixed',
+  'motivated',
+  'observed',
+  'opened',
+  'pleased',
+  'preferred',
+  'published',
+  'recognized',
+  'reduced',
+  'registered',
+  'renewed',
+  'repeated',
+  'reserved',
+  'satisfied',
+  'settled',
+  'shared',
+  'situated',
+  'specialized',
+  'supposed',
+  'troubled',
+  'updated',
+  'used',
+  'valued',
+  'varied',
+  'worried',
 ]);
 
 export class RuleBasedAnalyzer {
   private static dictionary: Set<string> = new Set();
   private static customRules: CustomRule[] = [];
 
-  static analyze(text: string, options?: { dictionary?: string[]; customRules?: CustomRule[]; writingContext?: WritingContext; disabledModules?: string[] }): Issue[] {
+  static analyze(
+    text: string,
+    options?: {
+      dictionary?: string[];
+      customRules?: CustomRule[];
+      writingContext?: WritingContext;
+      disabledModules?: string[];
+    },
+  ): Issue[] {
     const issues: Issue[] = [];
 
     if (options?.dictionary) {
-      this.dictionary = new Set(options.dictionary.map(w => w.toLowerCase()));
+      RuleBasedAnalyzer.dictionary = new Set(options.dictionary.map((w) => w.toLowerCase()));
     }
 
     if (options?.customRules) {
-      this.customRules = options.customRules;
+      RuleBasedAnalyzer.customRules = options.customRules;
     }
 
     // Dictionary-based spell checking (unless spelling module is disabled)
-    const isSpellingDisabled = options?.disabledModules?.some(m => m.toLowerCase() === 'spelling');
+    const isSpellingDisabled = options?.disabledModules?.some(
+      (m) => m.toLowerCase() === 'spelling',
+    );
     if (!isSpellingDisabled) {
-      issues.push(...checkSpelling(text, this.dictionary));
+      issues.push(...checkSpelling(text, RuleBasedAnalyzer.dictionary));
     }
 
     // Initialize NLP Engine for Syntax Checks
     let doc: any = null;
     try {
-      doc = NLPEngine.parse(text);
+      doc = parseNLP(text);
     } catch (e) {
       console.warn('NLP Engine parsing disabled or failed:', e);
     }
 
     // Run Modular CORE RULES (filtered by writing context and manual overrides)
-    const activeRules = options?.writingContext || options?.disabledModules
-      ? filterRulesByContext(CORE_RULES, options.writingContext || 'general', options.disabledModules)
-      : CORE_RULES;
+    const activeRules =
+      options?.writingContext || options?.disabledModules
+        ? filterRulesByContext(
+            CORE_RULES,
+            options.writingContext || 'general',
+            options.disabledModules,
+          )
+        : CORE_RULES;
 
     for (const rule of activeRules) {
       try {
@@ -78,11 +164,11 @@ export class RuleBasedAnalyzer {
     }
 
     // Custom Rules (Runtime injections)
-    issues.push(...this.checkCustomRules(text));
+    issues.push(...RuleBasedAnalyzer.checkCustomRules(text));
 
     // Deduplicate: when multiple rules flag the same text span,
     // keep the highest-priority match (grammar > spelling > clarity > style)
-    return this.deduplicateIssues(issues);
+    return RuleBasedAnalyzer.deduplicateIssues(issues);
   }
 
   /**
@@ -99,7 +185,7 @@ export class RuleBasedAnalyzer {
   private static deduplicateIssues(issues: Issue[]): Issue[] {
     const sorted = [...issues].sort((a, b) => {
       if (a.offset !== b.offset) return a.offset - b.offset;
-      return this.getPriority(b.type) - this.getPriority(a.type);
+      return RuleBasedAnalyzer.getPriority(b.type) - RuleBasedAnalyzer.getPriority(a.type);
     });
 
     const result: Issue[] = [];
@@ -108,9 +194,9 @@ export class RuleBasedAnalyzer {
     for (const issue of sorted) {
       const spanKey = `${issue.offset}:${issue.length}`;
 
-      if (this.handleExactSpanMatch(issue, spanKey, seenSpans, result)) continue;
-      if (this.isIdenticalSuggestionDuplicate(issue, result)) continue;
-      if (this.handleOverlappingSameText(issue, result)) continue;
+      if (RuleBasedAnalyzer.handleExactSpanMatch(issue, spanKey, seenSpans, result)) continue;
+      if (RuleBasedAnalyzer.isIdenticalSuggestionDuplicate(issue, result)) continue;
+      if (RuleBasedAnalyzer.handleOverlappingSameText(issue, result)) continue;
 
       result.push(issue);
       seenSpans.set(spanKey, issue);
@@ -119,11 +205,16 @@ export class RuleBasedAnalyzer {
     return result;
   }
 
-  private static handleExactSpanMatch(issue: Issue, spanKey: string, seenSpans: Map<string, Issue>, result: Issue[]): boolean {
+  private static handleExactSpanMatch(
+    issue: Issue,
+    spanKey: string,
+    seenSpans: Map<string, Issue>,
+    result: Issue[],
+  ): boolean {
     if (!seenSpans.has(spanKey)) return false;
-    
+
     const existing = seenSpans.get(spanKey)!;
-    if (this.getPriority(issue.type) > this.getPriority(existing.type)) {
+    if (RuleBasedAnalyzer.getPriority(issue.type) > RuleBasedAnalyzer.getPriority(existing.type)) {
       const idx = result.indexOf(existing);
       if (idx >= 0) result[idx] = issue;
       seenSpans.set(spanKey, issue);
@@ -134,7 +225,7 @@ export class RuleBasedAnalyzer {
   private static isIdenticalSuggestionDuplicate(issue: Issue, result: Issue[]): boolean {
     const origKey = issue.original.toLowerCase().trim();
     const dedupKey = `${origKey}→${(issue.suggestion || '').toLowerCase().trim()}`;
-    
+
     for (const seen of result) {
       const seenDedupKey = `${seen.original.toLowerCase().trim()}→${(seen.suggestion || '').toLowerCase().trim()}`;
       if (dedupKey === seenDedupKey && Math.abs(issue.offset - seen.offset) < 3) {
@@ -146,10 +237,13 @@ export class RuleBasedAnalyzer {
 
   private static handleOverlappingSameText(issue: Issue, result: Issue[]): boolean {
     const origKey = issue.original.toLowerCase().trim();
-    
+
     for (const seen of result) {
-      if (seen.original.toLowerCase().trim() === origKey && Math.abs(issue.offset - seen.offset) <= issue.original.length) {
-        if (this.getPriority(issue.type) > this.getPriority(seen.type)) {
+      if (
+        seen.original.toLowerCase().trim() === origKey &&
+        Math.abs(issue.offset - seen.offset) <= issue.original.length
+      ) {
+        if (RuleBasedAnalyzer.getPriority(issue.type) > RuleBasedAnalyzer.getPriority(seen.type)) {
           const idx = result.indexOf(seen);
           if (idx >= 0) result[idx] = issue;
         }
@@ -159,11 +253,9 @@ export class RuleBasedAnalyzer {
     return false;
   }
 
-
-
   private static checkCustomRules(text: string): Issue[] {
     const issues: Issue[] = [];
-    for (const rule of this.customRules) {
+    for (const rule of RuleBasedAnalyzer.customRules) {
       try {
         const regex = new RegExp(rule.pattern, 'gi');
         let match: RegExpExecArray | null;
@@ -184,29 +276,35 @@ export class RuleBasedAnalyzer {
     }
     return issues;
   }
-
-
 }
 
 export class LLMAnalyzer {
   static async analyze(
-    text: string, 
-    apiKey: string, 
+    text: string,
+    apiKey: string,
     model: string = 'gpt-3.5-turbo',
     provider: LLMProvider = 'openai',
     baseUrl?: string,
     context?: AnalysisContext,
-    ruleIssues?: Issue[]
+    ruleIssues?: Issue[],
   ): Promise<Issue[]> {
     try {
       let issues: any[] = [];
 
       // Use Groq SDK for Groq provider
       if (provider === 'groq') {
-        issues = await this.analyzeWithGroq(text, apiKey, model, context, ruleIssues);
+        issues = await LLMAnalyzer.analyzeWithGroq(text, apiKey, model, context, ruleIssues);
       } else {
         // Use OpenAI SDK for other providers (OpenAI, OpenRouter, Together, Ollama, Custom)
-        issues = await this.analyzeWithOpenAI(text, apiKey, model, provider, baseUrl, context, ruleIssues);
+        issues = await LLMAnalyzer.analyzeWithOpenAI(
+          text,
+          apiKey,
+          model,
+          provider,
+          baseUrl,
+          context,
+          ruleIssues,
+        );
       }
 
       return issues;
@@ -221,16 +319,20 @@ export class LLMAnalyzer {
     apiKey: string,
     model: string,
     context?: AnalysisContext,
-    ruleIssues?: Issue[]
+    ruleIssues?: Issue[],
   ): Promise<Issue[]> {
     const groq = new Groq({ apiKey });
 
-    const { systemPrompt, userPrompt } = this.createGrammarPrompts(text, context, ruleIssues);
+    const { systemPrompt, userPrompt } = LLMAnalyzer.createGrammarPrompts(
+      text,
+      context,
+      ruleIssues,
+    );
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
+        { role: 'user', content: userPrompt },
       ],
       model: model,
       response_format: { type: 'json_object' },
@@ -260,21 +362,25 @@ export class LLMAnalyzer {
     provider: LLMProvider,
     baseUrl?: string,
     context?: AnalysisContext,
-    ruleIssues?: Issue[]
+    ruleIssues?: Issue[],
   ): Promise<Issue[]> {
-    const providerBaseUrl = baseUrl || this.getProviderBaseUrl(provider);
-    
+    const providerBaseUrl = baseUrl || LLMAnalyzer.getProviderBaseUrl(provider);
+
     const openai = new OpenAI({
       apiKey: apiKey || 'ollama',
       baseURL: providerBaseUrl,
     });
 
-    const { systemPrompt, userPrompt } = this.createGrammarPrompts(text, context, ruleIssues);
+    const { systemPrompt, userPrompt } = LLMAnalyzer.createGrammarPrompts(
+      text,
+      context,
+      ruleIssues,
+    );
 
     const completion = await openai.chat.completions.create({
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
+        { role: 'user', content: userPrompt },
       ],
       model: model,
       response_format: { type: 'json_object' },
@@ -316,16 +422,20 @@ export class LLMAnalyzer {
   private static createGrammarPrompts(
     text: string,
     context?: AnalysisContext,
-    ruleIssues?: Issue[]
+    ruleIssues?: Issue[],
   ): { systemPrompt: string; userPrompt: string } {
     // Detect writing domain from context
-    const domain = this.detectDomain(context);
-    const domainInstruction = this.getDomainInstruction(domain);
+    const domain = LLMAnalyzer.detectDomain(context);
+    const domainInstruction = LLMAnalyzer.getDomainInstruction(domain);
 
     // Build the list of already-detected issues so LLM doesn't duplicate
-    const alreadyDetected = ruleIssues && ruleIssues.length > 0
-      ? `\n\nALREADY DETECTED (do NOT report these again):\n${ruleIssues.slice(0, 15).map(i => `- "${i.original}" → "${i.suggestion}"`).join('\n')}`
-      : '';
+    const alreadyDetected =
+      ruleIssues && ruleIssues.length > 0
+        ? `\n\nALREADY DETECTED (do NOT report these again):\n${ruleIssues
+            .slice(0, 15)
+            .map((i) => `- "${i.original}" → "${i.suggestion}"`)
+            .join('\n')}`
+        : '';
 
     const systemPrompt = `You are a professional copy editor and grammar expert. Your job is to find errors that automated rules might miss — contextual mistakes, awkward phrasing, unclear antecedents, and subtle grammar issues.
 
@@ -372,9 +482,17 @@ If there are no issues, return: {"issues": []}`;
     if (!context?.domain) return 'general';
     const d = context.domain.toLowerCase();
     if (d.includes('mail.google') || d.includes('outlook') || d.includes('yahoo')) return 'email';
-    if (d.includes('docs.google') || d.includes('notion') || d.includes('overleaf')) return 'document';
-    if (d.includes('github') || d.includes('stackoverflow') || d.includes('gitlab')) return 'technical';
-    if (d.includes('twitter') || d.includes('reddit') || d.includes('facebook') || d.includes('linkedin')) return 'social';
+    if (d.includes('docs.google') || d.includes('notion') || d.includes('overleaf'))
+      return 'document';
+    if (d.includes('github') || d.includes('stackoverflow') || d.includes('gitlab'))
+      return 'technical';
+    if (
+      d.includes('twitter') ||
+      d.includes('reddit') ||
+      d.includes('facebook') ||
+      d.includes('linkedin')
+    )
+      return 'social';
     if (d.includes('slack') || d.includes('discord') || d.includes('teams')) return 'chat';
     return 'general';
   }
@@ -384,10 +502,14 @@ If there are no issues, return: {"issues": []}`;
    */
   private static getDomainInstruction(domain: string): string {
     const instructions: Record<string, string> = {
-      email: '\nDOMAIN: Email. Focus on tone, professionalism, and brevity. Flag overly casual language in business emails. Ignore informal greetings.',
-      document: '\nDOMAIN: Document/Essay. Focus on formal grammar, passive voice overuse, paragraph transitions, and academic clarity.',
-      technical: '\nDOMAIN: Technical writing. Ignore code blocks and variable names. Check only prose. Be lenient with technical jargon.',
-      social: '\nDOMAIN: Social media. Only flag clear spelling/grammar errors. Do NOT flag informal language, slang, or conversational tone.',
+      email:
+        '\nDOMAIN: Email. Focus on tone, professionalism, and brevity. Flag overly casual language in business emails. Ignore informal greetings.',
+      document:
+        '\nDOMAIN: Document/Essay. Focus on formal grammar, passive voice overuse, paragraph transitions, and academic clarity.',
+      technical:
+        '\nDOMAIN: Technical writing. Ignore code blocks and variable names. Check only prose. Be lenient with technical jargon.',
+      social:
+        '\nDOMAIN: Social media. Only flag clear spelling/grammar errors. Do NOT flag informal language, slang, or conversational tone.',
       chat: '\nDOMAIN: Chat/messaging. Only flag obvious typos. Do NOT flag informal language or abbreviations.',
       general: '',
     };
@@ -396,20 +518,23 @@ If there are no issues, return: {"issues": []}`;
 
   static async getModels(provider: string, apiKey?: string, baseUrl?: string): Promise<string[]> {
     try {
-      const providerBaseUrl = baseUrl || this.getProviderBaseUrl(provider as LLMProvider);
-      
+      const providerBaseUrl = baseUrl || LLMAnalyzer.getProviderBaseUrl(provider as LLMProvider);
+
       // For Ollama, use 'ollama' as dummy key
       // For other providers, use provided key or empty string
-      const keyForRequest = provider === 'ollama' ? 'ollama' : (apiKey || '');
-      
+      const keyForRequest = provider === 'ollama' ? 'ollama' : apiKey || '';
+
       const openai = new OpenAI({
         apiKey: keyForRequest,
         baseURL: providerBaseUrl,
       });
       const models = await openai.models.list();
-      return models.data.map(m => m.id).slice(0, 50);
+      return models.data.map((m) => m.id).slice(0, 50);
     } catch (error) {
-      console.debug(`Failed to fetch models for ${provider}:`, error instanceof Error ? error.message : error);
+      console.debug(
+        `Failed to fetch models for ${provider}:`,
+        error instanceof Error ? error.message : error,
+      );
       // Return default models from config instead of failing
       return [];
     }
