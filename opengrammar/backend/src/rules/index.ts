@@ -25,6 +25,10 @@ import { spellingAdvancedRules } from './categories/spelling-advanced.js';
 import { styleRules } from './categories/style.js';
 import { styleToneRules } from './categories/style-tone.js';
 import { verbTenseRules } from './categories/verb-tense.js';
+import { subjectVerbAgreementRules } from './categories/subject-verb-agreement.js';
+import { gerundInfinitiveRules } from './categories/gerund-infinitive.js';
+import { prepositionExtendedRules } from './categories/prepositions-extended.js';
+import { articleRules } from './categories/articles.js';
 import { quantityAgreementRules } from './categories/quantity-agreement.js';
 import type { Rule } from './types.js';
 
@@ -63,12 +67,16 @@ export const CORE_RULES: Rule[] = [
   // Phase 2 — Structural Grammar
   ...sentenceStructureRules,
   ...verbTenseRules,
+  ...subjectVerbAgreementRules,
+  ...gerundInfinitiveRules,
   ...nounsPronouns,
   ...adjectivesAdverbsRules,
   ...prepositionRules,
+  ...prepositionExtendedRules,
   ...conjunctionRules,
   ...punctuationRules,
   ...quantityAgreementRules,
+  ...articleRules,
 
   // Phase 3 — Style, Confused Words, Formality, Idioms
   ...confusedWordsRules,

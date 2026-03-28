@@ -77,8 +77,10 @@ const MODULE_PREFIXES: Record<string, string[]> = {
     'weared',
     'winned',
     'GR_',
-    // Common errors — grammar group (greeting comma, split pronouns, s-v agreement)
+    // Common errors — grammar group
     'CE_GRT_', 'CE_REF_', 'CE_CPD_', 'CE_ART_', 'CE_CON_', 'QA_',
+    // New grammar modules
+    'SVA_', 'MV_', 'GI_', 'PRX_', 'ART_',
   ],
   // Spelling
   spelling: ['SP_', 'CW_'],
