@@ -46,6 +46,7 @@ export interface AnalyzeRequest {
   ignoredIssues?: string[];
   dictionary?: string[];
   context?: AnalysisContext;
+  disabledModules?: string[];
 }
 
 export interface AnalysisContext {

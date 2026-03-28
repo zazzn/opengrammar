@@ -627,3 +627,35 @@ describe('Context Detection', () => {
     expect(detectWritingContext(undefined)).toBe('general');
   });
 });
+
+// ══════════════════════════════════════════════════
+//  Manual Rule Overrides (disabledModules)
+// ══════════════════════════════════════════════════
+describe('Manual Rule Filtering (disabledModules)', () => {
+  const testText = 'Gonna go btw. He buyed a car. The chairman spoke. I think that this is true.';
+
+  test('disabling style rules ignores "gonna" and "btw"', () => {
+    // Usually 'general' flags everything. If we disable 'style', only grammar and spelling run.
+    const issues = RuleBasedAnalyzer.analyze(testText, {
+      writingContext: 'general',
+      disabledModules: ['style'], // 'style' covers style, formality, etc.
+    });
+
+    // Should still catch 'buyed' (grammar)
+    expect(issues.some(i => i.original.toLowerCase() === 'buyed')).toBe(true);
+    // Should NOT catch 'gonna' (style/formality)
+    expect(issues.some(i => i.original.toLowerCase() === 'gonna')).toBe(false);
+  });
+
+  test('disabling grammar ignores grammar-specific "buyed"', () => {
+    const issues = RuleBasedAnalyzer.analyze(testText, {
+      writingContext: 'general',
+      disabledModules: ['grammar'],
+    });
+
+    // Should NOT catch 'buyed' as a grammar issue (though spellchecker still flags it)
+    expect(issues.some(i => i.original.toLowerCase() === 'buyed' && i.type === 'grammar')).toBe(false);
+    // Might still catch 'gonna' (style)
+    expect(issues.some(i => i.original.toLowerCase() === 'gonna')).toBe(true);
+  });
+});

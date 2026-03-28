@@ -220,7 +220,8 @@ async function handleGrammarCheck(
       dictionary,
       backendUrl,
       provider,
-      customBaseUrl
+      customBaseUrl,
+      disabledModules
     } = await chrome.storage.sync.get([
       'apiKey', 
       'model', 
@@ -229,7 +230,8 @@ async function handleGrammarCheck(
       'dictionary',
       'backendUrl',
       'provider',
-      'customBaseUrl'
+      'customBaseUrl',
+      'disabledModules'
     ]);
 
     if (enabled === false) {
@@ -251,6 +253,7 @@ async function handleGrammarCheck(
       ignoredIssues: ignoredIssues || [],
       dictionary: dictionary || [],
       context,
+      disabledModules: disabledModules || [],
     };
 
     const response = await fetch(`${baseUrl}/analyze`, {

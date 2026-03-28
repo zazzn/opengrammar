@@ -132,20 +132,51 @@ function getRuleModule(ruleId: string): string {
 }
 
 /**
- * Filter rules based on writing context.
- * Returns only the rules that are relevant for the given context.
+ * Filter rules based on writing context and user-defined disabled modules.
+ * Returns only the rules that are relevant for the given context and not manually disabled.
  */
-export function filterRulesByContext(rules: Rule[], context: WritingContext): Rule[] {
-  if (context === 'general' || context === 'document') {
-    return rules; // No filtering — all rules active
+export function filterRulesByContext(rules: Rule[], context: WritingContext, disabledModules?: string[]): Rule[] {
+  // 1. First, apply manual user overrides (stripping out entire categories if disabled)
+  // We map the UI categories (Grammar, Spelling, Punctuation, Style, Clarity) 
+  // to the internal MODULE_PREFIXES groups.
+  const disabledPrefixGroups = new Set<string>();
+  
+  if (disabledModules && disabledModules.length > 0) {
+    const dLower = disabledModules.map(d => d.toLowerCase());
+    if (dLower.includes('grammar')) {
+      ['grammar', 'grammar-advanced', 'sentence-structure', 'verb-tense', 'nouns-pronouns', 'adjectives-adverbs', 'prepositions', 'conjunctions'].forEach(m => disabledPrefixGroups.add(m));
+    }
+    if (dLower.includes('spelling')) {
+      ['spelling', 'spelling-advanced', 'confused-words'].forEach(m => disabledPrefixGroups.add(m));
+    }
+    if (dLower.includes('punctuation')) {
+      ['punctuation', 'capitalization'].forEach(m => disabledPrefixGroups.add(m));
+    }
+    if (dLower.includes('style')) {
+      ['style', 'style-tone', 'formality', 'academic-writing', 'business-writing', 'inclusive-language', 'formatting-idioms'].forEach(m => disabledPrefixGroups.add(m));
+    }
+    if (dLower.includes('clarity')) {
+      ['clarity', 'readability'].forEach(m => disabledPrefixGroups.add(m));
+    }
   }
 
-  const enabledModules = CONTEXT_MODULES[context];
-  if (!enabledModules) return rules;
+  // 2. Map standard context
+  const enabledContextModules = CONTEXT_MODULES[context];
 
   return rules.filter(rule => {
     const module = getRuleModule(rule.id);
-    return module === 'general' || enabledModules.has(module);
+    
+    // Manual override check: if the user disabled this entire module group, strip it out.
+    if (disabledPrefixGroups.has(module)) {
+      return false;
+    }
+
+    // Context filter check
+    if (context === 'general' || context === 'document') {
+      return true; // No context filtering
+    }
+
+    return module === 'general' || (enabledContextModules && enabledContextModules.has(module));
   });
 }
 

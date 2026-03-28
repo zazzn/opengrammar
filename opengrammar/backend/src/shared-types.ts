@@ -31,6 +31,7 @@ export interface AnalyzeRequest {
   customRules?: CustomRule[];
   dictionary?: string[];
   context?: AnalysisContext;
+  disabledModules?: string[];
 }
 
 export interface CustomRule {
