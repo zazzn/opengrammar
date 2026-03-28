@@ -1,0 +1,44 @@
+name: CI & Code Review
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  review-and-test:
+    name: Code Quality & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: |
+          cd backend && bun install
+          cd ../extension && npm install
+
+      - name: 🔍 Biome Linter & Formatter Check
+        # Uses Biome to review your code (fast Rust-based alternative to ESLint/Prettier)
+        # It will output annotations directly into the PR files tab
+        run: npx @biomejs/biome ci ./backend/src ./backend/tests ./extension/src
+
+      - name: ⚙️ TypeScript Type Check (Backend)
+        run: cd backend && npx tsc --noEmit
+
+      - name: ⚙️ TypeScript Type Check (Extension)
+        run: cd extension && npx tsc --noEmit
+
+      - name: 🧪 Run Backend Tests
+        run: cd backend && bun test
