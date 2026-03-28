@@ -1,24 +1,58 @@
 {
-  "name": "backend",
-  "version": "1.0.0",
-  "description": "OpenGrammar backend API",
-  "main": "src/index.ts",
+  "name": "opengrammar-server",
+  "version": "2.0.0",
+  "description": "Privacy-first, open-source grammar intelligence server — run it on any device",
+  "homepage": "https://opengrammer.eu.cc",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/swadhinbiswas/opengrammar.git"
+  },
+  "bugs": {
+    "url": "https://github.com/swadhinbiswas/opengrammar/issues"
+  },
+  "license": "MIT",
+  "author": "Swadhin Biswas",
+  "keywords": [
+    "grammar",
+    "grammar-checker",
+    "nlp",
+    "spell-check",
+    "writing",
+    "hono",
+    "edge",
+    "api",
+    "server",
+    "opengrammar"
+  ],
   "type": "module",
+  "main": "dist/server.js",
+  "bin": {
+    "opengrammar-server": "bin/opengrammar-server.js",
+    "opengrammar": "bin/opengrammar-server.js"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "src/",
+    "server.ts",
+    "server-node.ts",
+    "tsconfig.json",
+    "README.npm.md"
+  ],
   "scripts": {
     "dev": "bun --hot server-bun.ts",
     "start": "bun server-bun.ts",
     "dev:node": "tsx watch server-node.ts",
     "start:node": "tsx server-node.ts",
+    "build": "bun build server.ts --outdir dist --target node --format esm",
+    "build:check": "tsc --noEmit",
+    "prepublishOnly": "npm run build:check && npm run build",
     "deploy": "wrangler deploy --env production",
     "deploy:vercel": "vercel --prod",
     "deploy:render": "git push render main",
     "deploy:railway": "railway up",
-    "build": "tsc",
     "test": "bun test"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@hono/node-server": "^1.19.9",
     "@hono/zod-validator": "^0.7.6",
@@ -39,5 +73,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

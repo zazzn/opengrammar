@@ -1,0 +1,25 @@
+# Dev/deployment-only files — not needed in the npm package
+.wrangler/
+.vercel/
+.netlify/
+.dev.vars
+.dev.vars.example
+.env
+.env.*
+wrangler.toml
+vercel.json
+netlify.toml
+netlify/
+api/
+render.yaml
+Dockerfile
+*.md
+!README.npm.md
+bench.ts
+test-*.ts
+test-*.js
+tests/
+node_modules/
+bun.lock
+package-lock.json
+tsconfig.json
