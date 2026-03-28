@@ -279,39 +279,44 @@ function showAssistantBubble(element: HTMLElement, issues: Issue[]) {
   const bubble = document.createElement('button');
   bubble.className = 'opengrammar-assistant';
   bubble.type = 'button';
+  // Grammarly-style: green circle with issue count badge
   bubble.style.cssText = `
     position: fixed;
-    right: 24px;
-    bottom: 24px;
+    right: 20px;
+    bottom: 20px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     padding: 0;
     border-radius: 999px;
-    background: rgba(17, 24, 39, 0.96);
-    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.26);
+    background: #15803d;
+    box-shadow: 0 4px 16px rgba(21,128,61,0.45);
     z-index: 2147483646;
     cursor: pointer;
     pointer-events: auto;
-    backdrop-filter: blur(10px);
-    border: none;
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: 3px solid white;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    outline: none;
   `;
 
   bubble.innerHTML = `
     <span style="position:relative;display:flex;align-items:center;justify-content:center;">
-      <span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:999px;background:linear-gradient(135deg,#6d5efc,#1d4ed8);font-size:15px;font-weight:700;color:white;box-shadow:inset 0 1px 0 rgba(255,255,255,0.2);">G</span>
-      <span style="position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ef4444;color:white;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(239,68,68,0.35);">${issues.length}</span>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14l-4-4 1.41-1.41L11 13.17l6.59-6.59L19 8l-8 8z" fill="white"/>
+      </svg>
+      <span style="position:absolute;top:-6px;right:-8px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:#ef4444;color:white;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:2px solid white;font-family:-apple-system,sans-serif;">${issues.length}</span>
     </span>
   `;
 
   bubble.addEventListener('mouseenter', () => {
-    bubble.style.transform = 'scale(1.1) rotate(5deg)';
+    bubble.style.transform = 'scale(1.08)';
+    bubble.style.boxShadow = '0 6px 20px rgba(21,128,61,0.55)';
   });
   bubble.addEventListener('mouseleave', () => {
-    bubble.style.transform = 'scale(1) rotate(0deg)';
+    bubble.style.transform = 'scale(1)';
+    bubble.style.boxShadow = '0 4px 16px rgba(21,128,61,0.45)';
   });
 
   bubble.addEventListener('mousedown', (e) => {
@@ -325,7 +330,6 @@ function showAssistantBubble(element: HTMLElement, issues: Issue[]) {
       showIssuePanel(bubble, issues, element, 0, () => undefined);
       return;
     }
-
     const firstHighlight = document.querySelector('.opengrammar-highlight') as HTMLElement | null;
     if (firstHighlight) {
       showTooltip(firstHighlight, issues[0]!, element);
@@ -480,32 +484,28 @@ function escapeHtmlPreservingWhitespace(text: string): string {
 function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
   uiActive = true;
 
-  // Remove existing tooltip
   if (currentTooltip) {
     currentTooltip.remove();
   }
 
   const anchorRect = anchor.getBoundingClientRect();
-
-  // Create tooltip
   const tooltip = document.createElement('div');
   tooltip.className = 'opengrammar-tooltip';
 
-  // Calculate position - show below the highlight, or above if near bottom
   let top = anchorRect.bottom + window.scrollY + 10;
-  if (top + 200 > window.innerHeight + window.scrollY) {
-    top = anchorRect.top + window.scrollY - 210;
+  if (top + 260 > window.innerHeight + window.scrollY) {
+    top = anchorRect.top + window.scrollY - 270;
   }
 
   tooltip.style.cssText = `
     position: absolute;
-    left: ${Math.max(10, Math.min(anchorRect.left + window.scrollX - 150, window.innerWidth - 320))}px;
+    left: ${Math.max(10, Math.min(anchorRect.left + window.scrollX - 10, window.innerWidth - 340))}px;
     top: ${top}px;
-    width: 300px;
+    width: 320px;
     background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    border: 1px solid #e8e8e8;
+    border-radius: 10px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
     z-index: 2147483647;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px;
@@ -514,76 +514,79 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
 
   const typeColor = getColor(issue.type);
   const typeLabel = getTypeLabel(issue.type);
-  const typeBg = getTypeBg(issue.type);
-  const confidence =
-    typeof issue.confidence === 'number'
-      ? `${Math.round(issue.confidence * 100)}% confidence`
-      : 'Suggested';
-  const sourceLabel = issue.source ? issue.source.toUpperCase() : 'RULE';
+  const getCategoryLabel = (t: string) => {
+    switch(t) {
+      case 'grammar': return 'Correctness';
+      case 'spelling': return 'Correctness';
+      case 'style': return 'Clarity';
+      case 'clarity': return 'Clarity';
+      default: return 'Suggestion';
+    }
+  };
 
   tooltip.innerHTML = `
-    <div style="background: ${typeBg}; padding: 14px 16px; border-bottom: 1px solid #e5e7eb;">
-      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+    <div style="padding:14px 16px 10px; border-bottom:1px solid #f0f0f0;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
         <span style="
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: ${typeColor};
-          color: white;
-          font-size: 12px;
-          font-weight: bold;
+          display:inline-flex;align-items:center;justify-content:center;
+          width:22px;height:22px;border-radius:50%;
+          background:${typeColor};color:white;font-size:12px;font-weight:700;
+          flex-shrink:0;
         ">!</span>
-        <span style="font-weight: 600; color: #1f2937; font-size: 15px;">${typeLabel}</span>
+        <span style="font-weight:700;color:#1c1c1e;font-size:15px;">${typeLabel}</span>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-        <span style="display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:white;color:#374151;font-size:11px;font-weight:600;">${confidence}</span>
-        <span style="display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,0.7);color:#4b5563;font-size:11px;font-weight:600;">${sourceLabel}</span>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${typeColor};display:inline-block;flex-shrink:0;"></span>
+        <span style="font-size:12px;color:#8e8e93;">${typeLabel} · ${getCategoryLabel(issue.type)}</span>
       </div>
-      <div style="color: #4b5563; line-height: 1.5; font-size: 14px;">${escapeHtml(issue.reason)}</div>
+      <p style="color:#3c3c43;font-size:13px;line-height:1.5;margin:0;">${escapeHtml(issue.reason)}</p>
     </div>
-    <div style="padding: 14px 16px; background: #f9fafb;">
-      <div style="margin-bottom: 12px;">
-        <div style="font-size: 12px; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Original</div>
-        <div style="color: #dc2626; text-decoration: line-through; background: #fef2f2; padding: 8px 10px; border-radius: 6px; font-family: inherit;">${escapeHtml(issue.original)}</div>
-      </div>
+    <div style="padding:12px 16px;background:#fafafa;display:flex;flex-direction:column;gap:8px;">
       <div>
-        <div style="font-size: 12px; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Suggestion</div>
-        <div style="color: #059669; background: #f0fdf4; padding: 8px 10px; border-radius: 6px; font-weight: 600; font-family: inherit; border-left: 3px solid #059669;">${escapeHtml(issue.suggestion)}</div>
+        <div style="font-size:10px;color:#aeaeb2;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;">ORIGINAL</div>
+        <div style="background:#fff2f2;border-left:3px solid #ef4444;border-radius:0 5px 5px 0;padding:7px 10px;color:#dc2626;text-decoration:line-through;font-size:14px;font-family:inherit;word-break:break-word;">${escapeHtml(issue.original)}</div>
+      </div>
+      <div style="text-align:center;color:#aeaeb2;font-size:13px;line-height:1;">&#9654;</div>
+      <div>
+        <div style="font-size:10px;color:#aeaeb2;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;">SUGGESTION</div>
+        <div class="og-suggestion-click" style="background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 5px 5px 0;padding:7px 10px;color:#15803d;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer;word-break:break-word;">${escapeHtml(issue.suggestion)}</div>
       </div>
     </div>
-    <div style="display: flex; border-top: 1px solid #e5e7eb; background: white;">
+    <div style="display:flex;border-top:1px solid #f0f0f0;">
       <button class="og-apply-btn" style="
-        flex: 1;
-        padding: 12px;
-        background: #2563eb;
-        color: white;
-        border: none;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-        transition: background 0.15s;
-        border-right: 1px solid #e5e7eb;
-      ">
-        Apply
-      </button>
+        flex:1;padding:12px 16px;
+        background:#1a56db;color:white;
+        border:none;cursor:pointer;
+        font-size:13px;font-weight:600;
+        border-radius:0 0 0 10px;
+        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+        letter-spacing:0.1px;
+        transition:background 0.12s;
+        border-right:1px solid #f0f0f0;
+      ">&#10003; Apply Fix</button>
       <button class="og-ignore-btn" style="
-        flex: 1;
-        padding: 12px;
-        background: white;
-        color: #6b7280;
-        border: none;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-        transition: background 0.15s;
-      ">
-        Ignore
-      </button>
+        flex:1;padding:12px 16px;
+        background:white;color:#6b7280;
+        border:none;cursor:pointer;
+        font-size:13px;font-weight:500;
+        border-radius:0 0 10px 0;
+        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+        transition:background 0.12s;
+      ">Dismiss</button>
     </div>
   `;
+
+  // Clicking the suggestion box also applies fix
+  const suggClickEl = tooltip.querySelector('.og-suggestion-click') as HTMLElement | null;
+  if (suggClickEl) {
+    suggClickEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      applySuggestion(element, issue, anchor);
+      hideTooltip();
+    });
+    suggClickEl.addEventListener('mouseenter', () => { suggClickEl.style.background = '#dcfce7'; });
+    suggClickEl.addEventListener('mouseleave', () => { suggClickEl.style.background = '#f0fdf4'; });
+  }
 
   // Add event listeners
   const applyBtn = tooltip.querySelector('.og-apply-btn') as HTMLButtonElement;
@@ -882,13 +885,13 @@ function showIssuePanel(
 
   panel.style.cssText = `
     position: fixed;
-    left: ${Math.max(10, Math.min(anchorRect.left - 130, window.innerWidth - 320))}px;
+    left: ${Math.max(10, Math.min(anchorRect.left - 130, window.innerWidth - 340))}px;
     top: ${top}px;
-    width: 300px;
+    width: 320px;
     background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e8e8e8;
+    border-radius: 10px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
     z-index: 2147483647;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px;
@@ -897,66 +900,46 @@ function showIssuePanel(
 
   const typeColor = getColor(issue.type);
   const typeLabel = getTypeLabel(issue.type);
-  const typeBg = getTypeBg(issue.type);
   const hasMultiple = issues.length > 1;
+  const getCatLabel = (t: string) => t === 'grammar' || t === 'spelling' ? 'Correctness' : 'Clarity';
 
   panel.innerHTML = `
     ${
       hasMultiple
         ? `
-    <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f3f4f6; border-bottom: 1px solid #e5e7eb;">
-      <button class="og-prev-btn" style="
-        padding: 4px 10px; background: white; border: 1px solid #d1d5db; border-radius: 6px;
-        cursor: ${currentIndex === 0 ? 'default' : 'pointer'}; font-size: 12px; color: #374151;
-        opacity: ${currentIndex === 0 ? '0.4' : '1'};
-      ">&#8592;</button>
-      <span style="font-size: 12px; color: #6b7280; font-weight: 600;">${currentIndex + 1} of ${issues.length} issues</span>
-      <button class="og-next-btn" style="
-        padding: 4px 10px; background: white; border: 1px solid #d1d5db; border-radius: 6px;
-        cursor: ${currentIndex >= issues.length - 1 ? 'default' : 'pointer'}; font-size: 12px; color: #374151;
-        opacity: ${currentIndex >= issues.length - 1 ? '0.4' : '1'};
-      ">&#8594;</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid #f0f0f0;background:#fafafa;">
+      <span style="font-size:13px;font-weight:600;color:#1c1c1e;">Review suggestion <span style="display:inline-flex;align-items:center;justify-content:center;background:#e5e5ea;color:#3c3c43;border-radius:999px;min-width:20px;height:20px;font-size:11px;padding:0 5px;">${issues.length}</span></span>
+      <div style="display:flex;gap:4px;">
+        <button class="og-prev-btn" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:white;border:1px solid #e5e5ea;border-radius:6px;cursor:${currentIndex === 0 ? 'default' : 'pointer'};opacity:${currentIndex === 0 ? '0.35' : '1'};font-size:14px;color:#3c3c43;">&#8249;</button>
+        <button class="og-next-btn" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:white;border:1px solid #e5e5ea;border-radius:6px;cursor:${currentIndex >= issues.length - 1 ? 'default' : 'pointer'};opacity:${currentIndex >= issues.length - 1 ? '0.35' : '1'};font-size:14px;color:#3c3c43;">&#8250;</button>
+      </div>
     </div>
     `
-        : ''
+        : `<div style="padding:12px 14px 0;">
+      <span style="font-size:13px;font-weight:600;color:#1c1c1e;">Review suggestion <span style="display:inline-flex;align-items:center;justify-content:center;background:#e5e5ea;color:#3c3c43;border-radius:999px;min-width:20px;height:20px;font-size:11px;padding:0 5px;">1</span></span>
+    </div>`
     }
-    <div style="background: ${typeBg}; padding: 14px 16px; border-bottom: 1px solid #e5e7eb;">
-      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-        <span style="
-          display: inline-flex; align-items: center; justify-content: center;
-          width: 20px; height: 20px; border-radius: 50%;
-          background: ${typeColor}; color: white; font-size: 12px; font-weight: bold;
-        ">!</span>
-        <span style="font-weight: 600; color: #1f2937; font-size: 15px;">${typeLabel}</span>
+    <div style="padding:10px 14px 8px;border-bottom:1px solid #f0f0f0;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${typeColor};display:inline-block;flex-shrink:0;"></span>
+        <span style="font-size:12px;color:#8e8e93;">${typeLabel} · ${getCatLabel(issue.type)}</span>
       </div>
-      <div style="color: #4b5563; line-height: 1.5; font-size: 14px;">${escapeHtml(issue.reason)}</div>
+      <p style="margin:0;font-size:13px;color:#3c3c43;line-height:1.5;">${escapeHtml(issue.reason)}</p>
     </div>
-    <div style="padding: 14px 16px; background: #f9fafb;">
-      <div style="margin-bottom: 12px;">
-        <div style="font-size: 11px; color: #9ca3af; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Original</div>
-        <div style="color: #dc2626; text-decoration: line-through; background: #fef2f2; padding: 8px 10px; border-radius: 6px; font-family: inherit;">${escapeHtml(issue.original)}</div>
-      </div>
+    <div style="padding:12px 14px;background:#fafafa;display:flex;flex-direction:column;gap:8px;">
       <div>
-        <div style="font-size: 11px; color: #9ca3af; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Suggestion</div>
-        <div class="og-suggestion-click" style="
-          color: #059669; background: #f0fdf4; padding: 8px 10px; border-radius: 6px;
-          font-weight: 600; font-family: inherit; border-left: 3px solid #059669;
-          cursor: pointer; transition: background 0.15s;
-        ">${escapeHtml(issue.suggestion)}</div>
+        <div style="font-size:10px;color:#aeaeb2;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;">ORIGINAL</div>
+        <div style="background:#fff2f2;border-left:3px solid #ef4444;border-radius:0 5px 5px 0;padding:7px 10px;color:#dc2626;text-decoration:line-through;font-size:14px;word-break:break-word;">${escapeHtml(issue.original)}</div>
+      </div>
+      <div style="text-align:center;color:#aeaeb2;font-size:13px;">&#9654;</div>
+      <div>
+        <div style="font-size:10px;color:#aeaeb2;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;">SUGGESTION</div>
+        <div class="og-suggestion-click" style="background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 5px 5px 0;padding:7px 10px;color:#15803d;font-weight:600;font-size:14px;cursor:pointer;word-break:break-word;">${escapeHtml(issue.suggestion)}</div>
       </div>
     </div>
-    <div style="display: flex; border-top: 1px solid #e5e7eb; background: white;">
-      <button class="og-apply-btn" style="
-        flex: 1; padding: 12px; background: #2563eb; color: white;
-        border: none; cursor: pointer; font-size: 14px; font-weight: 600;
-        transition: background 0.15s; border-right: 1px solid #e5e7eb;
-        border-radius: 0 0 0 12px;
-      ">&#10003; Apply Fix</button>
-      <button class="og-ignore-btn" style="
-        flex: 1; padding: 12px; background: white; color: #6b7280;
-        border: none; cursor: pointer; font-size: 14px; font-weight: 500;
-        transition: background 0.15s; border-radius: 0 0 12px 0;
-      ">Dismiss</button>
+    <div style="display:flex;border-top:1px solid #f0f0f0;">
+      <button class="og-apply-btn" style="flex:1;padding:12px 16px;background:#1a56db;color:white;border:none;cursor:pointer;font-size:13px;font-weight:600;border-radius:0 0 0 10px;font-family:-apple-system,sans-serif;border-right:1px solid #f0f0f0;transition:background 0.12s;">&#10003; Apply Fix</button>
+      <button class="og-ignore-btn" style="flex:1;padding:12px 16px;background:white;color:#6b7280;border:none;cursor:pointer;font-size:13px;font-weight:500;border-radius:0 0 10px 0;font-family:-apple-system,sans-serif;transition:background 0.12s;">Dismiss</button>
     </div>
   `;
 
