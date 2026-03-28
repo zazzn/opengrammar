@@ -442,6 +442,20 @@ const checkGrammar = async (element: HTMLElement) => {
       void syncActiveContext(text, response.issues);
       highlightIssues(element, response.issues);
 
+      // Save issue stats for popup score ring
+      const statsPerType = { grammar: 0, spelling: 0, clarity: 0, style: 0 };
+      for (const issue of response.issues) {
+        if (issue.type in statsPerType) statsPerType[issue.type as keyof typeof statsPerType]++;
+      }
+      void chrome.storage.local.set({
+        lastIssueStats: {
+          grammar: statsPerType.grammar + statsPerType.spelling,
+          style: statsPerType.style,
+          clarity: statsPerType.clarity,
+          total: response.issues.length,
+        },
+      });
+
       // D1: Update badge count
       void chrome.runtime.sendMessage({
         type: 'UPDATE_BADGE_COUNT',
