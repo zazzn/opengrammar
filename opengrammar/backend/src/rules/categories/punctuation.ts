@@ -2,6 +2,36 @@ import type { Issue } from '../../shared-types.js';
 import { createRegexRule, type Rule } from '../types.js';
 
 export const punctuationRules: Rule[] = [
+  // ═══ Missing Question Mark (PU_QMK) ═══
+  createRegexRule({
+    id: 'PU_QMK_how_are_you',
+    category: 'grammar',
+    pattern: /\bhow\s+are\s+you\s+doing\s*$/i,
+    suggestion: 'How are you doing?',
+    reason: 'Questions should end with a question mark.',
+  }),
+  createRegexRule({
+    id: 'PU_QMK_how_do_you',
+    category: 'grammar',
+    pattern: /\bhow\s+do\s+you\b[^?]*$/i,
+    suggestion: (m) => m[0].trim() + '?',
+    reason: 'This appears to be a question. Add a question mark at the end.',
+  }),
+  createRegexRule({
+    id: 'PU_QMK_direct_question',
+    category: 'grammar',
+    pattern: /^(What|Where|When|Why|Who|Whom|Which|Whose|How)\s+\w[^?!.]*[a-zA-Z0-9]\s*$/,
+    suggestion: (m) => m[0].trim() + '?',
+    reason: 'Questions starting with a question word should end with a question mark.',
+  }),
+  createRegexRule({
+    id: 'PU_QMK_are_you',
+    category: 'grammar',
+    pattern: /^(Are|Is|Was|Were|Do|Does|Did|Have|Has|Had|Can|Could|Will|Would|Should|Shall|May|Might|Must)\s+\w[^?!.]*[a-zA-Z0-9]\s*$/,
+    suggestion: (m) => m[0].trim() + '?',
+    reason: 'Yes/no questions should end with a question mark.',
+  }),
+
   // ═══ Hyphenation (PU_HYP) ═══
   createRegexRule({
     id: 'PU_HYP_well_known',

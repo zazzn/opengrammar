@@ -77,6 +77,8 @@ const MODULE_PREFIXES: Record<string, string[]> = {
     'weared',
     'winned',
     'GR_',
+    // Common errors — grammar group (greeting comma, split pronouns, s-v agreement)
+    'CE_GRT_', 'CE_REF_', 'CE_CPD_', 'CE_ART_', 'CE_CON_', 'QA_',
   ],
   // Spelling
   spelling: ['SP_', 'CW_'],
@@ -123,13 +125,15 @@ const MODULE_PREFIXES: Record<string, string[]> = {
     'hadnt',
     'its_vs_',
     'HYPH_',
+    'CE_COM_',
+    'PU_QMK_',
   ],
   // Confused words
   'confused-words': ['CW_'],
   // Style & tone
   'style-tone': ['ST_'],
-  // Formality
-  formality: ['FR_'],
+  // Formality (informal speech — suppressed in chat; CE_PHR_ = gonna/wanna/etc.)
+  formality: ['FR_', 'CE_PHR_'],
   // Formatting & idioms
   'formatting-idioms': ['IE_', 'NF_'],
   // Capitalization
