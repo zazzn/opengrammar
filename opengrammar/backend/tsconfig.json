@@ -17,5 +17,9 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "server-deno.ts"
+  ]
 }

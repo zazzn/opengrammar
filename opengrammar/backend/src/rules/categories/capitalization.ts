@@ -1,5 +1,5 @@
-import { type Rule, createRegexRule } from '../types.js';
 import type { Issue } from '../../shared-types.js';
+import { createRegexRule, type Rule } from '../types.js';
 
 export const capitalizationRules: Rule[] = [
   // Standalone I
@@ -27,25 +27,27 @@ export const capitalizationRules: Rule[] = [
         });
       }
       return issues;
-    }
+    },
   },
 
   // Days and Months
   createRegexRule({
     id: 'cap-date',
     category: 'grammar',
-    pattern: /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december)\b/g,
+    pattern:
+      /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december)\b/g,
     suggestion: (m) => m[1].charAt(0).toUpperCase() + m[1].slice(1),
-    reason: 'Days of the week and months should be capitalized.'
+    reason: 'Days of the week and months should be capitalized.',
   }),
 
   // Common Proper Nouns
   createRegexRule({
     id: 'cap-proper-noun',
     category: 'grammar',
-    pattern: /\b(swadhin|dhaka|john|mary|london|paris|america|india|bangladesh|google|microsoft|apple|facebook)\b/g,
+    pattern:
+      /\b(swadhin|dhaka|john|mary|london|paris|america|india|bangladesh|google|microsoft|apple|facebook)\b/g,
     suggestion: (m) => m[1].charAt(0).toUpperCase() + m[1].slice(1),
-    reason: 'Proper nouns, names, and places should be capitalized.'
+    reason: 'Proper nouns, names, and places should be capitalized.',
   }),
 
   // First letter of sentences
@@ -72,6 +74,6 @@ export const capitalizationRules: Rule[] = [
         });
       }
       return issues;
-    }
-  }
+    },
+  },
 ];

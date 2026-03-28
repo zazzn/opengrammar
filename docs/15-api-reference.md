@@ -155,12 +155,7 @@ curl -X POST http://localhost:8787/analyze \
     "provider": "groq",
     "model": "llama-3.1-70b-versatile",
     "apiKey": "gsk_xxx",
-    "options": {
-      "checkGrammar": true,
-      "checkSpelling": true,
-      "checkStyle": true,
-      "checkClarity": true
-    }
+    "disabledModules": ["style", "clarity"]
   }'
 ```
 
@@ -171,7 +166,8 @@ curl -X POST http://localhost:8787/analyze \
 | `provider` | string | No | AI provider (default: rule-based only) |
 | `model` | string | No | Model to use |
 | `apiKey` | string | No | API key (if not set in env) |
-| `options` | object | No | Analysis options |
+| `disabledModules` | array | No | List of rule categories to completely disable (e.g. `["grammar", "spelling", "punctuation", "style", "clarity"]`) |
+| `dictionary` | array | No | List of words to ignore during spellchecking |
 
 **Response (200 OK):**
 ```json

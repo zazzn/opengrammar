@@ -464,6 +464,27 @@ My Custom Dictionary (127 words)
 
 ---
 
+## ⚙️ Rule Configuration (Preferences)
+
+### Overview
+
+Sometimes you want OpenGrammar to focus only on typos, or maybe you want to disable strict Style & Tone rules entirely. OpenGrammar lets you disable specific rule categories globally.
+
+### Managing Rule Categories
+
+1. Right-click the extension icon → **Options**
+2. Scroll to **Writing Preferences**
+3. Toggle the categories you want active:
+   - **Grammar:** Subject-verb agreement, irregular verbs, pronouns
+   - **Spelling:** Typos, misspelled words, confused words
+   - **Punctuation:** Missing commas, incorrect hyphens
+   - **Style & Tone:** Formality, academic writing, business etiquette
+   - **Clarity:** Wordiness, redundant phrasing, readability
+
+If you disable "Style & Tone," OpenGrammar will instantly stop checking for passive voice or casual phrasing (like "gonna" or "btw") everywhere on the internet.
+
+---
+
 ## 🌐 Site-Specific Settings
 
 ### Overview

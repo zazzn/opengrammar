@@ -30,9 +30,9 @@ function levenshtein(a: string, b: string): number {
     for (let j = 1; j <= lb; j++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
       matrix[i]![j] = Math.min(
-        matrix[i - 1]![j]! + 1,      // deletion
-        matrix[i]![j - 1]! + 1,      // insertion
-        matrix[i - 1]![j - 1]! + cost // substitution
+        matrix[i - 1]![j]! + 1, // deletion
+        matrix[i]![j - 1]! + 1, // insertion
+        matrix[i - 1]![j - 1]! + cost, // substitution
       );
 
       // Transposition (Damerau extension)
@@ -51,11 +51,23 @@ function levenshtein(a: string, b: string): number {
 function soundex(word: string): string {
   const w = word.toUpperCase();
   const codes: Record<string, string> = {
-    B: '1', F: '1', P: '1', V: '1',
-    C: '2', G: '2', J: '2', K: '2', Q: '2', S: '2', X: '2', Z: '2',
-    D: '3', T: '3',
+    B: '1',
+    F: '1',
+    P: '1',
+    V: '1',
+    C: '2',
+    G: '2',
+    J: '2',
+    K: '2',
+    Q: '2',
+    S: '2',
+    X: '2',
+    Z: '2',
+    D: '3',
+    T: '3',
     L: '4',
-    M: '5', N: '5',
+    M: '5',
+    N: '5',
     R: '6',
   };
 
@@ -75,10 +87,44 @@ function soundex(word: string): string {
 
 // Words that should never be flagged as misspelled
 const COMMON_ABBREVIATIONS = new Set([
-  'ok', 'tv', 'vs', 'etc', 'eg', 'ie', 'mr', 'mrs', 'ms', 'dr',
-  'jr', 'sr', 'am', 'pm', 'ad', 'bc', 'ai', 'ui', 'ux', 'api',
-  'url', 'html', 'css', 'js', 'ts', 'npm', 'git', 'cli', 'sql',
-  'http', 'https', 'www', 'io', 'id', 'pdf', 'json', 'xml', 'csv',
+  'ok',
+  'tv',
+  'vs',
+  'etc',
+  'eg',
+  'ie',
+  'mr',
+  'mrs',
+  'ms',
+  'dr',
+  'jr',
+  'sr',
+  'am',
+  'pm',
+  'ad',
+  'bc',
+  'ai',
+  'ui',
+  'ux',
+  'api',
+  'url',
+  'html',
+  'css',
+  'js',
+  'ts',
+  'npm',
+  'git',
+  'cli',
+  'sql',
+  'http',
+  'https',
+  'www',
+  'io',
+  'id',
+  'pdf',
+  'json',
+  'xml',
+  'csv',
 ]);
 
 // Words that look like misspellings but are legitimate.
@@ -86,45 +132,155 @@ const COMMON_ABBREVIATIONS = new Set([
 // they shouldn't be double-flagged by the spellchecker with garbled suggestions.
 const SAFE_WORDS = new Set([
   // Common valid short words
-  'seed', 'feed', 'weed', 'breed', 'speed', 'bleed', 'freed', 'treed',
-  'nice', 'stuff', 'ain',
+  'seed',
+  'feed',
+  'weed',
+  'breed',
+  'speed',
+  'bleed',
+  'freed',
+  'treed',
+  'nice',
+  'stuff',
+  'ain',
 
   // Tech / Internet
-  'email', 'emails', 'online', 'offline', 'website', 'username',
-  'inbox', 'login', 'logout', 'signup',
-  'podcast', 'hashtag', 'emoji', 'selfie', 'bitcoin', 'crypto',
-  'startup', 'app', 'apps', 'blog', 'blogs', 'wifi', 'backend', 'frontend',
-  'middleware', 'webhook', 'localhost', 'devops', 'repo', 'changelog',
-  'dataset', 'workflow', 'timestamp', 'configs', 'endpoints',
+  'email',
+  'emails',
+  'online',
+  'offline',
+  'website',
+  'username',
+  'inbox',
+  'login',
+  'logout',
+  'signup',
+  'podcast',
+  'hashtag',
+  'emoji',
+  'selfie',
+  'bitcoin',
+  'crypto',
+  'startup',
+  'app',
+  'apps',
+  'blog',
+  'blogs',
+  'wifi',
+  'backend',
+  'frontend',
+  'middleware',
+  'webhook',
+  'localhost',
+  'devops',
+  'repo',
+  'changelog',
+  'dataset',
+  'workflow',
+  'timestamp',
+  'configs',
+  'endpoints',
 
   // Words handled by our formality/style rules (DO NOT spellcheck-flag these)
-  'gonna', 'wanna', 'gotta', 'kinda', 'sorta', 'lemme', 'gimme',
-  'dunno', 'outta', 'lotsa', 'coulda', 'shoulda', 'woulda', 'musta', 'hafta',
-  'btw', 'tbh', 'fyi', 'wrt', 'imo', 'lol', 'omg', 'ngl', 'bruh', 'nah',
+  'gonna',
+  'wanna',
+  'gotta',
+  'kinda',
+  'sorta',
+  'lemme',
+  'gimme',
+  'dunno',
+  'outta',
+  'lotsa',
+  'coulda',
+  'shoulda',
+  'woulda',
+  'musta',
+  'hafta',
+  'btw',
+  'tbh',
+  'fyi',
+  'wrt',
+  'imo',
+  'lol',
+  'omg',
+  'ngl',
+  'bruh',
+  'nah',
 
   // Words handled by our inclusive language rules
-  'policeman', 'policemen', 'policewoman', 'fireman', 'firemen',
-  'chairman', 'chairwoman', 'stewardess', 'mailman', 'mankind', 'manpower',
-  'businessman', 'businessmen', 'spokesman', 'congressman', 'craftsman',
-  'salesman', 'waitress', 'actress', 'housewife', 'manhole',
+  'policeman',
+  'policemen',
+  'policewoman',
+  'fireman',
+  'firemen',
+  'chairman',
+  'chairwoman',
+  'stewardess',
+  'mailman',
+  'mankind',
+  'manpower',
+  'businessman',
+  'businessmen',
+  'spokesman',
+  'congressman',
+  'craftsman',
+  'salesman',
+  'waitress',
+  'actress',
+  'housewife',
+  'manhole',
 
   // Words handled by our business/readability rules
-  'ameliorate', 'ascertain', 'cognizant', 'elucidate', 'expedite',
-  'remuneration', 'disseminate', 'promulgate', 'effectuate', 'incentivize',
-  'operationalize', 'onboard', 'onboarding',
-  'heretofore', 'aforementioned', 'henceforth', 'notwithstanding',
-  'inasmuch', 'commensurate', 'dichotomy', 'juxtapose', 'ubiquitous',
-  'quintessential', 'multifaceted', 'exacerbate', 'proliferate',
+  'ameliorate',
+  'ascertain',
+  'cognizant',
+  'elucidate',
+  'expedite',
+  'remuneration',
+  'disseminate',
+  'promulgate',
+  'effectuate',
+  'incentivize',
+  'operationalize',
+  'onboard',
+  'onboarding',
+  'heretofore',
+  'aforementioned',
+  'henceforth',
+  'notwithstanding',
+  'inasmuch',
+  'commensurate',
+  'dichotomy',
+  'juxtapose',
+  'ubiquitous',
+  'quintessential',
+  'multifaceted',
+  'exacerbate',
+  'proliferate',
 
   // Words handled by confused-words rules
-  'irregardless', 'conversate', 'orientate', 'preventative', 'alright',
+  'irregardless',
+  'conversate',
+  'orientate',
+  'preventative',
+  'alright',
 
   // Inclusive language targets
-  'handicapped', 'ableist',
+  'handicapped',
+  'ableist',
 
   // Stative verbs in progressive (we flag "is knowing" → "knows", not "knowing" itself)
-  'knowing', 'believing', 'owning', 'belonging', 'consisting',
-  'containing', 'depending', 'preferring', 'seeming', 'appearing',
+  'knowing',
+  'believing',
+  'owning',
+  'belonging',
+  'consisting',
+  'containing',
+  'depending',
+  'preferring',
+  'seeming',
+  'appearing',
 ]);
 
 // Cache for Soundex values to speed up suggestions
@@ -144,7 +300,11 @@ function getSoundexCache(dictionary: Set<string>): Map<string, string> {
  * Find the best spelling suggestions for a misspelled word.
  * Uses Levenshtein distance + Soundex phonetic matching.
  */
-function findSuggestions(word: string, dictionary: Set<string>, maxSuggestions: number = 3): string[] {
+function findSuggestions(
+  word: string,
+  dictionary: Set<string>,
+  maxSuggestions: number = 3,
+): string[] {
   const lower = word.toLowerCase();
   const len = lower.length;
   const wordSoundex = soundex(lower);
@@ -173,17 +333,14 @@ function findSuggestions(word: string, dictionary: Set<string>, maxSuggestions: 
   // Sort by score (lower is better), then alphabetically
   candidates.sort((a, b) => a.score - b.score || a.word.localeCompare(b.word));
 
-  return candidates.slice(0, maxSuggestions).map(c => c.word);
+  return candidates.slice(0, maxSuggestions).map((c) => c.word);
 }
 
 /**
  * Check text for spelling errors using a real dictionary.
  * Returns issues for words not found in the dictionary.
  */
-export function checkSpelling(
-  text: string,
-  userDictionary?: Set<string>
-): Issue[] {
+export function checkSpelling(text: string, userDictionary?: Set<string>): Issue[] {
   const dictionary = getEnglishDictionary();
   const issues: Issue[] = [];
 
@@ -212,7 +369,12 @@ export function checkSpelling(
     if (word[0] === word[0]!.toUpperCase() && word.slice(1) === word.slice(1).toLowerCase()) {
       // Check if it's at the start of a sentence
       const before = text.slice(Math.max(0, match.index - 3), match.index).trim();
-      if (before.length > 0 && !before.endsWith('.') && !before.endsWith('!') && !before.endsWith('?')) {
+      if (
+        before.length > 0 &&
+        !before.endsWith('.') &&
+        !before.endsWith('!') &&
+        !before.endsWith('?')
+      ) {
         continue; // Likely a proper noun
       }
     }
@@ -253,4 +415,4 @@ export function checkSpelling(
   return issues;
 }
 
-export { SAFE_WORDS, COMMON_ABBREVIATIONS };
+export { COMMON_ABBREVIATIONS, SAFE_WORDS };

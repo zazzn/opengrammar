@@ -31,6 +31,7 @@ export interface AnalyzeRequest {
   customRules?: CustomRule[];
   dictionary?: string[];
   context?: AnalysisContext;
+  disabledModules?: string[];
 }
 
 export interface CustomRule {
@@ -76,13 +77,7 @@ export interface AutocompleteResponse {
   error?: string;
 }
 
-export type LLMProvider = 
-  | 'openai'
-  | 'openrouter'
-  | 'groq'
-  | 'together'
-  | 'ollama'
-  | 'custom';
+export type LLMProvider = 'openai' | 'openrouter' | 'groq' | 'together' | 'ollama' | 'custom';
 
 export interface ProviderConfig {
   id: LLMProvider;
@@ -106,7 +101,11 @@ export const PROVIDERS: ProviderConfig[] = [
     id: 'openrouter',
     name: 'OpenRouter',
     baseUrl: 'https://openrouter.ai/api/v1',
-    models: ['meta-llama/llama-3-70b-instruct', 'anthropic/claude-3.5-sonnet', 'google/gemma-2-27b-it'],
+    models: [
+      'meta-llama/llama-3-70b-instruct',
+      'anthropic/claude-3.5-sonnet',
+      'google/gemma-2-27b-it',
+    ],
     requiresApiKey: true,
     description: 'Access 100+ models with one API',
   },
@@ -114,7 +113,12 @@ export const PROVIDERS: ProviderConfig[] = [
     id: 'groq',
     name: 'Groq',
     baseUrl: 'https://api.groq.com/openai/v1',
-    models: ['llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'gemma2-9b-it', 'mixtral-8x7b-32768'],
+    models: [
+      'llama-3.1-70b-versatile',
+      'llama-3.1-8b-instant',
+      'gemma2-9b-it',
+      'mixtral-8x7b-32768',
+    ],
     requiresApiKey: true,
     description: 'Blazing fast inference',
   },
@@ -122,7 +126,10 @@ export const PROVIDERS: ProviderConfig[] = [
     id: 'together',
     name: 'Together AI',
     baseUrl: 'https://api.together.xyz/v1',
-    models: ['meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo', 'mistralai/Mixtral-8x7B-Instruct-v0.1'],
+    models: [
+      'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
+      'mistralai/Mixtral-8x7B-Instruct-v0.1',
+    ],
     requiresApiKey: true,
     description: 'Open source models at scale',
   },

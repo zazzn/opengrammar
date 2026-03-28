@@ -20,21 +20,21 @@ const groq = new Groq({ apiKey });
 
 async function testGrammarCheck() {
   console.log('🧪 Testing Groq Grammar Check API...\n');
-  
+
   const testText = 'me and him went to the store and buyed some milks';
-  
+
   console.log('Input text:', testText);
   console.log('\nSending request to Groq...\n');
 
   try {
     const chatCompletion = await groq.chat.completions.create({
       messages: [
-        { 
-          role: 'system', 
-          content: 'You are an expert grammar assistant. Return ONLY valid JSON.' 
+        {
+          role: 'system',
+          content: 'You are an expert grammar assistant. Return ONLY valid JSON.',
         },
-        { 
-          role: 'user', 
+        {
+          role: 'user',
           content: `Analyze this text for grammar, spelling, clarity, and style issues.
 
 TEXT:
@@ -52,8 +52,8 @@ Return JSON:
   ]
 }
 
-Return ONLY JSON. If no issues: {"issues": []}`
-        }
+Return ONLY JSON. If no issues: {"issues": []}`,
+        },
       ],
       model: 'llama-3.1-70b-versatile',
       response_format: { type: 'json_object' },
@@ -61,7 +61,7 @@ Return ONLY JSON. If no issues: {"issues": []}`
     });
 
     let content = chatCompletion.choices[0]?.message?.content;
-    
+
     if (!content) {
       console.error('❌ No response from API');
       return;
@@ -73,7 +73,7 @@ Return ONLY JSON. If no issues: {"issues": []}`
 
     console.log('✅ Success! Response:');
     console.log(JSON.stringify(result, null, 2));
-    
+
     if (result.issues && result.issues.length > 0) {
       console.log(`\n✅ Found ${result.issues.length} issues:`);
       result.issues.forEach((issue, i) => {
@@ -85,7 +85,6 @@ Return ONLY JSON. If no issues: {"issues": []}`
     } else {
       console.log('\n✅ No issues found');
     }
-
   } catch (error) {
     console.error('❌ Error:', error.message);
     if (error.response) {

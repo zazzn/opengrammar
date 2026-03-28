@@ -10,21 +10,24 @@ export const DEFAULT_PROMPTS: CustomPrompt[] = [
   {
     id: 'fix-grammar',
     name: 'Fix Grammar',
-    prompt: 'Fix all grammar and spelling errors in this text. Keep the original meaning and style.',
+    prompt:
+      'Fix all grammar and spelling errors in this text. Keep the original meaning and style.',
     icon: '✓',
     category: 'grammar',
   },
   {
     id: 'make-formal',
     name: 'Make Formal',
-    prompt: 'Rewrite this text to sound more formal and professional. Use proper business language.',
+    prompt:
+      'Rewrite this text to sound more formal and professional. Use proper business language.',
     icon: '🎩',
     category: 'professional',
   },
   {
     id: 'make-casual',
     name: 'Make Casual',
-    prompt: 'Rewrite this text to sound more casual and conversational. Use friendly, relaxed language.',
+    prompt:
+      'Rewrite this text to sound more casual and conversational. Use friendly, relaxed language.',
     icon: '😊',
     category: 'style',
   },
@@ -59,7 +62,8 @@ export const DEFAULT_PROMPTS: CustomPrompt[] = [
   {
     id: 'persuade',
     name: 'Make Persuasive',
-    prompt: 'Rewrite this text to be more persuasive and compelling. Use persuasive language techniques.',
+    prompt:
+      'Rewrite this text to be more persuasive and compelling. Use persuasive language techniques.',
     icon: '💪',
     category: 'professional',
   },
