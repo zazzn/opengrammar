@@ -2,6 +2,7 @@ import { clearHighlights, highlightIssues, isUIActive, refreshFloatingDecoration
 import type { AnalysisContext, AutocompleteResponse, Issue } from "../types";
 import { extractText, getCaretPosition, getElementFromTarget, setCaretPosition } from "./textExtractor";
 import { debounce } from "./utils";
+import { autocompleteManager } from "./autocomplete";
 
 interface EditableElement {
   element: HTMLElement;
@@ -25,14 +26,6 @@ let disabledDomains: string[] = [];
 let checkAsYouTypeEnabled = true;
 let showNotificationsEnabled = true;
 let autocompleteEnabled = true;
-
-let autocompleteBox: HTMLElement | null = null;
-let autocompleteState: {
-  element: HTMLElement;
-  suggestion: string;
-  replaceStart: number;
-  replaceEnd: number;
-} | null = null;
 
 let isContextInvalidated = false;
 
@@ -364,7 +357,7 @@ function deactivateElement(element: HTMLElement) {
   }
 
   console.log("[OpenGrammar] Deactivated element");
-  hideAutocomplete();
+  autocompleteManager.hide();
 }
 
 /**
@@ -390,14 +383,14 @@ function handleKeyDown(event: Event) {
   const target = getElementFromTarget(event.target);
   if (!target) return;
 
-  if (keyboardEvent.key === 'Tab' && autocompleteState && autocompleteState.element === target) {
+  if (keyboardEvent.key === 'Tab' && autocompleteManager.getState()?.element === target) {
     keyboardEvent.preventDefault();
-    acceptAutocomplete();
+    autocompleteManager.accept();
     return;
   }
 
   if (keyboardEvent.key === 'Escape') {
-    hideAutocomplete();
+    autocompleteManager.hide();
   }
 }
 
@@ -748,13 +741,13 @@ const requestAutocomplete = async (element: HTMLElement) => {
 
   const text = extractText(element);
   if (!text || text.trim().length < 12) {
-    hideAutocomplete();
+    autocompleteManager.hide();
     return;
   }
 
   const cursor = getCaretPosition(element);
   if (cursor < text.length && !element.isContentEditable) {
-    hideAutocomplete();
+    autocompleteManager.hide();
     return;
   }
 
@@ -767,88 +760,18 @@ const requestAutocomplete = async (element: HTMLElement) => {
     }) as AutocompleteResponse;
 
     if (!response?.suggestion || response.confidence < 0.35) {
-      hideAutocomplete();
+      autocompleteManager.hide();
       return;
     }
 
-    showAutocomplete(element, response);
+    const rect = element.getBoundingClientRect();
+    autocompleteManager.show(element, response, rect);
   } catch {
-    hideAutocomplete();
+    autocompleteManager.hide();
   }
 };
 
 const debouncedAutocomplete = debounce(requestAutocomplete, 700);
-
-function showAutocomplete(element: HTMLElement, response: AutocompleteResponse) {
-  hideAutocomplete();
-
-  const rect = element.getBoundingClientRect();
-  const box = document.createElement('div');
-  box.className = 'opengrammar-autocomplete';
-  box.style.cssText = `
-    position: fixed;
-    left: ${Math.max(12, rect.left + 12)}px;
-    top: ${Math.min(window.innerHeight - 70, rect.bottom + 8)}px;
-    max-width: min(460px, calc(100vw - 24px));
-    padding: 10px 12px;
-    background: rgba(17, 24, 39, 0.96);
-    color: white;
-    border-radius: 10px;
-    font-size: 13px;
-    line-height: 1.4;
-    z-index: 2147483647;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
-  `;
-  box.innerHTML = `<strong style="color:#93c5fd;">Suggestion</strong> ${escapeHtml(response.suggestion)} <span style="display:block;color:#cbd5e1;margin-top:4px;">Press Tab to accept · ${Math.round(response.confidence * 100)}% confidence</span>`;
-
-  document.body.appendChild(box);
-  autocompleteBox = box;
-  autocompleteState = {
-    element,
-    suggestion: response.suggestion,
-    replaceStart: response.replaceStart,
-    replaceEnd: response.replaceEnd,
-  };
-}
-
-function acceptAutocomplete() {
-  if (!autocompleteState) return;
-
-  const { element, suggestion, replaceStart, replaceEnd } = autocompleteState;
-  const text = extractText(element);
-
-  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-    const input = element as HTMLInputElement | HTMLTextAreaElement;
-    input.value = `${text.slice(0, replaceStart)}${suggestion}${text.slice(replaceEnd)}`;
-    const nextCursor = replaceStart + suggestion.length;
-    input.setSelectionRange(nextCursor, nextCursor);
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-  } else {
-    element.textContent = `${text.slice(0, replaceStart)}${suggestion}${text.slice(replaceEnd)}`;
-    setCaretPosition(element, replaceStart + suggestion.length);
-    element.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-
-  void chrome.runtime.sendMessage({
-    type: 'TRACK_ANALYTICS_EVENT',
-    eventType: 'autocomplete_accepted',
-    payload: { count: 1, domain: window.location.hostname },
-  });
-
-  hideAutocomplete();
-}
-
-function hideAutocomplete() {
-  autocompleteBox?.remove();
-  autocompleteBox = null;
-  autocompleteState = null;
-}
-
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
 
 // Add CSS animations
 const style = document.createElement("style");
@@ -886,6 +809,6 @@ chrome.storage?.onChanged?.addListener((changes) => {
   }
   if (changes.autocompleteEnabled) {
     autocompleteEnabled = changes.autocompleteEnabled.newValue !== false;
-    if (!autocompleteEnabled) hideAutocomplete();
+    if (!autocompleteEnabled) autocompleteManager.hide();
   }
 });
