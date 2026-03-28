@@ -102,10 +102,7 @@ const CONTEXT_MODULES: Record<WritingContext, Set<string>> = {
     'clarity', 'spelling-advanced', 'grammar-advanced',
   ]),
 
-  document: new Set([
-    // Full check — all modules
-    ...Object.keys(MODULE_PREFIXES),
-  ]),
+  document: new Set(Object.keys(MODULE_PREFIXES)),
 
   academic: new Set([
     'grammar', 'spelling', 'confused-words', 'punctuation',
@@ -116,10 +113,7 @@ const CONTEXT_MODULES: Record<WritingContext, Set<string>> = {
     'formatting-idioms', 'spelling-advanced', 'grammar-advanced',
   ]),
 
-  general: new Set([
-    // Everything enabled
-    ...Object.keys(MODULE_PREFIXES),
-  ]),
+  general: new Set(Object.keys(MODULE_PREFIXES)),
 };
 
 /**
