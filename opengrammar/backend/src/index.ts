@@ -1,24 +1,477 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { RuleBasedAnalyzer, LLMAnalyzer } from './analyzer.js';
 import OpenAI from 'openai';
+import { LLMAnalyzer, RuleBasedAnalyzer } from './analyzer.js';
+import { detectWritingContext } from './rules/context-filter.js';
 import type {
   AnalysisContext,
   AnalyzeRequest,
   AnalyzeResponse,
   AutocompleteRequest,
-  LLMProvider,
   Issue,
+  LLMProvider,
 } from './shared-types.js';
 import { PROVIDERS } from './shared-types.js';
-import { detectWritingContext } from './rules/context-filter.js';
 
 const app = new Hono();
 
 // Middleware
 app.use('/*', logger());
 app.use('/*', cors());
+
+// Root Landing Page
+app.get('/', (c) => {
+  return c.html(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenGrammar API</title>
+  <meta name="description" content="OpenGrammar — open-source, privacy-first grammar intelligence engine running on the Edge.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #09090b;
+      --surface: rgba(24, 24, 27, 0.8);
+      --border: rgba(255,255,255,0.07);
+      --border-hover: rgba(255,255,255,0.14);
+      --text: #fafafa;
+      --muted: #71717a;
+      --green: #22c55e;
+      --green-bg: rgba(34,197,94,0.08);
+      --green-border: rgba(34,197,94,0.2);
+      --amber: #f59e0b;
+      --amber-bg: rgba(245,158,11,0.08);
+      --amber-border: rgba(245,158,11,0.2);
+      --red: #ef4444;
+      --red-bg: rgba(239,68,68,0.08);
+      --red-border: rgba(239,68,68,0.2);
+      --blue: #3b82f6;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    /* Ambient background orbs */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .orb-1 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 70%);
+      top: -150px; left: -100px;
+    }
+    .orb-2 {
+      width: 450px; height: 450px;
+      background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%);
+      bottom: -120px; right: -80px;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 680px;
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 40px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 32px 64px rgba(0,0,0,0.5);
+    }
+
+    /* Hero */
+    .hero { text-align: center; margin-bottom: 36px; }
+
+    .logo-ring {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px; height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      margin-bottom: 20px;
+      box-shadow: 0 8px 24px rgba(59,130,246,0.35);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, #e2e8f0 30%, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 12px;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 1rem;
+      max-width: 440px;
+      margin: 0 auto 24px;
+    }
+
+    /* Status pill */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--green-bg);
+      border: 1px solid var(--green-border);
+      color: var(--green);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* Endpoints */
+    .endpoints {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 24px 0;
+    }
+    .ep-tag {
+      font-family: 'Menlo', 'Monaco', monospace;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 14px;
+      letter-spacing: 0.02em;
+    }
+    .ep-tag span {
+      color: #60a5fa;
+      margin-right: 6px;
+      font-weight: 600;
+    }
+
+    /* Buttons */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 36px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .btn:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: var(--border-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+    }
+    .btn.primary {
+      background: rgba(59,130,246,0.15);
+      border-color: rgba(59,130,246,0.35);
+      color: #93c5fd;
+    }
+    .btn.primary:hover {
+      background: rgba(59,130,246,0.25);
+      border-color: rgba(59,130,246,0.55);
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 0 0 28px;
+    }
+
+    /* Section heading */
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    .refresh-hint {
+      font-size: 0.75rem;
+      color: var(--muted);
+      opacity: 0.6;
+    }
+
+    /* Server grid */
+    .server-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 560px) {
+      .server-grid { grid-template-columns: 1fr; }
+      .card { padding: 32px 24px; }
+      h1 { font-size: 2rem; }
+    }
+
+    .server-card {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .server-card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-1px);
+    }
+    .sc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .sc-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .sc-meta {
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+
+    /* Status badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+    .badge-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+    .badge.active  { background: var(--green-bg); color: var(--green); border-color: var(--green-border); }
+    .badge-dot.active { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2.5s infinite; }
+
+    .badge.standby { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-border); }
+    .badge-dot.standby { background: var(--amber); }
+
+    .badge.offline  { background: var(--red-bg); color: var(--red); border-color: var(--red-border); }
+    .badge-dot.offline { background: var(--red); }
+
+    .badge.checking { background: rgba(100,116,139,0.1); color: #64748b; border-color: rgba(100,116,139,0.2); }
+    .badge-dot.checking { background: #64748b; animation: pulse 1s infinite; }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      opacity: 0.5;
+    }
+
+    @keyframes float {
+      0% { transform: translate(0,0); }
+      100% { transform: translate(30px, 20px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <div class="page">
+    <div class="card">
+
+      <!-- Hero -->
+      <div class="hero">
+        <div class="logo-ring">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+        </div>
+        <h1>OpenGrammar</h1>
+        <p>Privacy-first, open-source grammar intelligence engine — running live on the global Edge network.</p>
+        <div class="status-pill">
+          <div class="dot"></div>
+          API Operational
+        </div>
+      </div>
+
+      <!-- Endpoints -->
+      <div class="endpoints">
+        <div class="ep-tag"><span>POST</span>/analyze</div>
+        <div class="ep-tag"><span>POST</span>/autocomplete</div>
+        <div class="ep-tag"><span>GET</span>/health</div>
+        <div class="ep-tag"><span>GET</span>/providers</div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="btn-row">
+        <a href="https://opengrammer.eu.cc/" target="_blank" class="btn primary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+          Official Website
+        </a>
+        <a href="https://github.com/swadhinbiswas/opengrammar" target="_blank" class="btn">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+          </svg>
+          GitHub
+        </a>
+        <a href="/health" class="btn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          Health
+        </a>
+      </div>
+
+      <!-- Divider -->
+      <div class="divider"></div>
+
+      <!-- Network Status -->
+      <div class="section-head">
+        <span class="section-title">Global Network</span>
+        <span class="refresh-hint" id="last-updated">Checking…</span>
+      </div>
+
+      <div class="server-grid" id="server-grid">
+        <div class="server-card">
+          <div class="sc-header">
+            <span class="sc-name">Cloudflare Edge</span>
+            <span class="badge checking"><span class="badge-dot checking"></span>Checking</span>
+          </div>
+          <div class="sc-meta">Global CDN</div>
+        </div>
+        <div class="server-card">
+          <div class="sc-header">
+            <span class="sc-name">Vercel</span>
+            <span class="badge checking"><span class="badge-dot checking"></span>Checking</span>
+          </div>
+          <div class="sc-meta">US East</div>
+        </div>
+        <div class="server-card">
+          <div class="sc-header">
+            <span class="sc-name">Render</span>
+            <span class="badge checking"><span class="badge-dot checking"></span>Checking</span>
+          </div>
+          <div class="sc-meta">Frankfurt</div>
+        </div>
+      </div>
+
+    </div>
+    <div class="footer">OpenGrammar v2.0 · Cloudflare Workers · MIT License</div>
+  </div>
+
+  <script>
+    const SERVERS = [
+      { id: 'cf',     name: 'Cloudflare Edge', url: '/health',                                                              role: 'primary',  loc: 'Global CDN' },
+      { id: 'vercel', name: 'Vercel',           url: 'https://opengrammar-backend-psi.vercel.app/health',            role: 'standby',  loc: 'US East'    },
+      { id: 'render', name: 'Render',           url: 'https://opengrammar-render-placeholder.onrender.com/health',          role: 'standby',  loc: 'Frankfurt'  }
+    ];
+
+    function badgeHTML(state, label) {
+      return '<span class="badge ' + state + '"><span class="badge-dot ' + state + '"></span>' + label + '</span>';
+    }
+
+    function cardHTML(s, state, ping) {
+      const label = state === 'active'   ? (s.role === 'primary' ? 'Primary' : 'Active')
+                  : state === 'standby'  ? 'Standby'
+                  : state === 'offline'  ? 'Offline'
+                  : 'Checking';
+      const metaColor = state === 'offline' ? 'color:var(--red)' : 'color:var(--muted)';
+      const pingStr   = (state === 'active' && ping != null) ? ' · ' + ping + 'ms' : (state === 'offline' ? ' · Unreachable' : '');
+      return '<div class="server-card"><div class="sc-header"><span class="sc-name">' + s.name + '</span>' + badgeHTML(state, label) + '</div><div class="sc-meta" style="' + metaColor + '">' + s.loc + pingStr + '</div></div>';
+    }
+
+    async function ping(server) {
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 5000);
+        const t0 = performance.now();
+        const res = await fetch(server.url, { signal: ctrl.signal, cache: 'no-store' });
+        clearTimeout(t);
+        const ms = Math.round(performance.now() - t0);
+        if (res.ok) return { state: 'active', ping: ms };
+        return { state: 'offline', ping: null };
+      } catch { return { state: 'offline', ping: null }; }
+    }
+
+    async function refresh() {
+      const results = await Promise.all(SERVERS.map(s => ping(s)));
+      const grid = document.getElementById('server-grid');
+      if (grid) grid.innerHTML = SERVERS.map((s, i) => cardHTML(s, results[i].state, results[i].ping)).join('');
+      const el = document.getElementById('last-updated');
+      if (el) {
+        const now = new Date();
+        el.textContent = 'Updated ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 15000);
+  </script>
+</body>
+</html>`);
+});
 
 // Health check endpoint
 app.get('/health', (c) => {
@@ -47,12 +500,12 @@ app.post('/models', async (c) => {
     }
 
     // Get default models from config
-    const providerConfig = PROVIDERS.find(p => p.id === provider);
+    const providerConfig = PROVIDERS.find((p) => p.id === provider);
     const defaultModels = providerConfig?.models || [];
 
     // Try to fetch live models, but don't fail if it doesn't work
     let models = defaultModels;
-    
+
     // Only try to fetch live models if API key is provided (except for Ollama)
     if ((apiKey && apiKey !== 'ollama') || provider === 'ollama') {
       try {
@@ -74,7 +527,7 @@ app.post('/models', async (c) => {
     console.error('Failed to fetch models:', error);
     // Return default models for the provider
     const { provider } = await c.req.json().catch(() => ({}));
-    const providerConfig = PROVIDERS.find(p => p.id === provider);
+    const providerConfig = PROVIDERS.find((p) => p.id === provider);
     return c.json({
       provider,
       models: providerConfig?.models || [],
@@ -85,7 +538,7 @@ app.post('/models', async (c) => {
 // Main analysis endpoint
 app.post('/analyze', async (c) => {
   const startTime = Date.now();
-  
+
   try {
     const body: AnalyzeRequest = await c.req.json();
     const { text, apiKey, model, provider, baseUrl, context, disabledModules } = body;
@@ -111,13 +564,13 @@ app.post('/analyze', async (c) => {
       try {
         const llmProvider = (provider || 'openai') as LLMProvider;
         const llmIssues = await LLMAnalyzer.analyze(
-          text, 
-          apiKey || '', 
+          text,
+          apiKey || '',
           model || 'gpt-3.5-turbo',
           llmProvider,
           baseUrl,
           context,
-          ruleIssues
+          ruleIssues,
         );
         issues = [...issues, ...enrichIssues(llmIssues, 'llm', text, context)];
       } catch (llmError) {
@@ -129,7 +582,7 @@ app.post('/analyze', async (c) => {
     issues = dedupeAndRankIssues(issues, text, context);
 
     const duration = Date.now() - startTime;
-    
+
     const response: AnalyzeResponse = {
       issues,
       metadata: {
@@ -145,10 +598,13 @@ app.post('/analyze', async (c) => {
     return c.json(response);
   } catch (error) {
     console.error('Analysis error:', error);
-    return c.json({ 
-      error: 'Failed to analyze text', 
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    return c.json(
+      {
+        error: 'Failed to analyze text',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      500,
+    );
   }
 });
 
@@ -166,21 +622,32 @@ app.post('/autocomplete', async (c) => {
     const providerId = (provider || 'openai') as LLMProvider;
 
     if (apiKey || providerId === 'ollama') {
-      const completion = await getLlmAutocomplete(text, safeCursor, apiKey || '', model, providerId, baseUrl, context);
+      const completion = await getLlmAutocomplete(
+        text,
+        safeCursor,
+        apiKey || '',
+        model,
+        providerId,
+        baseUrl,
+        context,
+      );
       return c.json(completion);
     }
 
     return c.json(getHeuristicAutocomplete(text, safeCursor));
   } catch (error) {
     console.error('Autocomplete error:', error);
-    return c.json({
-      suggestion: '',
-      confidence: 0,
-      replaceStart: 0,
-      replaceEnd: 0,
-      source: 'heuristic',
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }, 500);
+    return c.json(
+      {
+        suggestion: '',
+        confidence: 0,
+        replaceStart: 0,
+        replaceEnd: 0,
+        source: 'heuristic',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      500,
+    );
   }
 });
 
@@ -194,7 +661,7 @@ app.post('/rewrite', async (c) => {
     }
 
     const providerBaseUrl = baseUrl || getProviderBaseUrl(provider || 'openai');
-    
+
     const openai = new (await import('openai')).OpenAI({
       apiKey: apiKey || 'ollama',
       baseURL: providerBaseUrl,
@@ -213,11 +680,11 @@ app.post('/rewrite', async (c) => {
 
     const completion = await openai.chat.completions.create({
       messages: [
-        { 
-          role: 'system', 
-          content: `You are a writing assistant. ${toneInstructions[tone] || 'Improve the writing'}. Return ONLY the rewritten text, no explanations.` 
+        {
+          role: 'system',
+          content: `You are a writing assistant. ${toneInstructions[tone] || 'Improve the writing'}. Return ONLY the rewritten text, no explanations.`,
         },
-        { role: 'user', content: text }
+        { role: 'user', content: text },
       ],
       model: model || 'gpt-3.5-turbo',
       temperature: 0.7,
@@ -233,20 +700,26 @@ app.post('/rewrite', async (c) => {
     });
   } catch (error) {
     console.error('Rewrite error:', error);
-    return c.json({ 
-      error: 'Failed to rewrite text',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    return c.json(
+      {
+        error: 'Failed to rewrite text',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      500,
+    );
   }
 });
 
 // Error handler
 app.onError((err, c) => {
   console.error('Unhandled error:', err);
-  return c.json({ 
-    error: 'Internal server error',
-    message: err.message 
-  }, 500);
+  return c.json(
+    {
+      error: 'Internal server error',
+      message: err.message,
+    },
+    500,
+  );
 });
 
 // 404 handler
@@ -266,7 +739,12 @@ function getProviderBaseUrl(provider: string): string {
   return urls[provider as string] ?? urls.openai;
 }
 
-function enrichIssues(issues: Issue[], source: Issue['source'], text: string, context?: AnalysisContext): Issue[] {
+function enrichIssues(
+  issues: Issue[],
+  source: Issue['source'],
+  text: string,
+  context?: AnalysisContext,
+): Issue[] {
   return issues.map((issue) => {
     const confidence = getConfidence(issue, source, context);
     const priority = getPriority(issue, confidence, text, context);
@@ -313,12 +791,18 @@ function getConfidence(issue: Issue, source: Issue['source'], context?: Analysis
   if (source === 'llm') confidence -= 0.04;
   if (/consider/i.test(issue.suggestion) || /consider/i.test(issue.reason)) confidence -= 0.08;
   if (issue.original.length <= 2) confidence -= 0.05;
-  if (context?.activeSentence && context.activeSentence.includes(issue.original)) confidence += 0.03;
+  if (context?.activeSentence && context.activeSentence.includes(issue.original))
+    confidence += 0.03;
 
   return Math.max(0.5, Math.min(0.99, Number(confidence.toFixed(2))));
 }
 
-function getPriority(issue: Issue, confidence: number, text: string, context?: AnalysisContext): number {
+function getPriority(
+  issue: Issue,
+  confidence: number,
+  text: string,
+  context?: AnalysisContext,
+): number {
   const severityWeight: Record<Issue['type'], number> = {
     spelling: 1,
     grammar: 0.95,
@@ -328,9 +812,14 @@ function getPriority(issue: Issue, confidence: number, text: string, context?: A
 
   let priority = confidence * 100 * severityWeight[issue.type];
 
-  const occurrenceCount = issue.original ? text.toLowerCase().split(issue.original.toLowerCase()).length - 1 : 1;
+  const occurrenceCount = issue.original
+    ? text.toLowerCase().split(issue.original.toLowerCase()).length - 1
+    : 1;
   if (occurrenceCount > 1) priority += Math.min(occurrenceCount * 2, 8);
-  if (context?.fullTextExcerpt && context.fullTextExcerpt.toLowerCase().includes(issue.original.toLowerCase())) {
+  if (
+    context?.fullTextExcerpt &&
+    context.fullTextExcerpt.toLowerCase().includes(issue.original.toLowerCase())
+  ) {
     priority += 4;
   }
 
@@ -358,7 +847,8 @@ async function getLlmAutocomplete(
     messages: [
       {
         role: 'system',
-        content: 'You are a writing assistant. Predict the next short continuation for the user. Return ONLY JSON with keys suggestion and confidence. Keep suggestion under 12 words and do not repeat the existing text.'
+        content:
+          'You are a writing assistant. Predict the next short continuation for the user. Return ONLY JSON with keys suggestion and confidence. Keep suggestion under 12 words and do not repeat the existing text.',
       },
       {
         role: 'user',
@@ -380,7 +870,8 @@ async function getLlmAutocomplete(
 
   return {
     suggestion: typeof parsed.suggestion === 'string' ? parsed.suggestion.trim() : '',
-    confidence: typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0.72,
+    confidence:
+      typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0.72,
     replaceStart: cursor,
     replaceEnd: cursor,
     source: 'llm' as const,
