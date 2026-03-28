@@ -29,6 +29,8 @@ import { subjectVerbAgreementRules } from './categories/subject-verb-agreement.j
 import { gerundInfinitiveRules } from './categories/gerund-infinitive.js';
 import { prepositionExtendedRules } from './categories/prepositions-extended.js';
 import { articleRules } from './categories/articles.js';
+import { danglingModifierRules } from './categories/dangling-modifiers.js';
+import { toneRules } from './categories/tone-rules.js';
 import { quantityAgreementRules } from './categories/quantity-agreement.js';
 import type { Rule } from './types.js';
 
@@ -77,12 +79,14 @@ export const CORE_RULES: Rule[] = [
   ...punctuationRules,
   ...quantityAgreementRules,
   ...articleRules,
+  ...danglingModifierRules,
 
   // Phase 3 — Style, Confused Words, Formality, Idioms
   ...confusedWordsRules,
   ...styleToneRules,
   ...formalityRules,
   ...formattingIdiomRules,
+  ...toneRules,
 
   // Phase 4 — Domain Writing, Inclusivity, Readability
   ...academicWritingRules,
