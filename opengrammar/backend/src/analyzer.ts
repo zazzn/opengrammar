@@ -1,6 +1,34 @@
 import type { AnalysisContext, Issue, CustomRule, LLMProvider } from './shared-types.js';
 import OpenAI from 'openai';
 import { Groq } from 'groq-sdk';
+import { checkSpelling, SAFE_WORDS } from './spellchecker.js';
+import { NLPEngine } from './nlp/nlp-engine.js';
+import { CORE_RULES } from './rules/index.js';
+
+/**
+ * Past participles commonly used as adjectives.
+ * These should NOT be flagged as passive voice.
+ */
+const ADJECTIVE_PARTICIPLES = new Set([
+  'excited', 'interested', 'pleased', 'surprised', 'tired',
+  'bored', 'confused', 'disappointed', 'embarrassed', 'frightened',
+  'satisfied', 'worried', 'amazed', 'concerned', 'delighted',
+  'determined', 'exhausted', 'fascinated', 'relaxed', 'shocked',
+  'stressed', 'required', 'needed', 'expected', 'supposed',
+  'complicated', 'dedicated', 'educated', 'experienced', 'limited',
+  'married', 'organized', 'prepared', 'qualified', 'related',
+  'retired', 'scared', 'skilled', 'talented', 'united',
+  'advanced', 'balanced', 'broken', 'closed', 'combined',
+  'connected', 'convinced', 'crowded', 'damaged', 'depressed',
+  'detailed', 'developed', 'disabled', 'engaged', 'established',
+  'fixed', 'focused', 'hidden', 'improved', 'increased',
+  'involved', 'isolated', 'known', 'located', 'mixed',
+  'motivated', 'observed', 'opened', 'pleased', 'preferred',
+  'published', 'recognized', 'reduced', 'registered', 'renewed',
+  'repeated', 'reserved', 'satisfied', 'settled', 'shared',
+  'situated', 'specialized', 'supposed', 'troubled', 'updated',
+  'used', 'valued', 'varied', 'worried',
+]);
 
 export class RuleBasedAnalyzer {
   private static dictionary: Set<string> = new Set();
@@ -17,727 +45,108 @@ export class RuleBasedAnalyzer {
       this.customRules = options.customRules;
     }
 
-    issues.push(...this.checkPassiveVoice(text));
-    issues.push(...this.checkRepetition(text));
-    issues.push(...this.checkLongSentences(text));
-    issues.push(...this.checkSpacingErrors(text));
-    issues.push(...this.checkApostropheErrors(text));
-    issues.push(...this.checkThatWhich(text));
-    issues.push(...this.checkLessFewer(text));
-    issues.push(...this.checkItsIt(text));
-    issues.push(...this.checkTheirThereTheyre(text));
-    issues.push(...this.checkYourYoure(text));
-    issues.push(...this.checkCommaSplices(text));
-    issues.push(...this.checkDoubleNegatives(text));
-    issues.push(...this.checkRedundantPhrases(text));
-    issues.push(...this.checkWeakWords(text));
-    issues.push(...this.checkCliches(text));
-    issues.push(...this.checkBasicGrammar(text));
-    issues.push(...this.checkCommonMisspellings(text));
+    // Dictionary-based spell checking (real spell checker)
+    issues.push(...checkSpelling(text, this.dictionary));
+
+    // Initialize NLP Engine for Syntax Checks
+    let doc: any = null;
+    try {
+      doc = NLPEngine.parse(text);
+    } catch (e) {
+      console.warn('NLP Engine parsing disabled or failed:', e);
+    }
+
+    // Run Modular CORE RULES
+    for (const rule of CORE_RULES) {
+      try {
+        if (rule.type === 'regex') {
+          issues.push(...rule.check(text));
+        } else if (rule.type === 'nlp' && doc) {
+          issues.push(...rule.check(text, doc));
+        }
+      } catch (e) {
+        console.error(`Rule ${rule.id} failed:`, e);
+      }
+    }
+
+    // Custom Rules (Runtime injections)
     issues.push(...this.checkCustomRules(text));
 
-    return issues;
+    // Deduplicate: when multiple rules flag the same text span,
+    // keep the highest-priority match (grammar > spelling > clarity > style)
+    return this.deduplicateIssues(issues);
   }
 
   /**
-   * Check basic grammar errors (subject-verb, pronouns, etc.)
+   * Remove duplicate issues that flag the same or overlapping text spans.
+   * Priority: grammar errors > spelling > clarity > style suggestions.
+   * When two issues share the same offset+length, keep the higher priority one.
+   * When one issue fully contains another, keep the more specific (shorter) one.
    */
-  private static checkBasicGrammar(text: string): Issue[] {
-    const issues: Issue[] = [];
-    
-    // Common grammar mistakes
-    const grammarRules: Array<{pattern: RegExp, suggestion: string, reason: string}> = [
-      {
-        pattern: /\b(me|him|her|them|us)\s+and\s+(I|he|she|they|we)\b/gi,
-        suggestion: '$2 and $1',
-        reason: 'Use subject pronouns (I, he, she, they, we) when they are part of the subject.'
-      },
-      {
-        pattern: /\b(I|he|she|they|we)\s+and\s+(me|him|her|them|us)\b/gi,
-        suggestion: '$2 and $1',
-        reason: 'Use object pronouns (me, him, her, them, us) when they are part of the object.'
-      },
-      {
-        pattern: /\bbuyed\b/gi,
-        suggestion: 'bought',
-        reason: '"Buyed" is not a word. The past tense of "buy" is "bought".'
-      },
-      {
-        pattern: /\brunned\b/gi,
-        suggestion: 'ran',
-        reason: '"Runned" is not a word. The past tense of "run" is "ran".'
-      },
-      {
-        pattern: /\bgoed\b/gi,
-        suggestion: 'went',
-        reason: '"Goed" is not a word. The past tense of "go" is "went".'
-      },
-      {
-        pattern: /\beated\b/gi,
-        suggestion: 'ate',
-        reason: '"Eated" is not a word. The past tense of "eat" is "ate".'
-      },
-      {
-        pattern: /\bseed\b/gi,
-        suggestion: 'saw',
-        reason: '"Seed" is not the past tense. The past tense of "see" is "saw".'
-      },
-      {
-        pattern: /\bcomed\b/gi,
-        suggestion: 'came',
-        reason: '"Comed" is not a word. The past tense of "come" is "came".'
-      },
-      {
-        pattern: /\btaked\b/gi,
-        suggestion: 'took',
-        reason: '"Taked" is not a word. The past tense of "take" is "took".'
-      },
-      {
-        pattern: /\bbringed\b/gi,
-        suggestion: 'brought',
-        reason: '"Bringed" is not a word. The past tense of "bring" is "brought".'
-      },
-      {
-        pattern: /\bthinked\b/gi,
-        suggestion: 'thought',
-        reason: '"Thinked" is not a word. The past tense of "think" is "thought".'
-      },
-      {
-        pattern: /\bknowed\b/gi,
-        suggestion: 'knew',
-        reason: '"Knowed" is not a word. The past tense of "know" is "knew".'
-      },
-      {
-        pattern: /\bhas\s+got\b/gi,
-        suggestion: 'has',
-        reason: '"Has got" is redundant. Use "has" instead.'
-      },
-      {
-        pattern: /\bhaving\s+got\b/gi,
-        suggestion: 'have',
-        reason: '"Having got" is awkward. Use "have" instead.'
-      },
-      {
-        pattern: /\bwanna\b/gi,
-        suggestion: 'want to',
-        reason: '"Wanna" is informal. Use "want to" in formal writing.'
-      },
-      {
-        pattern: /\bgotta\b/gi,
-        suggestion: 'have to',
-        reason: '"Gotta" is informal. Use "have to" in formal writing.'
-      },
-      {
-        pattern: /\bkinda\b/gi,
-        suggestion: 'kind of',
-        reason: '"Kinda" is informal. Use "kind of" in formal writing.'
-      },
-      {
-        pattern: /\bcould\s+of\b/gi,
-        suggestion: 'could have',
-        reason: '"Could of" is incorrect. Use "could have".'
-      },
-      {
-        pattern: /\bwould\s+of\b/gi,
-        suggestion: 'would have',
-        reason: '"Would of" is incorrect. Use "would have".'
-      },
-      {
-        pattern: /\bshould\s+of\b/gi,
-        suggestion: 'should have',
-        reason: '"Should of" is incorrect. Use "should have".'
-      },
-      {
-        pattern: /\bmight\s+of\b/gi,
-        suggestion: 'might have',
-        reason: '"Might of" is incorrect. Use "might have".'
-      },
-      {
-        pattern: /\bmust\s+of\b/gi,
-        suggestion: 'must have',
-        reason: '"Must of" is incorrect. Use "must have".'
-      },
-      {
-        pattern: /\balot\b/gi,
-        suggestion: 'a lot',
-        reason: '"Alot" is misspelled. Use "a lot" (two words).'
-      },
-      {
-        pattern: /\b alot\b/gi,
-        suggestion: ' a lot',
-        reason: '"Alot" is misspelled. Use "a lot" (two words).'
-      },
-      {
-        pattern: /\bshouldnt\b/gi,
-        suggestion: "shouldn't",
-        reason: 'Missing apostrophe in "shouldn\'t".'
-      },
-      {
-        pattern: /\bcouldnt\b/gi,
-        suggestion: "couldn't",
-        reason: 'Missing apostrophe in "couldn\'t".'
-      },
-      {
-        pattern: /\bwouldnt\b/gi,
-        suggestion: "wouldn't",
-        reason: 'Missing apostrophe in "wouldn\'t".'
-      },
-      {
-        pattern: /\bdidnt\b/gi,
-        suggestion: "didn't",
-        reason: 'Missing apostrophe in "didn\'t".'
-      },
-      {
-        pattern: /\bdoesnt\b/gi,
-        suggestion: "doesn't",
-        reason: 'Missing apostrophe in "doesn\'t".'
-      },
-      {
-        pattern: /\bisnt\b/gi,
-        suggestion: "isn't",
-        reason: 'Missing apostrophe in "isn\'t".'
-      },
-      {
-        pattern: /\barent\b/gi,
-        suggestion: "aren't",
-        reason: 'Missing apostrophe in "aren\'t".'
-      },
-      {
-        pattern: /\bwasnt\b/gi,
-        suggestion: "wasn't",
-        reason: 'Missing apostrophe in "wasn\'t".'
-      },
-      {
-        pattern: /\bwerent\b/gi,
-        suggestion: "weren't",
-        reason: 'Missing apostrophe in "weren\'t".'
-      },
-    ];
+  private static deduplicateIssues(issues: Issue[]): Issue[] {
+    const PRIORITY: Record<string, number> = { grammar: 4, spelling: 3, clarity: 2, style: 1 };
 
-    for (const rule of grammarRules) {
-      let match: RegExpExecArray | null;
-      while ((match = rule.pattern.exec(text)) !== null) {
-        issues.push({
-          type: 'grammar',
-          original: match[0],
-          suggestion: match[0].replace(rule.pattern, rule.suggestion),
-          reason: rule.reason,
-          offset: match.index,
-          length: match[0].length,
-        });
-      }
-    }
-
-    return issues;
-  }
-
-  /**
-   * Check common misspellings
-   */
-  private static checkCommonMisspellings(text: string): Issue[] {
-    const issues: Issue[] = [];
-    
-    const commonMisspellings: Record<string, string> = {
-      'teh': 'the',
-      'taht': 'that',
-      'waht': 'what',
-      'whta': 'what',
-      'hte': 'the',
-      'iwth': 'with',
-      'witht': 'with',
-      'adn': 'and',
-      'nad': 'and',
-      'abd': 'bad',
-      'becuase': 'because',
-      'becasue': 'because',
-      'beacuse': 'because',
-      'becomeing': 'becoming',
-      'begining': 'beginning',
-      'believeable': 'believable',
-      'buisness': 'business',
-      'calender': 'calendar',
-      'cant': "can't",
-      'collegue': 'colleague',
-      'comming': 'coming',
-      'completly': 'completely',
-      'definately': 'definitely',
-      'definitly': 'definitely',
-      'dissapear': 'disappear',
-      'dissapoint': 'disappoint',
-      'embarass': 'embarrass',
-      'enviroment': 'environment',
-      'existance': 'existence',
-      'experiance': 'experience',
-      'familar': 'familiar',
-      'finaly': 'finally',
-      'freind': 'friend',
-      'goverment': 'government',
-      'governer': 'governor',
-      'grammer': 'grammar',
-      'happend': 'happened',
-      'happenned': 'happened',
-      'harrass': 'harass',
-      'heighth': 'height',
-      'helpfull': 'helpful',
-      'immediatly': 'immediately',
-      'independant': 'independent',
-      'indispensible': 'indispensable',
-      'irresistable': 'irresistible',
-      'knowlege': 'knowledge',
-      'libary': 'library',
-      'lisence': 'license',
-      'maintainance': 'maintenance',
-      'millenium': 'millennium',
-      'minature': 'miniature',
-      'mischievious': 'mischievous',
-      'misspell': 'misspell',
-      'neccessary': 'necessary',
-      'necessery': 'necessary',
-      'noticable': 'noticeable',
-      'occassion': 'occasion',
-      'occured': 'occurred',
-      'occuring': 'occurring',
-      'occurence': 'occurrence',
-      'parliment': 'parliament',
-      'peice': 'piece',
-      'persistance': 'persistence',
-      'persue': 'pursue',
-      'posession': 'possession',
-      'potatos': 'potatoes',
-      'preceed': 'precede',
-      'presance': 'presence',
-      'privelege': 'privilege',
-      'publically': 'publicly',
-      'questionaire': 'questionnaire',
-      'realy': 'really',
-      'recieve': 'receive',
-      'recomend': 'recommend',
-      'refered': 'referred',
-      'refering': 'referring',
-      'relevent': 'relevant',
-      'reminisce': 'reminisce',
-      'repitition': 'repetition',
-      'resistence': 'resistance',
-      'seperate': 'separate',
-      'similer': 'similar',
-      'sincerly': 'sincerely',
-      'speach': 'speech',
-      'strenght': 'strength',
-      'succesful': 'successful',
-      'suprise': 'surprise',
-      'tendancy': 'tendency',
-      'therefor': 'therefore',
-      'tommorrow': 'tomorrow',
-      'tongue': 'tongue',
-      'truely': 'truly',
-      'unfortunatly': 'unfortunately',
-      'untill': 'until',
-      'unusuall': 'unusual',
-      'usefull': 'useful',
-      'vaccum': 'vacuum',
-      'vegatable': 'vegetable',
-      'visious': 'vicious',
-      'wether': 'whether',
-      'wich': 'which',
-      'writting': 'writing',
-      'yache': 'yacht',
-      'yeild': 'yield',
-      'yourselfs': 'yourselves',
-    };
-
-    for (const [wrong, correct] of Object.entries(commonMisspellings)) {
-      const regex = new RegExp(`\\b${wrong}\\b`, 'gi');
-      let match: RegExpExecArray | null;
-      while ((match = regex.exec(text)) !== null) {
-        issues.push({
-          type: 'spelling',
-          original: match[0],
-          suggestion: correct,
-          reason: `Misspelled word. The correct spelling is "${correct}".`,
-          offset: match.index,
-          length: match[0].length,
-        });
-      }
-    }
-
-    return issues;
-  }
-
-  private static checkPassiveVoice(text: string): Issue[] {
-    const issues: Issue[] = [];
-    const passivePatterns = [
-      /\b(am|are|is|was|were|be|been|being)\s+(\w+ed)\b/gi,
-      /\b(am|are|is|was|were|be|been|being)\s+(\w+en)\b/gi,
-      /\b(am|are|is|was|were|be|been|being)\s+(given|taken|made|done|said|written|created|built|found|shown|told|left|kept|held|sent|brought|bought|caught|taught|thought)\b/gi,
-    ];
-
-    for (const pattern of passivePatterns) {
-      let match: RegExpExecArray | null;
-      while ((match = pattern.exec(text)) !== null) {
-        issues.push({
-          type: 'style',
-          original: match[0],
-          suggestion: 'Consider using active voice',
-          reason: 'Passive voice can make sentences weaker and less direct.',
-          offset: match.index,
-          length: match[0].length,
-        });
-      }
-    }
-    return issues;
-  }
-
-  private static checkRepetition(text: string): Issue[] {
-    const issues: Issue[] = [];
-    const repetitionRegex = /\b(\w+)\s+\1\b/gi;
-    let match: RegExpExecArray | null;
-    while ((match = repetitionRegex.exec(text)) !== null) {
-      issues.push({
-        type: 'grammar',
-        original: match[0],
-        suggestion: match[1] || '',
-        reason: 'Repeated word detected.',
-        offset: match.index,
-        length: match[0].length,
-      });
-    }
-    return issues;
-  }
-
-  private static checkLongSentences(text: string): Issue[] {
-    const issues: Issue[] = [];
-    const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
-    let currentIndex = 0;
-    sentences.forEach((sentence) => {
-      const words = sentence.trim().split(/\s+/).length;
-      if (words > 35) {
-        issues.push({
-          type: 'clarity',
-          original: sentence.substring(0, 30) + '...',
-          suggestion: 'Consider splitting into shorter sentences',
-          reason: `This sentence has ${words} words. Shorter sentences are easier to read.`,
-          offset: currentIndex,
-          length: sentence.length,
-        });
-      }
-      currentIndex += sentence.length;
+    // Sort by offset, then by priority (highest first)
+    const sorted = issues.sort((a, b) => {
+      if (a.offset !== b.offset) return a.offset - b.offset;
+      return (PRIORITY[b.type] || 0) - (PRIORITY[a.type] || 0);
     });
-    return issues;
-  }
 
-  private static checkSpacingErrors(text: string): Issue[] {
-    const issues: Issue[] = [];
-    const doubleSpaceRegex = /[^.]\s{2,}/g;
-    let match: RegExpExecArray | null;
-    while ((match = doubleSpaceRegex.exec(text)) !== null) {
-      issues.push({
-        type: 'grammar',
-        original: match[0],
-        suggestion: ' ',
-        reason: 'Multiple spaces detected. Use single space.',
-        offset: match.index,
-        length: match[0].length,
-      });
-    }
-    const spaceBeforePunctRegex = /\s+([.,!?;:])/g;
-    while ((match = spaceBeforePunctRegex.exec(text)) !== null) {
-      issues.push({
-        type: 'grammar',
-        original: match[0],
-        suggestion: match[1] || '',
-        reason: 'Remove space before punctuation.',
-        offset: match.index,
-        length: match[0].length,
-      });
-    }
-    const noSpaceAfterPunctRegex = /([.,!?;:])([A-Z][a-z])/g;
-    while ((match = noSpaceAfterPunctRegex.exec(text)) !== null) {
-      issues.push({
-        type: 'grammar',
-        original: match[0],
-        suggestion: `${match[1] || ''} ${match[2] || ''}`,
-        reason: 'Add space after punctuation.',
-        offset: match.index,
-        length: match[0].length,
-      });
-    }
-    return issues;
-  }
+    const result: Issue[] = [];
+    const seenSpans = new Map<string, Issue>(); // key: "offset:length" or normalized original
 
-  private static checkApostropheErrors(text: string): Issue[] {
-    const issues: Issue[] = [];
-    const itsPossessiveRegex = /\bits\s+(?:name|own|color|size|shape|kind|type|way|purpose|function|role|effect|impact|result|content|source|code|data|file|path|url|id|user|item|object|property|value|element|node|parent|child|sibling)\b/gi;
-    let match: RegExpExecArray | null;
-    while ((match = itsPossessiveRegex.exec(text)) !== null) {
-      const parts = match[0].split(' ');
-      issues.push({
-        type: 'grammar',
-        original: match[0],
-        suggestion: `it's ${parts[1] || ''}`,
-        reason: "Use 'it's' (contraction of 'it is') here.",
-        offset: match.index,
-        length: match[0].length,
-      });
-    }
-    const youreVerbRegex = /\byour\s+(?:welcome|going|right|wrong|reading|writing|working|looking|sounding|feeling|thinking|doing|making|taking|getting|having|being|becoming|seeming|appearing)\b/gi;
-    while ((match = youreVerbRegex.exec(text)) !== null) {
-      const parts = match[0].split(' ');
-      issues.push({
-        type: 'grammar',
-        original: match[0],
-        suggestion: `you're ${parts[1] || ''}`,
-        reason: "Use 'you're' (contraction of 'you are') here.",
-        offset: match.index,
-        length: match[0].length,
-      });
-    }
-    const theyreVerbRegex = /\btheir\s+(?:going|coming|working|doing|making|taking|getting|having|being|becoming|seeming|looking|sounding|feeling|thinking)\b/gi;
-    while ((match = theyreVerbRegex.exec(text)) !== null) {
-      const parts = match[0].split(' ');
-      issues.push({
-        type: 'grammar',
-        original: match[0],
-        suggestion: `they're ${parts[1] || ''}`,
-        reason: "Use 'they're' (contraction of 'they are') here.",
-        offset: match.index,
-        length: match[0].length,
-      });
-    }
-    return issues;
-  }
+    for (const issue of sorted) {
+      const spanKey = `${issue.offset}:${issue.length}`;
+      const origKey = issue.original.toLowerCase().trim();
 
-  private static checkThatWhich(text: string): Issue[] {
-    const issues: Issue[] = [];
-    const whichNoCommaRegex = /[^,]\s+which\s+(?:is|are|was|were|has|have|had|does|do|did)\b/gi;
-    let match: RegExpExecArray | null;
-    while ((match = whichNoCommaRegex.exec(text)) !== null) {
-      const parts = match[0].trim().split(' ');
-      issues.push({
-        type: 'grammar',
-        original: match[0].trim(),
-        suggestion: `, which ${parts.slice(1).join(' ') || ''}`,
-        reason: "Non-restrictive clauses need a comma before 'which'.",
-        offset: match.index + 1,
-        length: match[0].length - 1,
-      });
-    }
-    return issues;
-  }
-
-  private static checkLessFewer(text: string): Issue[] {
-    const issues: Issue[] = [];
-    const lessCountableRegex = /\bless\s+(?:items|things|people|words|sentences|paragraphs|pages|books|cars|houses|dogs|cats|students|teachers|errors|problems|questions|answers|ideas|concepts|rules|examples|cases|instances|occasions|times|days|weeks|months|years)\b/gi;
-    let match: RegExpExecArray | null;
-    while ((match = lessCountableRegex.exec(text)) !== null) {
-      const parts = match[0].split(' ');
-      issues.push({
-        type: 'grammar',
-        original: match[0],
-        suggestion: `fewer ${parts[1] || ''}`,
-        reason: "Use 'fewer' with countable nouns.",
-        offset: match.index,
-        length: match[0].length,
-      });
-    }
-    return issues;
-  }
-
-  private static checkItsIt(text: string): Issue[] {
-    const issues: Issue[] = [];
-    const itsWrongRegex = /\bits\s+(?:been|become|becoming|seemed|seems|appeared|appears|gotten|made|done|said|written|created)\b/gi;
-    let match: RegExpExecArray | null;
-    while ((match = itsWrongRegex.exec(text)) !== null) {
-      const parts = match[0].split(' ');
-      issues.push({
-        type: 'spelling',
-        original: match[0],
-        suggestion: `it's ${parts[1] || ''}`,
-        reason: "Use 'it's' (contraction) when you mean 'it is' or 'it has'.",
-        offset: match.index,
-        length: match[0].length,
-      });
-    }
-    return issues;
-  }
-
-  private static checkTheirThereTheyre(text: string): Issue[] {
-    const issues: Issue[] = [];
-    const thereLocationRegex = /\bover\s+their\b/gi;
-    let match: RegExpExecArray | null;
-    while ((match = thereLocationRegex.exec(text)) !== null) {
-      issues.push({
-        type: 'spelling',
-        original: match[0],
-        suggestion: 'over there',
-        reason: "Use 'there' for locations, not 'their' (possessive).",
-        offset: match.index,
-        length: match[0].length,
-      });
-    }
-    return issues;
-  }
-
-  private static checkYourYoure(text: string): Issue[] {
-    const issues: Issue[] = [];
-    const yourShouldBeYoureRegex = /\byour\s+(?:welcome|absolutely|right|wrong|amazing|awesome|incredible|fantastic|wonderful|great|excellent|perfect|beautiful|stunning|gorgeous|brilliant|smart|intelligent|talented|skilled|experienced|qualified|prepared|ready|finished|done|complete|correct|incorrect|mistaken|confused|lost|found|gone|here|there|early|late|busy|free|available|unavailable|important|necessary|essential|critical|vital|crucial|key|main|primary|principal|chief|major|minor|significant|relevant|appropriate|suitable|fitting|proper|correct|right|wrong|bad|good|better|best|worse|worst)\b/gi;
-    let match: RegExpExecArray | null;
-    while ((match = yourShouldBeYoureRegex.exec(text)) !== null) {
-      const parts = match[0].split(' ');
-      issues.push({
-        type: 'spelling',
-        original: match[0],
-        suggestion: `you're ${parts[1] || ''}`,
-        reason: "Use 'you're' (contraction of 'you are') here.",
-        offset: match.index,
-        length: match[0].length,
-      });
-    }
-    return issues;
-  }
-
-  private static checkCommaSplices(text: string): Issue[] {
-    const issues: Issue[] = [];
-    const commaSpliceRegex = /\b([A-Z][^.]*?)\s*,\s+([A-Z][^.]*?[.!?])/g;
-    let match: RegExpExecArray | null;
-    while ((match = commaSpliceRegex.exec(text)) !== null) {
-      const clause1 = match[1]?.trim() || '';
-      const clause2 = match[2]?.trim() || '';
-      if (clause1.split(' ').length > 3 && clause2.split(' ').length > 3) {
-        issues.push({
-          type: 'grammar',
-          original: `${clause1}, ${clause2}`,
-          suggestion: `${clause1}. ${clause2}`,
-          reason: 'Comma splice detected. Use a period, semicolon, or conjunction.',
-          offset: match.index,
-          length: match[0].length,
-        });
+      // Case 1: Exact same span — keep higher priority
+      if (seenSpans.has(spanKey)) {
+        const existing = seenSpans.get(spanKey)!;
+        if ((PRIORITY[issue.type] || 0) > (PRIORITY[existing.type] || 0)) {
+          // Replace with higher-priority version
+          const idx = result.indexOf(existing);
+          if (idx >= 0) result[idx] = issue;
+          seenSpans.set(spanKey, issue);
+        }
+        continue;
       }
+
+      // Case 2: Same original text, same suggestion — skip duplicate
+      const dedupKey = `${origKey}→${(issue.suggestion || '').toLowerCase().trim()}`;
+      let isDuplicate = false;
+      for (const seen of result) {
+        const seenDedupKey = `${seen.original.toLowerCase().trim()}→${(seen.suggestion || '').toLowerCase().trim()}`;
+        if (dedupKey === seenDedupKey && Math.abs(issue.offset - seen.offset) < 3) {
+          isDuplicate = true;
+          break;
+        }
+      }
+      if (isDuplicate) continue;
+
+      // Case 3: Different rules flagging the same original text at the same position
+      let overlapping = false;
+      for (const seen of result) {
+        if (seen.original.toLowerCase().trim() === origKey &&
+            Math.abs(issue.offset - seen.offset) <= issue.original.length) {
+          overlapping = true;
+          // Keep the one with higher priority
+          if ((PRIORITY[issue.type] || 0) > (PRIORITY[seen.type] || 0)) {
+            const idx = result.indexOf(seen);
+            if (idx >= 0) result[idx] = issue;
+          }
+          break;
+        }
+      }
+      if (overlapping) continue;
+
+      result.push(issue);
+      seenSpans.set(spanKey, issue);
     }
-    return issues;
+
+    return result;
   }
 
-  private static checkDoubleNegatives(text: string): Issue[] {
-    const issues: Issue[] = [];
-    const negativeWords = ["don't", "doesn't", "didn't", "won't", "wouldn't", "couldn't", "shouldn't", "can't", "cannot", "no", "not", "never", "nothing", "nobody", "nowhere", "neither", "nor"];
-    const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
-    let currentIndex = 0;
-    sentences.forEach((sentence) => {
-      const lowerSentence = sentence.toLowerCase();
-      const foundNegatives = negativeWords.filter(word => lowerSentence.includes(word));
-      if (foundNegatives.length >= 2) {
-        issues.push({
-          type: 'grammar',
-          original: sentence.trim(),
-          suggestion: 'Remove one negative',
-          reason: `Double negative detected: ${foundNegatives.join(', ')}. This may be unintentional.`,
-          offset: currentIndex,
-          length: sentence.length,
-        });
-      }
-      currentIndex += sentence.length;
-    });
-    return issues;
-  }
 
-  private static checkRedundantPhrases(text: string): Issue[] {
-    const issues: Issue[] = [];
-    const redundantPhrases: Record<string, string> = {
-      'absolutely essential': 'essential',
-      'advance planning': 'planning',
-      'basic fundamentals': 'fundamentals',
-      'close proximity': 'proximity',
-      'completely eliminate': 'eliminate',
-      'end result': 'result',
-      'exact same': 'same',
-      'final outcome': 'outcome',
-      'free gift': 'gift',
-      'future plans': 'plans',
-      'past history': 'history',
-      'personal opinion': 'opinion',
-      'true fact': 'fact',
-      'unexpected surprise': 'surprise',
-    };
-    for (const [phrase, replacement] of Object.entries(redundantPhrases)) {
-      const regex = new RegExp(`\\b${phrase}\\b`, 'gi');
-      let match: RegExpExecArray | null;
-      while ((match = regex.exec(text)) !== null) {
-        issues.push({
-          type: 'clarity',
-          original: match[0],
-          suggestion: replacement,
-          reason: `Redundant phrase. Use "${replacement}" instead.`,
-          offset: match.index,
-          length: match[0].length,
-        });
-      }
-    }
-    return issues;
-  }
-
-  private static checkWeakWords(text: string): Issue[] {
-    const issues: Issue[] = [];
-    const weakWords: Record<string, string> = {
-      'very good': 'excellent',
-      'very bad': 'terrible',
-      'very big': 'enormous',
-      'very small': 'tiny',
-      'very important': 'crucial',
-      'very interesting': 'fascinating',
-      'kind of': 'somewhat',
-      'sort of': 'somewhat',
-      'a lot': 'much',
-      'stuff': 'things',
-      'nice': 'pleasant',
-    };
-    for (const [weak, strong] of Object.entries(weakWords)) {
-      const regex = new RegExp(`\\b${weak}\\b`, 'gi');
-      let match: RegExpExecArray | null;
-      while ((match = regex.exec(text)) !== null) {
-        issues.push({
-          type: 'style',
-          original: match[0],
-          suggestion: strong,
-          reason: `Consider a stronger word: "${strong}".`,
-          offset: match.index,
-          length: match[0].length,
-        });
-      }
-    }
-    return issues;
-  }
-
-  private static checkCliches(text: string): Issue[] {
-    const issues: Issue[] = [];
-    const cliches = [
-      'at the end of the day',
-      'back to the drawing board',
-      'beat around the bush',
-      'best of both worlds',
-      'bite the bullet',
-      'cut corners',
-      'hit the nail on the head',
-      'in the nick of time',
-      'piece of cake',
-      'spill the beans',
-      'under the weather',
-      'when pigs fly',
-    ];
-    for (const cliche of cliches) {
-      const regex = new RegExp(`\\b${cliche}\\b`, 'gi');
-      let match: RegExpExecArray | null;
-      while ((match = regex.exec(text)) !== null) {
-        issues.push({
-          type: 'style',
-          original: match[0],
-          suggestion: 'Use original phrasing',
-          reason: 'This is a cliché. Consider using more original language.',
-          offset: match.index,
-          length: match[0].length,
-        });
-      }
-    }
-    return issues;
-  }
 
   private static checkCustomRules(text: string): Issue[] {
     const issues: Issue[] = [];
@@ -762,6 +171,8 @@ export class RuleBasedAnalyzer {
     }
     return issues;
   }
+
+
 }
 
 export class LLMAnalyzer {
@@ -771,17 +182,18 @@ export class LLMAnalyzer {
     model: string = 'gpt-3.5-turbo',
     provider: LLMProvider = 'openai',
     baseUrl?: string,
-    context?: AnalysisContext
+    context?: AnalysisContext,
+    ruleIssues?: Issue[]
   ): Promise<Issue[]> {
     try {
       let issues: any[] = [];
 
       // Use Groq SDK for Groq provider
       if (provider === 'groq') {
-        issues = await this.analyzeWithGroq(text, apiKey, model, context);
+        issues = await this.analyzeWithGroq(text, apiKey, model, context, ruleIssues);
       } else {
         // Use OpenAI SDK for other providers (OpenAI, OpenRouter, Together, Ollama, Custom)
-        issues = await this.analyzeWithOpenAI(text, apiKey, model, provider, baseUrl, context);
+        issues = await this.analyzeWithOpenAI(text, apiKey, model, provider, baseUrl, context, ruleIssues);
       }
 
       return issues;
@@ -795,23 +207,21 @@ export class LLMAnalyzer {
     text: string,
     apiKey: string,
     model: string,
-    context?: AnalysisContext
+    context?: AnalysisContext,
+    ruleIssues?: Issue[]
   ): Promise<Issue[]> {
     const groq = new Groq({ apiKey });
 
-    const prompt = this.createGrammarPrompt(text, context);
+    const { systemPrompt, userPrompt } = this.createGrammarPrompts(text, context, ruleIssues);
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [
-        { 
-          role: 'system', 
-          content: 'You are an expert grammar assistant. Return ONLY valid JSON.' 
-        },
-        { role: 'user', content: prompt }
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
       ],
       model: model,
       response_format: { type: 'json_object' },
-      temperature: 0.3,
+      temperature: 0.2,
     });
 
     let content = chatCompletion.choices[0]?.message?.content;
@@ -836,7 +246,8 @@ export class LLMAnalyzer {
     model: string,
     provider: LLMProvider,
     baseUrl?: string,
-    context?: AnalysisContext
+    context?: AnalysisContext,
+    ruleIssues?: Issue[]
   ): Promise<Issue[]> {
     const providerBaseUrl = baseUrl || this.getProviderBaseUrl(provider);
     
@@ -845,16 +256,16 @@ export class LLMAnalyzer {
       baseURL: providerBaseUrl,
     });
 
-    const prompt = this.createGrammarPrompt(text, context);
+    const { systemPrompt, userPrompt } = this.createGrammarPrompts(text, context, ruleIssues);
 
     const completion = await openai.chat.completions.create({
       messages: [
-        { role: 'system', content: 'You are an expert grammar assistant. Return ONLY valid JSON.' },
-        { role: 'user', content: prompt }
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
       ],
       model: model,
       response_format: { type: 'json_object' },
-      temperature: 0.3,
+      temperature: 0.2,
     });
 
     let content = completion.choices[0]?.message?.content;
@@ -885,32 +296,89 @@ export class LLMAnalyzer {
     return urls[provider as string] ?? urls.openai;
   }
 
-  private static createGrammarPrompt(text: string, context?: AnalysisContext): string {
-    const contextBlock = context
-      ? `\nCONTEXT:\n- Domain: ${context.domain || 'unknown'}\n- Editor type: ${context.editorType || 'generic'}\n- Active sentence: ${context.activeSentence || 'n/a'}\n- Previous text: ${context.previousText || 'n/a'}\n- Next text: ${context.nextText || 'n/a'}\n- Document excerpt: ${context.fullTextExcerpt || 'n/a'}\n`
+  /**
+   * Create structured, few-shot grammar prompts with domain awareness.
+   * Returns separate system and user prompts for better LLM instruction following.
+   */
+  private static createGrammarPrompts(
+    text: string,
+    context?: AnalysisContext,
+    ruleIssues?: Issue[]
+  ): { systemPrompt: string; userPrompt: string } {
+    // Detect writing domain from context
+    const domain = this.detectDomain(context);
+    const domainInstruction = this.getDomainInstruction(domain);
+
+    // Build the list of already-detected issues so LLM doesn't duplicate
+    const alreadyDetected = ruleIssues && ruleIssues.length > 0
+      ? `\n\nALREADY DETECTED (do NOT report these again):\n${ruleIssues.slice(0, 15).map(i => `- "${i.original}" → "${i.suggestion}"`).join('\n')}`
       : '';
 
-    return `Analyze this text for grammar, spelling, clarity, and style issues.
+    const systemPrompt = `You are a professional copy editor and grammar expert. Your job is to find errors that automated rules might miss — contextual mistakes, awkward phrasing, unclear antecedents, and subtle grammar issues.
 
-Use the additional context to improve consistency, tone, and document-level suggestions when available.
+RULES:
+1. Report ONLY genuine errors. Do NOT flag valid informal English or stylistic choices.
+2. Every suggestion must be a concrete replacement, never vague advice like "consider rewording."
+3. Match the "original" field EXACTLY to a substring in the text.
+4. Maximum 8 issues per analysis. Prioritize: spelling > grammar > clarity > style.
+5. Do NOT repeat issues already detected by the rule engine.${alreadyDetected}
+${domainInstruction}
 
-TEXT:
-${text}
-${contextBlock}
-
-Return JSON:
+RETURN FORMAT: Valid JSON only.
 {
   "issues": [
     {
       "type": "grammar|spelling|clarity|style",
-      "original": "exact text",
-      "suggestion": "correction",
-      "reason": "brief explanation"
+      "original": "exact substring from text",
+      "suggestion": "concrete replacement",
+      "reason": "one-sentence explanation"
     }
   ]
 }
 
-Return ONLY JSON. If no issues: {"issues": []}`;
+EXAMPLE:
+Input: "The team have decided to moves forward with there plan."
+Output: {"issues":[{"type":"grammar","original":"team have","suggestion":"team has","reason":"'Team' is a collective noun treated as singular in American English."},{"type":"grammar","original":"to moves","suggestion":"to move","reason":"Infinitive verbs should use the base form."},{"type":"spelling","original":"there plan","suggestion":"their plan","reason":"'Their' (possessive) is needed here, not 'there' (location)."}]}
+
+If there are no issues, return: {"issues": []}`;
+
+    // Build context block
+    const contextBlock = context
+      ? `\n\nCONTEXT:\n- Source: ${context.domain || 'unknown'} (${context.editorType || 'generic'})\n- Active sentence: ${context.activeSentence || 'n/a'}\n- Surrounding text: ${(context.previousText || '').slice(-100)}[CURSOR]${(context.nextText || '').slice(0, 100)}`
+      : '';
+
+    const userPrompt = `Analyze this text for grammar, spelling, clarity, and style issues:\n\n"""\n${text}\n"""${contextBlock}`;
+
+    return { systemPrompt, userPrompt };
+  }
+
+  /**
+   * Detect the writing domain from URL and editor type
+   */
+  private static detectDomain(context?: AnalysisContext): string {
+    if (!context?.domain) return 'general';
+    const d = context.domain.toLowerCase();
+    if (d.includes('mail.google') || d.includes('outlook') || d.includes('yahoo')) return 'email';
+    if (d.includes('docs.google') || d.includes('notion') || d.includes('overleaf')) return 'document';
+    if (d.includes('github') || d.includes('stackoverflow') || d.includes('gitlab')) return 'technical';
+    if (d.includes('twitter') || d.includes('reddit') || d.includes('facebook') || d.includes('linkedin')) return 'social';
+    if (d.includes('slack') || d.includes('discord') || d.includes('teams')) return 'chat';
+    return 'general';
+  }
+
+  /**
+   * Get domain-specific instructions for the LLM
+   */
+  private static getDomainInstruction(domain: string): string {
+    const instructions: Record<string, string> = {
+      email: '\nDOMAIN: Email. Focus on tone, professionalism, and brevity. Flag overly casual language in business emails. Ignore informal greetings.',
+      document: '\nDOMAIN: Document/Essay. Focus on formal grammar, passive voice overuse, paragraph transitions, and academic clarity.',
+      technical: '\nDOMAIN: Technical writing. Ignore code blocks and variable names. Check only prose. Be lenient with technical jargon.',
+      social: '\nDOMAIN: Social media. Only flag clear spelling/grammar errors. Do NOT flag informal language, slang, or conversational tone.',
+      chat: '\nDOMAIN: Chat/messaging. Only flag obvious typos. Do NOT flag informal language or abbreviations.',
+      general: '',
+    };
+    return instructions[domain] || '';
   }
 
   static async getModels(provider: string, apiKey?: string, baseUrl?: string): Promise<string[]> {

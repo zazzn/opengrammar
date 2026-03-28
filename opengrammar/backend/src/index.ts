@@ -112,7 +112,8 @@ app.post('/analyze', async (c) => {
           model || 'gpt-3.5-turbo',
           llmProvider,
           baseUrl,
-          context
+          context,
+          ruleIssues
         );
         issues = [...issues, ...enrichIssues(llmIssues, 'llm', text, context)];
       } catch (llmError) {
