@@ -5,9 +5,12 @@ const port = 8787;
 
 console.log(`Starting OpenGrammar backend on http://localhost:${port}`);
 
-serve({
-  fetch: app.fetch,
-  port,
-}, (info) => {
-  console.log(`Server is running on http://localhost:${info.port}`);
-});
+serve(
+  {
+    fetch: app.fetch,
+    port,
+  },
+  (info) => {
+    console.log(`Server is running on http://localhost:${info.port}`);
+  },
+);

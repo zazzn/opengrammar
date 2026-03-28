@@ -1,5 +1,5 @@
-import { type Rule, createRegexRule } from '../types.js';
 import type { Issue } from '../../shared-types.js';
+import { createRegexRule, type Rule } from '../types.js';
 
 export const clarityRules: Rule[] = [
   // Repetition
@@ -8,7 +8,7 @@ export const clarityRules: Rule[] = [
     category: 'clarity',
     pattern: /\b(\w+)\s+\1\b/i,
     suggestion: (match) => match[1] || '',
-    reason: 'Repeated word detected.'
+    reason: 'Repeated word detected.',
   }),
 
   // Redundant Phrases
@@ -27,14 +27,14 @@ export const clarityRules: Rule[] = [
     'personal opinion': 'opinion',
     'true fact': 'fact',
     'unexpected surprise': 'surprise',
-  }).map(([phrase, replacement]) => 
+  }).map(([phrase, replacement]) =>
     createRegexRule({
       id: `redundant-${phrase.replace(' ', '-')}`,
       category: 'clarity',
       pattern: new RegExp(`\\b${phrase}\\b`, 'i'),
       suggestion: replacement,
-      reason: `Redundant phrase. Use "${replacement}" instead.`
-    })
+      reason: `Redundant phrase. Use "${replacement}" instead.`,
+    }),
   ),
 
   // Cliches
@@ -51,14 +51,14 @@ export const clarityRules: Rule[] = [
     'spill the beans',
     'under the weather',
     'when pigs fly',
-  ].map(cliche => 
+  ].map((cliche) =>
     createRegexRule({
       id: `cliche-${cliche.replace(/\s/g, '-')}`,
       category: 'style',
       pattern: new RegExp(`\\b${cliche}\\b`, 'i'),
       suggestion: 'Consider using more original language',
-      reason: 'This is a cliché. Consider using more original language.'
-    })
+      reason: 'This is a cliché. Consider using more original language.',
+    }),
   ),
 
   // Weak Words
@@ -72,16 +72,16 @@ export const clarityRules: Rule[] = [
     'kind of': 'somewhat',
     'sort of': 'somewhat',
     'a lot': 'much',
-    'stuff': 'things',
-    'nice': 'pleasant',
+    stuff: 'things',
+    nice: 'pleasant',
   }).map(([weak, strong]) =>
     createRegexRule({
       id: `weak-word-${weak.replace(' ', '-')}`,
       category: 'style',
       pattern: new RegExp(`\\b${weak}\\b`, 'i'),
       suggestion: strong,
-      reason: `Consider a stronger word: "${strong}".`
-    })
+      reason: `Consider a stronger word: "${strong}".`,
+    }),
   ),
 
   // Long Sentences (Custom logic because JS Regex doesn't count words easily)
@@ -112,6 +112,6 @@ export const clarityRules: Rule[] = [
         currentIndex += sentence.length;
       });
       return issues;
-    }
-  }
+    },
+  },
 ];

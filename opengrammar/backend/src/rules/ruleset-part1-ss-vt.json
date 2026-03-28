@@ -17,10 +17,23 @@
           "language_register": "both",
           "pattern_description": "Detect singular subjects (he, she, it, everyone, someone, anybody, each, every, neither, either, nobody, nothing) followed by plural verb forms (are, were, have, do, go, need, want, make, take, come, give, say, seem, know, think).",
           "examples": {
-            "incorrect": ["He are going to the store.", "She have a new car.", "Everyone are welcome.", "Each of the students have a book."],
-            "correct": ["He is going to the store.", "She has a new car.", "Everyone is welcome.", "Each of the students has a book."]
+            "incorrect": [
+              "He are going to the store.",
+              "She have a new car.",
+              "Everyone are welcome.",
+              "Each of the students have a book."
+            ],
+            "correct": [
+              "He is going to the store.",
+              "She has a new car.",
+              "Everyone is welcome.",
+              "Each of the students has a book."
+            ]
           },
-          "exceptions": ["Subjunctive mood: 'I recommend that he have...'", "Questions with inverted order: 'Are you...?'"],
+          "exceptions": [
+            "Subjunctive mood: 'I recommend that he have...'",
+            "Questions with inverted order: 'Are you...?'"
+          ],
           "fix_hint": "Replace plural verb with singular form matching the subject.",
           "british_variant": "Collective nouns may take plural verbs in British English (The team are playing)."
         },
@@ -34,8 +47,18 @@
           "language_register": "both",
           "pattern_description": "Detect plural subjects (they, we, you, both, few, many, several) followed by singular verb forms (is, was, has, does, goes).",
           "examples": {
-            "incorrect": ["They is coming.", "We was there.", "You has finished.", "Many students was absent."],
-            "correct": ["They are coming.", "We were there.", "You have finished.", "Many students were absent."]
+            "incorrect": [
+              "They is coming.",
+              "We was there.",
+              "You has finished.",
+              "Many students was absent."
+            ],
+            "correct": [
+              "They are coming.",
+              "We were there.",
+              "You have finished.",
+              "Many students were absent."
+            ]
           },
           "exceptions": ["'You was' in dialect — flag in formal register only."],
           "fix_hint": "Replace singular verb with plural form.",
@@ -51,8 +74,18 @@
           "language_register": "both",
           "pattern_description": "Match (everyone|someone|anybody|somebody|nobody|no one|each|every|neither|either) + plural verb (are|were|have|do|go|seem|need|want).",
           "examples": {
-            "incorrect": ["Everyone have their own opinion.", "Somebody are at the door.", "Neither of them were ready.", "Each of the boys have a ball."],
-            "correct": ["Everyone has their own opinion.", "Somebody is at the door.", "Neither of them was ready.", "Each of the boys has a ball."]
+            "incorrect": [
+              "Everyone have their own opinion.",
+              "Somebody are at the door.",
+              "Neither of them were ready.",
+              "Each of the boys have a ball."
+            ],
+            "correct": [
+              "Everyone has their own opinion.",
+              "Somebody is at the door.",
+              "Neither of them was ready.",
+              "Each of the boys has a ball."
+            ]
           },
           "exceptions": ["'None' can take singular or plural depending on context."],
           "fix_hint": "Change verb to singular form.",
@@ -68,10 +101,20 @@
           "language_register": "formal",
           "pattern_description": "Match (team|committee|family|group|staff|jury|audience|crowd|class|government|company|board|council|panel) + plural verb.",
           "examples": {
-            "incorrect": ["The team are playing well.", "The committee have decided.", "The family are gathering."],
-            "correct": ["The team is playing well.", "The committee has decided.", "The family is gathering."]
+            "incorrect": [
+              "The team are playing well.",
+              "The committee have decided.",
+              "The family are gathering."
+            ],
+            "correct": [
+              "The team is playing well.",
+              "The committee has decided.",
+              "The family is gathering."
+            ]
           },
-          "exceptions": ["When emphasizing individual members: 'The team are arguing among themselves.' (valid in BrE)"],
+          "exceptions": [
+            "When emphasizing individual members: 'The team are arguing among themselves.' (valid in BrE)"
+          ],
           "fix_hint": "In American English, use singular verb. In British English, both may be acceptable.",
           "british_variant": "British English commonly uses plural verbs with collective nouns when referring to individual members."
         },
@@ -85,10 +128,16 @@
           "language_register": "both",
           "pattern_description": "Match (Noun/Pronoun) + 'and' + (Noun/Pronoun) + singular verb (is|was|has|does).",
           "examples": {
-            "incorrect": ["John and Mary is coming.", "The cat and the dog was sleeping.", "Bread and butter is my favorite."],
+            "incorrect": [
+              "John and Mary is coming.",
+              "The cat and the dog was sleeping.",
+              "Bread and butter is my favorite."
+            ],
             "correct": ["John and Mary are coming.", "The cat and the dog were sleeping."]
           },
-          "exceptions": ["When compound subject refers to single entity: 'Bread and butter is my favorite breakfast.' 'Mac and cheese is delicious.'"],
+          "exceptions": [
+            "When compound subject refers to single entity: 'Bread and butter is my favorite breakfast.' 'Mac and cheese is delicious.'"
+          ],
           "fix_hint": "Use plural verb unless the compound subject is a single concept.",
           "british_variant": "No significant difference."
         },
@@ -102,10 +151,18 @@
           "language_register": "both",
           "pattern_description": "Match 'either...or' / 'neither...nor' / 'or' — check verb agreement with nearest subject.",
           "examples": {
-            "incorrect": ["Neither the students nor the teacher were ready.", "Either the dogs or the cat are outside."],
-            "correct": ["Neither the students nor the teacher was ready.", "Either the dogs or the cat is outside."]
+            "incorrect": [
+              "Neither the students nor the teacher were ready.",
+              "Either the dogs or the cat are outside."
+            ],
+            "correct": [
+              "Neither the students nor the teacher was ready.",
+              "Either the dogs or the cat is outside."
+            ]
           },
-          "exceptions": ["When nearest subject is plural, plural verb is correct: 'Neither the teacher nor the students were ready.'"],
+          "exceptions": [
+            "When nearest subject is plural, plural verb is correct: 'Neither the teacher nor the students were ready.'"
+          ],
           "fix_hint": "Match verb to the subject closest to it.",
           "british_variant": "No significant difference."
         },
@@ -119,10 +176,22 @@
           "language_register": "both",
           "pattern_description": "Match 'there is/was' + plural noun or 'there are/were' + singular noun.",
           "examples": {
-            "incorrect": ["There is many reasons.", "There is several problems.", "There was two cats.", "There are a problem."],
-            "correct": ["There are many reasons.", "There are several problems.", "There were two cats.", "There is a problem."]
+            "incorrect": [
+              "There is many reasons.",
+              "There is several problems.",
+              "There was two cats.",
+              "There are a problem."
+            ],
+            "correct": [
+              "There are many reasons.",
+              "There are several problems.",
+              "There were two cats.",
+              "There is a problem."
+            ]
           },
-          "exceptions": ["Informal speech often uses 'there's' with plural nouns — flag only in formal register."],
+          "exceptions": [
+            "Informal speech often uses 'there's' with plural nouns — flag only in formal register."
+          ],
           "fix_hint": "Match is/was with singular subjects; are/were with plural subjects.",
           "british_variant": "No significant difference."
         },
@@ -136,10 +205,23 @@
           "language_register": "both",
           "pattern_description": "Detect sentences starting with (because|although|though|even though|while|whereas|since|unless|until|if|when|whenever|wherever|after|before|as soon as|in order to|so that) that are short (<10 words) and lack a comma joining a main clause.",
           "examples": {
-            "incorrect": ["Because I was tired.", "Although she studied hard.", "When the rain stopped.", "If you want to come."],
-            "correct": ["Because I was tired, I went to bed.", "Although she studied hard, she failed.", "When the rain stopped, we went outside.", "If you want to come, let me know."]
+            "incorrect": [
+              "Because I was tired.",
+              "Although she studied hard.",
+              "When the rain stopped.",
+              "If you want to come."
+            ],
+            "correct": [
+              "Because I was tired, I went to bed.",
+              "Although she studied hard, she failed.",
+              "When the rain stopped, we went outside.",
+              "If you want to come, let me know."
+            ]
           },
-          "exceptions": ["Intentional fragments in creative writing or dialogue.", "Answers to questions: 'Why? Because I was tired.'"],
+          "exceptions": [
+            "Intentional fragments in creative writing or dialogue.",
+            "Answers to questions: 'Why? Because I was tired.'"
+          ],
           "fix_hint": "Attach the dependent clause to an independent clause, or rewrite as a complete sentence.",
           "british_variant": "No significant difference."
         },
@@ -153,8 +235,16 @@
           "language_register": "both",
           "pattern_description": "Detect sentences that contain no conjugated verb — only nouns, adjectives, or participial phrases without auxiliaries. Requires NLP POS tagging.",
           "examples": {
-            "incorrect": ["The big red ball on the table.", "Running through the park at dawn.", "A beautiful day in the neighborhood."],
-            "correct": ["The big red ball is on the table.", "She was running through the park at dawn.", "It was a beautiful day in the neighborhood."]
+            "incorrect": [
+              "The big red ball on the table.",
+              "Running through the park at dawn.",
+              "A beautiful day in the neighborhood."
+            ],
+            "correct": [
+              "The big red ball is on the table.",
+              "She was running through the park at dawn.",
+              "It was a beautiful day in the neighborhood."
+            ]
           },
           "exceptions": ["Titles, headings, bullet points, exclamations ('What a day!')"],
           "fix_hint": "Add a main verb to complete the sentence.",
@@ -170,10 +260,21 @@
           "language_register": "formal",
           "pattern_description": "Detect sentences starting with a conjugated verb that is not imperative mood, lacking a subject. Requires NLP.",
           "examples": {
-            "incorrect": ["Was going to the store.", "Has been very helpful.", "Seems like a good idea."],
-            "correct": ["He was going to the store.", "She has been very helpful.", "It seems like a good idea."]
+            "incorrect": [
+              "Was going to the store.",
+              "Has been very helpful.",
+              "Seems like a good idea."
+            ],
+            "correct": [
+              "He was going to the store.",
+              "She has been very helpful.",
+              "It seems like a good idea."
+            ]
           },
-          "exceptions": ["Imperative sentences: 'Go to the store.' 'Be quiet.'", "Informal diary style."],
+          "exceptions": [
+            "Imperative sentences: 'Go to the store.' 'Be quiet.'",
+            "Informal diary style."
+          ],
           "fix_hint": "Add a subject before the verb.",
           "british_variant": "No significant difference."
         },
@@ -188,7 +289,11 @@
           "pattern_description": "Detect standalone phrases starting with prepositions (in, on, at, by, for, with, to, from, about, of) that end with a period but contain no independent clause.",
           "examples": {
             "incorrect": ["In the morning.", "With great enthusiasm.", "For the best results."],
-            "correct": ["In the morning, she went for a run.", "He spoke with great enthusiasm.", "For the best results, follow the instructions."]
+            "correct": [
+              "In the morning, she went for a run.",
+              "He spoke with great enthusiasm.",
+              "For the best results, follow the instructions."
+            ]
           },
           "exceptions": ["Titles, answers to questions, creative writing."],
           "fix_hint": "Attach the phrase to a complete sentence or add a subject and verb.",
@@ -204,10 +309,20 @@
           "language_register": "both",
           "pattern_description": "Detect two clauses (each with subject + verb, 4+ words) separated by only a comma, without a coordinating conjunction.",
           "examples": {
-            "incorrect": ["I went to the store, I bought milk.", "She is smart, she studies hard.", "The movie was great, everyone enjoyed it."],
-            "correct": ["I went to the store, and I bought milk.", "I went to the store; I bought milk.", "She is smart. She studies hard."]
+            "incorrect": [
+              "I went to the store, I bought milk.",
+              "She is smart, she studies hard.",
+              "The movie was great, everyone enjoyed it."
+            ],
+            "correct": [
+              "I went to the store, and I bought milk.",
+              "I went to the store; I bought milk.",
+              "She is smart. She studies hard."
+            ]
           },
-          "exceptions": ["Very short closely related clauses in informal writing: 'I came, I saw, I conquered.'"],
+          "exceptions": [
+            "Very short closely related clauses in informal writing: 'I came, I saw, I conquered.'"
+          ],
           "fix_hint": "Add a coordinating conjunction, replace comma with semicolon or period, or restructure with a subordinate clause.",
           "british_variant": "No significant difference."
         },
@@ -221,8 +336,16 @@
           "language_register": "both",
           "pattern_description": "Detect two independent clauses (each with subject + verb) with no punctuation or conjunction between them. Requires NLP clause detection.",
           "examples": {
-            "incorrect": ["I went to the store I bought milk.", "She likes coffee he prefers tea.", "The sun set the stars appeared."],
-            "correct": ["I went to the store. I bought milk.", "She likes coffee; he prefers tea.", "The sun set, and the stars appeared."]
+            "incorrect": [
+              "I went to the store I bought milk.",
+              "She likes coffee he prefers tea.",
+              "The sun set the stars appeared."
+            ],
+            "correct": [
+              "I went to the store. I bought milk.",
+              "She likes coffee; he prefers tea.",
+              "The sun set, and the stars appeared."
+            ]
           },
           "exceptions": ["Intentional stylistic choice in literary writing."],
           "fix_hint": "Add a period, semicolon, or comma + conjunction between clauses.",
@@ -238,8 +361,16 @@
           "language_register": "both",
           "pattern_description": "Detect sentences starting with a present or past participial phrase (Walking, Having finished, Covered in mud) followed by a comma, where the subject after the comma is not the logical doer. Requires NLP.",
           "examples": {
-            "incorrect": ["Walking to school, the rain started.", "Having finished dinner, the TV was turned on.", "Covered in mud, the mother scolded the children."],
-            "correct": ["Walking to school, I got caught in the rain.", "Having finished dinner, we turned on the TV.", "Covered in mud, the children were scolded by their mother."]
+            "incorrect": [
+              "Walking to school, the rain started.",
+              "Having finished dinner, the TV was turned on.",
+              "Covered in mud, the mother scolded the children."
+            ],
+            "correct": [
+              "Walking to school, I got caught in the rain.",
+              "Having finished dinner, we turned on the TV.",
+              "Covered in mud, the children were scolded by their mother."
+            ]
           },
           "exceptions": ["Absolute phrases: 'Weather permitting, we will go.'"],
           "fix_hint": "Rewrite so the subject of the main clause is the logical doer of the participial action.",
@@ -255,10 +386,21 @@
           "language_register": "formal",
           "pattern_description": "Detect (only|almost|just|nearly|merely|hardly|barely|even|simply) placed before the verb when it should modify a different element.",
           "examples": {
-            "incorrect": ["She almost drove her kids to school every day.", "He only eats vegetables on Mondays.", "I just need five minutes."],
-            "correct": ["She drove her kids to school almost every day.", "He eats only vegetables on Mondays.", "I need just five minutes."]
+            "incorrect": [
+              "She almost drove her kids to school every day.",
+              "He only eats vegetables on Mondays.",
+              "I just need five minutes."
+            ],
+            "correct": [
+              "She drove her kids to school almost every day.",
+              "He eats only vegetables on Mondays.",
+              "I need just five minutes."
+            ]
           },
-          "exceptions": ["Informal speech widely accepts 'only' before the verb.", "Context determines correct placement."],
+          "exceptions": [
+            "Informal speech widely accepts 'only' before the verb.",
+            "Context determines correct placement."
+          ],
           "fix_hint": "Move the adverb immediately before the word or phrase it modifies.",
           "british_variant": "No significant difference."
         },
@@ -272,10 +414,20 @@
           "language_register": "both",
           "pattern_description": "Detect lists where items mix gerunds and infinitives, or mix nouns with clauses. Requires NLP POS analysis of list items.",
           "examples": {
-            "incorrect": ["She likes swimming, to run, and biking.", "The job requires intelligence, working hard, and patience.", "He is tall, dark, and has good hair."],
-            "correct": ["She likes swimming, running, and biking.", "The job requires intelligence, hard work, and patience.", "He is tall, dark, and handsome."]
+            "incorrect": [
+              "She likes swimming, to run, and biking.",
+              "The job requires intelligence, working hard, and patience.",
+              "He is tall, dark, and has good hair."
+            ],
+            "correct": [
+              "She likes swimming, running, and biking.",
+              "The job requires intelligence, hard work, and patience.",
+              "He is tall, dark, and handsome."
+            ]
           },
-          "exceptions": ["Mixed forms are acceptable when the meaning is clear and changing would sound awkward."],
+          "exceptions": [
+            "Mixed forms are acceptable when the meaning is clear and changing would sound awkward."
+          ],
           "fix_hint": "Make all list items the same grammatical form (all gerunds, all infinitives, or all nouns).",
           "british_variant": "No significant difference."
         },
@@ -289,8 +441,16 @@
           "language_register": "both",
           "pattern_description": "Detect correlative pairs where the grammatical form after each conjunction differs.",
           "examples": {
-            "incorrect": ["She not only sings but also is dancing.", "He both likes to swim and running.", "Either you must leave or staying."],
-            "correct": ["She not only sings but also dances.", "He likes both swimming and running.", "Either you must leave or you must stay."]
+            "incorrect": [
+              "She not only sings but also is dancing.",
+              "He both likes to swim and running.",
+              "Either you must leave or staying."
+            ],
+            "correct": [
+              "She not only sings but also dances.",
+              "He likes both swimming and running.",
+              "Either you must leave or you must stay."
+            ]
           },
           "exceptions": [],
           "fix_hint": "Ensure the element after each conjunction is the same grammatical form.",
@@ -306,10 +466,20 @@
           "language_register": "both",
           "pattern_description": "Match pattern: (ProperNoun|NounPhrase) + (he|she|it|they) + verb. Regex: /\\b([A-Z][a-z]+)\\s+(he|she|it|they)\\s+(is|are|was|were|has|have|does|do|will|would|can|could|should|shall|might|must)\\b/",
           "examples": {
-            "incorrect": ["My sister she is very smart.", "The teacher he always gives homework.", "My parents they are coming."],
-            "correct": ["My sister is very smart.", "The teacher always gives homework.", "My parents are coming."]
+            "incorrect": [
+              "My sister she is very smart.",
+              "The teacher he always gives homework.",
+              "My parents they are coming."
+            ],
+            "correct": [
+              "My sister is very smart.",
+              "The teacher always gives homework.",
+              "My parents are coming."
+            ]
           },
-          "exceptions": ["Deliberate emphasis in speech or creative writing: 'This guy, he never gives up.'"],
+          "exceptions": [
+            "Deliberate emphasis in speech or creative writing: 'This guy, he never gives up.'"
+          ],
           "fix_hint": "Remove the redundant pronoun.",
           "british_variant": "No significant difference."
         },
@@ -323,7 +493,10 @@
           "language_register": "formal",
           "pattern_description": "Regex: /\\bthe\\s+reason\\s+(is|was)\\s+because\\b/i",
           "examples": {
-            "incorrect": ["The reason is because he was late.", "The reason she left was because she was tired."],
+            "incorrect": [
+              "The reason is because he was late.",
+              "The reason she left was because she was tired."
+            ],
             "correct": ["The reason is that he was late.", "She left because she was tired."]
           },
           "exceptions": ["Widely accepted in informal speech."],
@@ -340,8 +513,14 @@
           "language_register": "formal",
           "pattern_description": "Regex: /\\b(the\\s+problem|the\\s+issue|the\\s+question|the\\s+difficulty)\\s+(is|was)\\s+(when|where|if)\\b/i",
           "examples": {
-            "incorrect": ["The problem is when people don't listen.", "The issue is where we should meet."],
-            "correct": ["The problem is that people don't listen.", "The issue is the meeting location."]
+            "incorrect": [
+              "The problem is when people don't listen.",
+              "The issue is where we should meet."
+            ],
+            "correct": [
+              "The problem is that people don't listen.",
+              "The issue is the meeting location."
+            ]
           },
           "exceptions": [],
           "fix_hint": "Replace the adverb clause with a noun clause using 'that'.",
@@ -363,8 +542,20 @@
           "language_register": "both",
           "pattern_description": "Match regularized forms: buyed→bought, goed→went, comed→came, runned→ran, eated→ate, taked→took, bringed→brought, thinked→thought, knowed→knew, writed→wrote, drived→drove, speaked→spoke, beginned→began, choosed→chose, drinked→drank, flyed→flew, freezed→froze, growed→grew, hided→hid, leaved→left, meaned→meant, payed→paid, rided→rode, ringed→rang, selled→sold, singed→sang, sitted→sat, sleeped→slept, stealed→stole, swimmed→swam, teached→taught, throwed→threw, weared→wore, winned→won, catched→caught, fighted→fought, feeled→felt, finded→found, forgetted→forgot, gived→gave, heared→heard, holded→held, keeped→kept, layed→laid, leaded→led, losted→lost, maked→made, putted→put, readed→read, sayed→said, seed→saw, sended→sent, shooted→shot, shutted→shut, spended→spent, standed→stood, stucked→stuck, telled→told, understanded→understood, waked→woke, withdrawed→withdrew",
           "examples": {
-            "incorrect": ["I buyed a car.", "She goed home.", "He bringed his lunch.", "They thinked about it.", "We beginned the project."],
-            "correct": ["I bought a car.", "She went home.", "He brought his lunch.", "They thought about it.", "We began the project."]
+            "incorrect": [
+              "I buyed a car.",
+              "She goed home.",
+              "He bringed his lunch.",
+              "They thinked about it.",
+              "We beginned the project."
+            ],
+            "correct": [
+              "I bought a car.",
+              "She went home.",
+              "He brought his lunch.",
+              "They thought about it.",
+              "We began the project."
+            ]
           },
           "exceptions": [],
           "fix_hint": "Replace with the correct irregular past tense form.",
@@ -380,8 +571,20 @@
           "language_register": "both",
           "pattern_description": "Match (have|has|had) + wrong participle: went→gone, ran→run, ate→eaten, drove→driven, spoke→spoken, wrote→written, broke→broken, chose→chosen, flew→flown, froze→frozen, gave→given, grew→grown, knew→known, rode→ridden, rose→risen, sang→sung, sank→sunk, saw→seen, stole→stolen, swam→swum, threw→thrown, took→taken, wore→worn, tore→torn, did→done.",
           "examples": {
-            "incorrect": ["I have went there.", "She has ate lunch.", "They have drove home.", "He has spoke to them.", "We have took the test."],
-            "correct": ["I have gone there.", "She has eaten lunch.", "They have driven home.", "He has spoken to them.", "We have taken the test."]
+            "incorrect": [
+              "I have went there.",
+              "She has ate lunch.",
+              "They have drove home.",
+              "He has spoke to them.",
+              "We have took the test."
+            ],
+            "correct": [
+              "I have gone there.",
+              "She has eaten lunch.",
+              "They have driven home.",
+              "He has spoken to them.",
+              "We have taken the test."
+            ]
           },
           "exceptions": [],
           "fix_hint": "Replace with proper past participle after have/has/had.",
@@ -397,8 +600,20 @@
           "language_register": "both",
           "pattern_description": "Regex: /\\b(should|could|would|might|must|may)\\s+have\\s+(went|ran|ate|drove|spoke|wrote|broke|chose|flew|froze|gave|grew|knew|rode|rose|sang|sank|saw|stole|swam|threw|took|wore|tore|did|came|began|drank|fell|got|hid|lay|led|paid|sat|slept|stood|told|woke)\\b/i",
           "examples": {
-            "incorrect": ["I should have went.", "She could have ran faster.", "They would have ate earlier.", "He must have drove there.", "We might have took the wrong turn."],
-            "correct": ["I should have gone.", "She could have run faster.", "They would have eaten earlier.", "He must have driven there.", "We might have taken the wrong turn."]
+            "incorrect": [
+              "I should have went.",
+              "She could have ran faster.",
+              "They would have ate earlier.",
+              "He must have drove there.",
+              "We might have took the wrong turn."
+            ],
+            "correct": [
+              "I should have gone.",
+              "She could have run faster.",
+              "They would have eaten earlier.",
+              "He must have driven there.",
+              "We might have taken the wrong turn."
+            ]
           },
           "exceptions": [],
           "fix_hint": "Replace past tense with past participle after 'modal + have'.",
@@ -414,8 +629,20 @@
           "language_register": "both",
           "pattern_description": "Regex: /\\b(could|would|should|might|must|may)\\s+of\\b/i",
           "examples": {
-            "incorrect": ["I could of won.", "She should of told me.", "They would of come.", "He might of known.", "You must of seen it."],
-            "correct": ["I could have won.", "She should have told me.", "They would have come.", "He might have known.", "You must have seen it."]
+            "incorrect": [
+              "I could of won.",
+              "She should of told me.",
+              "They would of come.",
+              "He might of known.",
+              "You must of seen it."
+            ],
+            "correct": [
+              "I could have won.",
+              "She should have told me.",
+              "They would have come.",
+              "He might have known.",
+              "You must have seen it."
+            ]
           },
           "exceptions": [],
           "fix_hint": "Replace 'of' with 'have'.",
@@ -431,10 +658,22 @@
           "language_register": "formal",
           "pattern_description": "Regex: /\\b(if|as if|as though|wish|wished)\\s+(I|he|she|it)\\s+was\\b/i",
           "examples": {
-            "incorrect": ["If I was rich, I would travel.", "She acts as if she was the boss.", "I wish he was here.", "If she was taller, she could reach it."],
-            "correct": ["If I were rich, I would travel.", "She acts as if she were the boss.", "I wish he were here.", "If she were taller, she could reach it."]
+            "incorrect": [
+              "If I was rich, I would travel.",
+              "She acts as if she was the boss.",
+              "I wish he was here.",
+              "If she was taller, she could reach it."
+            ],
+            "correct": [
+              "If I were rich, I would travel.",
+              "She acts as if she were the boss.",
+              "I wish he were here.",
+              "If she were taller, she could reach it."
+            ]
           },
-          "exceptions": ["'If I was wrong, I apologize' — indicative mood (real possibility), not subjunctive."],
+          "exceptions": [
+            "'If I was wrong, I apologize' — indicative mood (real possibility), not subjunctive."
+          ],
           "fix_hint": "Replace 'was' with 'were' in hypothetical conditions.",
           "british_variant": "'If I was' is increasingly accepted in informal British English."
         },
@@ -448,10 +687,22 @@
           "language_register": "formal",
           "pattern_description": "Match (recommend|suggest|demand|insist|request|require|propose|urge|ask|advise|command|order) + that + subject + non-base-form verb.",
           "examples": {
-            "incorrect": ["I recommend that he goes.", "She insisted that he was on time.", "They demanded that she leaves.", "The doctor suggests that he takes medicine."],
-            "correct": ["I recommend that he go.", "She insisted that he be on time.", "They demanded that she leave.", "The doctor suggests that he take medicine."]
+            "incorrect": [
+              "I recommend that he goes.",
+              "She insisted that he was on time.",
+              "They demanded that she leaves.",
+              "The doctor suggests that he takes medicine."
+            ],
+            "correct": [
+              "I recommend that he go.",
+              "She insisted that he be on time.",
+              "They demanded that she leave.",
+              "The doctor suggests that he take medicine."
+            ]
           },
-          "exceptions": ["British English often uses 'should' instead: 'I recommend that he should go.'"],
+          "exceptions": [
+            "British English often uses 'should' instead: 'I recommend that he should go.'"
+          ],
           "fix_hint": "Use the base form of the verb after 'that' in subjunctive constructions.",
           "british_variant": "British English often substitutes 'should + base form': 'I suggest that he should go.'"
         },
@@ -465,10 +716,26 @@
           "language_register": "both",
           "pattern_description": "Match (am|is|are|was|were) + (knowing|believing|containing|owning|belonging|consisting|depending|needing|preferring|understanding|loving|hating|wanting|seeming|appearing|meaning|existing|possessing|deserving|resembling|involving|supposing|realizing|recognizing|doubting).",
           "examples": {
-            "incorrect": ["I am knowing the answer.", "She is having a car.", "He is seeming tired.", "They are believing in ghosts.", "We are owning this house."],
-            "correct": ["I know the answer.", "She has a car.", "He seems tired.", "They believe in ghosts.", "We own this house."]
+            "incorrect": [
+              "I am knowing the answer.",
+              "She is having a car.",
+              "He is seeming tired.",
+              "They are believing in ghosts.",
+              "We are owning this house."
+            ],
+            "correct": [
+              "I know the answer.",
+              "She has a car.",
+              "He seems tired.",
+              "They believe in ghosts.",
+              "We own this house."
+            ]
           },
-          "exceptions": ["'I'm loving it' (McDonald's — informal/idiomatic).", "'She's having dinner' — 'have' as action verb (eat) is OK.", "'I'm thinking about it' — 'think' as mental process (action) is OK."],
+          "exceptions": [
+            "'I'm loving it' (McDonald's — informal/idiomatic).",
+            "'She's having dinner' — 'have' as action verb (eat) is OK.",
+            "'I'm thinking about it' — 'think' as mental process (action) is OK."
+          ],
           "fix_hint": "Use simple tense instead of progressive for stative verbs.",
           "british_variant": "No significant difference."
         },
@@ -482,8 +749,20 @@
           "language_register": "both",
           "pattern_description": "Match (enjoy|avoid|finish|mind|consider|suggest|practice|keep|deny|risk|imagine|appreciate|miss|postpone|delay|resist|tolerate|involve|recall|admit|anticipate|detest|dislike|mention|quit|recommend|understand) + 'to' + verb.",
           "examples": {
-            "incorrect": ["I enjoy to swim.", "She avoids to eat sugar.", "He finished to write the report.", "Do you mind to wait?", "They considered to move."],
-            "correct": ["I enjoy swimming.", "She avoids eating sugar.", "He finished writing the report.", "Do you mind waiting?", "They considered moving."]
+            "incorrect": [
+              "I enjoy to swim.",
+              "She avoids to eat sugar.",
+              "He finished to write the report.",
+              "Do you mind to wait?",
+              "They considered to move."
+            ],
+            "correct": [
+              "I enjoy swimming.",
+              "She avoids eating sugar.",
+              "He finished writing the report.",
+              "Do you mind waiting?",
+              "They considered moving."
+            ]
           },
           "exceptions": [],
           "fix_hint": "Replace 'to + verb' with the '-ing' form after these verbs.",
@@ -499,8 +778,20 @@
           "language_register": "both",
           "pattern_description": "Match (want|decide|plan|hope|expect|agree|refuse|manage|offer|fail|promise|learn|appear|seem|pretend|claim|demand|deserve|afford|choose|need|wish|attempt|tend|threaten|volunteer) + gerund.",
           "examples": {
-            "incorrect": ["I want swimming.", "She decided leaving.", "He hopes winning.", "They agreed helping.", "We plan going tomorrow."],
-            "correct": ["I want to swim.", "She decided to leave.", "He hopes to win.", "They agreed to help.", "We plan to go tomorrow."]
+            "incorrect": [
+              "I want swimming.",
+              "She decided leaving.",
+              "He hopes winning.",
+              "They agreed helping.",
+              "We plan going tomorrow."
+            ],
+            "correct": [
+              "I want to swim.",
+              "She decided to leave.",
+              "He hopes to win.",
+              "They agreed to help.",
+              "We plan to go tomorrow."
+            ]
           },
           "exceptions": [],
           "fix_hint": "Replace the gerund with 'to + base verb' after these verbs.",
@@ -516,10 +807,26 @@
           "language_register": "both",
           "pattern_description": "Match common errors: 'discuss about' (no about), 'reach to' (no to), 'return back' (redundant), 'enter into' (usually just enter), 'cope up with' (just cope with), 'comprise of' (comprises or is composed of), 'emphasize on' (no on), 'mention about' (no about).",
           "examples": {
-            "incorrect": ["Let's discuss about the problem.", "She reached to the top.", "He returned back home.", "They entered into the room.", "I can't cope up with stress.", "The team comprises of 10 members."],
-            "correct": ["Let's discuss the problem.", "She reached the top.", "He returned home.", "They entered the room.", "I can't cope with stress.", "The team comprises 10 members."]
+            "incorrect": [
+              "Let's discuss about the problem.",
+              "She reached to the top.",
+              "He returned back home.",
+              "They entered into the room.",
+              "I can't cope up with stress.",
+              "The team comprises of 10 members."
+            ],
+            "correct": [
+              "Let's discuss the problem.",
+              "She reached the top.",
+              "He returned home.",
+              "They entered the room.",
+              "I can't cope with stress.",
+              "The team comprises 10 members."
+            ]
           },
-          "exceptions": ["'enter into' is correct for agreements/contracts: 'enter into a contract.'"],
+          "exceptions": [
+            "'enter into' is correct for agreements/contracts: 'enter into a contract.'"
+          ],
           "fix_hint": "Remove the incorrect preposition or replace with the correct one.",
           "british_variant": "No significant difference."
         },
@@ -533,10 +840,22 @@
           "language_register": "both",
           "pattern_description": "Match (am|is|are|was|were|be|been|being) + past participle. Flag when the agent is present in a 'by' phrase.",
           "examples": {
-            "incorrect": ["The cake was eaten by the children.", "The report was written by the manager.", "The ball was kicked by the player."],
-            "correct": ["The children ate the cake.", "The manager wrote the report.", "The player kicked the ball."]
+            "incorrect": [
+              "The cake was eaten by the children.",
+              "The report was written by the manager.",
+              "The ball was kicked by the player."
+            ],
+            "correct": [
+              "The children ate the cake.",
+              "The manager wrote the report.",
+              "The player kicked the ball."
+            ]
           },
-          "exceptions": ["When the actor is unknown: 'The window was broken.'", "Scientific/academic writing: 'The experiment was conducted.'", "When the receiver is more important: 'The president was assassinated.'"],
+          "exceptions": [
+            "When the actor is unknown: 'The window was broken.'",
+            "Scientific/academic writing: 'The experiment was conducted.'",
+            "When the receiver is more important: 'The president was assassinated.'"
+          ],
           "fix_hint": "Restructure to place the doer as the subject.",
           "british_variant": "No significant difference."
         },
@@ -550,10 +869,21 @@
           "language_register": "both",
           "pattern_description": "Detect sentences where verb tenses shift between past and present without justification. Requires NLP verb tense tagging across clauses.",
           "examples": {
-            "incorrect": ["She walked to the store and buys some milk.", "He was reading when she comes in.", "They decided to go but then they change their minds."],
-            "correct": ["She walked to the store and bought some milk.", "He was reading when she came in.", "They decided to go but then they changed their minds."]
+            "incorrect": [
+              "She walked to the store and buys some milk.",
+              "He was reading when she comes in.",
+              "They decided to go but then they change their minds."
+            ],
+            "correct": [
+              "She walked to the store and bought some milk.",
+              "He was reading when she came in.",
+              "They decided to go but then they changed their minds."
+            ]
           },
-          "exceptions": ["Reporting universal truths: 'He said the earth is round.'", "Present-tense narration with past-tense backstory."],
+          "exceptions": [
+            "Reporting universal truths: 'He said the earth is round.'",
+            "Present-tense narration with past-tense backstory."
+          ],
           "fix_hint": "Make verbs in the same time context use the same tense.",
           "british_variant": "No significant difference."
         }
