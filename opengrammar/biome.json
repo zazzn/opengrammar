@@ -3,16 +3,10 @@
 	"vcs": {
 		"enabled": false,
 		"clientKind": "git",
-		"useIgnoreFile": false
+		"useIgnoreFile": true
 	},
 	"files": {
-		"ignoreUnknown": true,
-		"ignore": [
-			"backend/dist",
-			"extension/dist",
-			"backend/node_modules",
-			"extension/node_modules"
-		]
+		"ignoreUnknown": true
 	},
 	"formatter": {
 		"enabled": true,
@@ -34,8 +28,7 @@
 			"suspicious": {
 				"noExplicitAny": "off",
 				"noEmptyBlockStatements": "off",
-				"noConsole": "off",
-				"noConsoleLog": "off"
+				"noConsole": "off"
 			}
 		}
 	},
