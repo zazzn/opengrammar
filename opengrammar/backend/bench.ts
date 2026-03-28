@@ -75,7 +75,7 @@ const results: Array<{
 
 // Warm up (first run compiles regexes, loads dictionary, etc.)
 console.log('Warming up...');
-RuleBasedAnalyzer.analyze('This is a warm up sentence with gonna and buyed.');
+RuleBasedAnalyzer.analyze('This is a warm up sentence with gonna and buyed.', { writingContext: 'general' });
 console.log('Warm-up complete.\n');
 
 for (const wordCount of sizes) {
@@ -89,7 +89,7 @@ for (const wordCount of sizes) {
 
   for (let run = 0; run < 3; run++) {
     const start = performance.now();
-    const result = RuleBasedAnalyzer.analyze(text);
+    const result = RuleBasedAnalyzer.analyze(text, { writingContext: 'general' });
     const elapsed = performance.now() - start;
     times.push(elapsed);
     issues = result.length;
@@ -159,10 +159,10 @@ const rulesTime = performance.now() - rulesStart;
 console.log(`  Regex Rules:     ${formatMs(rulesTime)}`);
 
 // 4. Deduplication (estimate)
-const allIssues = RuleBasedAnalyzer.analyze(bigText);
+const allIssues = RuleBasedAnalyzer.analyze(bigText, { writingContext: 'general' });
 const dedupStart = performance.now();
 // Re-run to measure dedup overhead
-RuleBasedAnalyzer.analyze(bigText);
+RuleBasedAnalyzer.analyze(bigText, { writingContext: 'general' });
 const totalTime = performance.now() - dedupStart;
 const dedupEstimate = totalTime - rulesTime - spellTime;
 console.log(`  Dedup + Other:   ${formatMs(Math.max(0, dedupEstimate))}`);
