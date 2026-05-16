@@ -11,6 +11,7 @@ import {
   getCaretPosition,
   getElementFromTarget,
   setCaretPosition,
+  stripQuotedBBCode,
 } from './textExtractor';
 import { debounce } from './utils';
 
@@ -446,7 +447,9 @@ const checkGrammar = async (element: HTMLElement) => {
     return;
   }
 
-  const text = extractText(element);
+  // Blank quoted posts (length-preserving) so we only check the user's own
+  // writing. Offsets stay 1:1 with the editor text because length is kept.
+  const text = stripQuotedBBCode(extractText(element));
   if (!text || text.trim().length < 5) {
     clearHighlights();
     return;
