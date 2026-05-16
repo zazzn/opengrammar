@@ -8,6 +8,26 @@ let assistantBubble: HTMLElement | null = null;
 // Contenteditable overlay state — so scroll/resize can re-place underlines
 let overlayTarget: HTMLElement | null = null;
 let overlayIssues: Issue[] = [];
+// Field the floating bubble is anchored to (tracked on scroll/resize)
+let assistantTarget: HTMLElement | null = null;
+let currentSpellMenu: HTMLElement | null = null;
+
+const BUBBLE_SIZE = 30; // px — small, fits inside the field corner
+const MIN_FIELD_HEIGHT = 38; // skip tiny inputs (matches Grammarly)
+
+/** Anchor the bubble to the bottom-right corner of its target field. */
+function positionAssistantBubble() {
+  if (!assistantBubble || !assistantTarget || !assistantTarget.isConnected) return;
+  const r = assistantTarget.getBoundingClientRect();
+  if (r.height < MIN_FIELD_HEIGHT || r.width === 0) {
+    assistantBubble.style.display = 'none';
+    return;
+  }
+  assistantBubble.style.display = 'inline-flex';
+  const inset = 6;
+  assistantBubble.style.left = `${Math.round(r.right - BUBBLE_SIZE - inset)}px`;
+  assistantBubble.style.top = `${Math.round(r.bottom - BUBBLE_SIZE - inset)}px`;
+}
 let inputMirrorOverlay: HTMLElement | null = null;
 let inputMirrorContent: HTMLElement | null = null;
 let inputMirrorTarget: HTMLElement | null = null;
@@ -121,14 +141,16 @@ function renderOverlayUnderlines(element: HTMLElement, issues: Issue[]) {
     const c = getC(issue.type);
     for (const r of Array.from(range.getClientRects())) {
       if (r.width === 0 || r.height === 0) continue;
+      // Cover the whole word so it's an easy click / right-click target;
+      // the wavy line is drawn only along the bottom edge.
       const u = document.createElement('div');
       u.className = 'opengrammar-underline';
       u.style.cssText = `
         position: fixed;
         left: ${r.left}px;
-        top: ${Math.round(r.bottom) - 2}px;
+        top: ${Math.round(r.top)}px;
         width: ${r.width}px;
-        height: 3px;
+        height: ${Math.round(r.height)}px;
         pointer-events: auto;
         cursor: pointer;
         z-index: 2147483646;
@@ -136,15 +158,28 @@ function renderOverlayUnderlines(element: HTMLElement, issues: Issue[]) {
           linear-gradient(45deg, transparent 60%, ${c.line} 60%, ${c.line} 78%, transparent 78%),
           linear-gradient(-45deg, transparent 60%, ${c.line} 60%, ${c.line} 78%, transparent 78%);
         background-size: 6px 3px;
+        background-position: bottom;
         background-repeat: repeat-x;
       `;
       u.title = issue.reason || '';
       u.addEventListener('mousedown', (e) => e.preventDefault());
-      u.addEventListener('click', (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        showTooltip(u, issue, element);
-      });
+      if (issue.type === 'spelling') {
+        // Spelling: quick inline replace menu on left- OR right-click.
+        const open = (e: Event) => {
+          e.stopPropagation();
+          e.preventDefault();
+          showSpellingMenu(u, issue, element);
+        };
+        u.addEventListener('click', open);
+        u.addEventListener('contextmenu', open);
+      } else {
+        // Grammar/clarity/style: the per-issue card.
+        u.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          showTooltip(u, issue, element);
+        });
+      }
       highlightContainer.appendChild(u);
     }
   }
@@ -178,6 +213,8 @@ export function clearHighlights() {
   document.querySelectorAll('.opengrammar-badge').forEach((el) => el.remove());
   destroyInputMirror();
   assistantBubble?.remove(); assistantBubble = null;
+  assistantTarget = null;
+  currentSpellMenu?.remove(); currentSpellMenu = null;
   currentTooltip?.remove(); currentTooltip = null;
   currentRephrasePanel?.remove(); currentRephrasePanel = null;
   uiActive = false;
@@ -188,6 +225,7 @@ export function refreshFloatingDecorations() {
   if (inputMirrorContent && inputMirrorTarget) syncInputMirrorScroll(inputMirrorTarget);
   // Re-place contenteditable underlines (Range rects are viewport-relative, so
   // they must be recomputed when the field scrolls or the layout changes).
+  positionAssistantBubble();
   if (overlayTarget && overlayIssues.length && overlayTarget.isConnected) {
     renderOverlayUnderlines(overlayTarget, overlayIssues);
   }
@@ -197,6 +235,163 @@ export function refreshFloatingDecorations() {
     (badge as HTMLElement).style.left = `${rect.right - 35}px`;
     (badge as HTMLElement).style.top  = `${rect.top + 5}px`;
   });
+}
+
+/* ────────────────────────────────────────────────────────────
+   SPELLING QUICK-REPLACE MENU (right/left-click a misspelled word)
+──────────────────────────────────────────────────────────── */
+function parseSpellingOptions(issue: Issue): string[] {
+  const opts: string[] = [];
+  if (issue.suggestion && issue.suggestion !== issue.original) opts.push(issue.suggestion);
+  // Backend reason often carries: "...Other suggestions: foo, bar"
+  const m = /Other suggestions?:\s*([^.]+)/i.exec(issue.reason || '');
+  if (m && m[1]) {
+    for (const w of m[1].split(',').map((s) => s.trim()).filter(Boolean)) {
+      if (w && !opts.includes(w) && w !== issue.original) opts.push(w);
+    }
+  }
+  return opts.slice(0, 5);
+}
+
+function addWordToDictionary(word: string) {
+  const w = word.toLowerCase();
+  chrome.storage.sync.get(['dictionary'], (r) => {
+    const dict: string[] = Array.isArray(r.dictionary) ? r.dictionary : [];
+    if (!dict.includes(w)) {
+      dict.push(w);
+      chrome.storage.sync.set({ dictionary: dict });
+    }
+  });
+}
+
+function removeIssueUnderline(issue: Issue, element: HTMLElement) {
+  issue.ignored = true;
+  overlayIssues = overlayIssues.filter((i) => i !== issue);
+  if (overlayTarget) renderOverlayUnderlines(overlayTarget, overlayIssues);
+  void element;
+}
+
+function showSpellingMenu(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
+  currentSpellMenu?.remove();
+  injectStyles();
+
+  const options = parseSpellingOptions(issue);
+  const ar = anchor.getBoundingClientRect();
+
+  const menu = document.createElement('div');
+  menu.className = 'opengrammar-spell-menu';
+  const top = Math.min(ar.bottom + 6, window.innerHeight - 220);
+  const left = Math.max(8, Math.min(ar.left, window.innerWidth - 248));
+  menu.style.cssText = `
+    position: fixed; left: ${left}px; top: ${top}px;
+    width: 240px;
+    background: #fff; border-radius: 10px;
+    box-shadow: 0 4px 28px rgba(0,0,0,0.16), 0 1px 5px rgba(0,0,0,0.08);
+    border: 1px solid rgba(0,0,0,0.07);
+    z-index: 2147483647;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow: hidden; animation: og-fade-in 0.1s ease;
+  `;
+
+  const optionRows = options.length
+    ? options
+        .map(
+          (o, i) => `
+      <button class="og-sp-opt" data-i="${i}" style="
+        display:flex; align-items:center; gap:8px; width:100%;
+        padding:9px 12px; background:#fff; border:none; cursor:pointer;
+        font-size:14px; color:#1c1c1e; text-align:left; font-family:inherit;
+        border-bottom:1px solid #f4f4f5; transition:background 0.1s;
+      ">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="#16a34a" style="flex-shrink:0;">
+          <path d="M6.5 11.5L2.5 7.5l1.06-1.06 2.94 2.93 5.94-5.93 1.06 1.06z"/>
+        </svg>
+        <span style="font-weight:600;">${escapeHtml(o)}</span>
+      </button>`,
+        )
+        .join('')
+    : `<div style="padding:10px 12px;font-size:13px;color:#8e8e93;">No suggestion — add to dictionary or ignore.</div>`;
+
+  menu.innerHTML = `
+    <div style="
+      padding:8px 12px; background:#fafafa; border-bottom:1px solid #f0f0f0;
+      font-size:11px; font-weight:700; letter-spacing:0.4px; text-transform:uppercase;
+      color:#e53935; display:flex; align-items:center; gap:6px;
+    ">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="#e53935"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm.75 10.5h-1.5v-1.5h1.5v1.5zm0-3h-1.5V4.5h1.5V8.5z"/></svg>
+      Spelling · <span style="color:#b91c1c;text-transform:none;font-weight:600;">${escapeHtml(issue.original)}</span>
+    </div>
+    ${optionRows}
+    <button class="og-sp-dict" style="
+      display:flex; align-items:center; gap:8px; width:100%;
+      padding:9px 12px; background:#fff; border:none; cursor:pointer;
+      font-size:13px; color:#3c3c43; text-align:left; font-family:inherit;
+      border-bottom:1px solid #f4f4f5; transition:background 0.1s;
+    ">📘 Add “${escapeHtml(issue.original)}” to dictionary</button>
+    <button class="og-sp-ignore" style="
+      display:flex; align-items:center; gap:8px; width:100%;
+      padding:9px 12px; background:#fff; border:none; cursor:pointer;
+      font-size:13px; color:#5f6368; text-align:left; font-family:inherit;
+      transition:background 0.1s;
+    ">✕ Ignore</button>
+  `;
+
+  menu.addEventListener('mousedown', (e) => e.preventDefault());
+
+  menu.querySelectorAll<HTMLButtonElement>('.og-sp-opt').forEach((btn) => {
+    btn.addEventListener('mouseenter', () => { btn.style.background = '#EEF2FF'; });
+    btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const i = Number(btn.dataset.i || 0);
+      const chosen = options[i]!;
+      applySuggestion(element, { ...issue, suggestion: chosen }, anchor);
+      removeIssueUnderline(issue, element);
+      menu.remove(); currentSpellMenu = null;
+    });
+  });
+
+  const dictBtn = menu.querySelector('.og-sp-dict') as HTMLButtonElement;
+  dictBtn.addEventListener('mouseenter', () => { dictBtn.style.background = '#f5f5f7'; });
+  dictBtn.addEventListener('mouseleave', () => { dictBtn.style.background = '#fff'; });
+  dictBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    addWordToDictionary(issue.original);
+    removeIssueUnderline(issue, element);
+    menu.remove(); currentSpellMenu = null;
+  });
+
+  const ignBtn = menu.querySelector('.og-sp-ignore') as HTMLButtonElement;
+  ignBtn.addEventListener('mouseenter', () => { ignBtn.style.background = '#f5f5f7'; });
+  ignBtn.addEventListener('mouseleave', () => { ignBtn.style.background = '#fff'; });
+  ignBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    ignoreIssue(issue, anchor);
+    removeIssueUnderline(issue, element);
+    menu.remove(); currentSpellMenu = null;
+  });
+
+  const onDocClick = (e: MouseEvent) => {
+    if (!menu.contains(e.target as Node)) {
+      menu.remove(); currentSpellMenu = null;
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    }
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      menu.remove(); currentSpellMenu = null;
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    }
+  };
+  setTimeout(() => {
+    document.addEventListener('click', onDocClick);
+    document.addEventListener('keydown', onKey);
+  }, 60);
+
+  document.body.appendChild(menu);
+  currentSpellMenu = menu;
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -213,16 +408,16 @@ function showAssistantBubble(element: HTMLElement, issues: Issue[]) {
   bubble.setAttribute('aria-label', `OpenGrammar: ${issues.length} suggestion${issues.length !== 1 ? 's' : ''}`);
   bubble.style.cssText = `
     position: fixed;
-    right: 24px; bottom: 24px;
+    left: 0; top: 0;
     display: inline-flex; align-items: center; justify-content: center;
-    width: 52px; height: 52px; padding: 0;
+    width: ${BUBBLE_SIZE}px; height: ${BUBBLE_SIZE}px; padding: 0;
     border-radius: 50%;
     background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-    box-shadow: 0 2px 14px rgba(79,70,229,0.45), 0 1px 4px rgba(0,0,0,0.12);
+    box-shadow: 0 1px 6px rgba(79,70,229,0.45), 0 1px 3px rgba(0,0,0,0.18);
     z-index: 2147483646;
     cursor: pointer; pointer-events: auto;
     border: none; outline: none;
-    transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.15s ease;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
   `;
 
   const hasErrors = issues.some(i => i.type === 'grammar' || i.type === 'spelling');
@@ -230,44 +425,38 @@ function showAssistantBubble(element: HTMLElement, issues: Issue[]) {
 
   bubble.innerHTML = `
     <span style="position:relative;display:flex;align-items:center;justify-content:center;">
-      <!-- Quill pen icon — OpenGrammar brand -->
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-        <path d="M20 4C15 4 10 7 8 12L4 20l8-4c5-2 8-7 8-12z"
-          fill="white" opacity="0.92"/>
-        <path d="M8 12 L4 20" stroke="rgba(255,255,255,0.55)" stroke-width="1.3" stroke-linecap="round"/>
-        <path d="M5 18l2 2 4-5" stroke="white" stroke-width="1.6"
-          stroke-linecap="round" stroke-linejoin="round"/>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+        <path d="M20 4C15 4 10 7 8 12L4 20l8-4c5-2 8-7 8-12z" fill="white" opacity="0.92"/>
+        <path d="M8 12 L4 20" stroke="rgba(255,255,255,0.55)" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M5 18l2 2 4-5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <span style="
-        position:absolute; top:-5px; right:-7px;
-        min-width:18px; height:18px; padding:0 4px;
+        position:absolute; top:-6px; right:-8px;
+        min-width:15px; height:15px; padding:0 3px;
         border-radius:999px; background:${badgeBg}; color:white;
-        font-size:10px; font-weight:700;
+        font-size:9px; font-weight:700;
         display:inline-flex; align-items:center; justify-content:center;
-        border:2px solid white;
+        border:1.5px solid white;
         font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-        box-shadow:0 1px 4px rgba(0,0,0,0.25);
+        box-shadow:0 1px 3px rgba(0,0,0,0.25);
       ">${issues.length}</span>
     </span>
   `;
 
-  bubble.addEventListener('mouseenter', () => {
-    bubble.style.transform = 'scale(1.1)';
-    bubble.style.boxShadow = '0 4px 20px rgba(79,70,229,0.6), 0 2px 8px rgba(0,0,0,0.15)';
-  });
-  bubble.addEventListener('mouseleave', () => {
-    bubble.style.transform = 'scale(1)';
-    bubble.style.boxShadow = '0 2px 12px rgba(79,70,229,0.5), 0 1px 4px rgba(0,0,0,0.12)';
-  });
+  bubble.addEventListener('mouseenter', () => { bubble.style.transform = 'scale(1.12)'; });
+  bubble.addEventListener('mouseleave', () => { bubble.style.transform = 'scale(1)'; });
   bubble.addEventListener('mousedown', (e) => e.preventDefault());
   bubble.addEventListener('click', (e) => {
     e.preventDefault(); e.stopPropagation();
-    // All issues are reviewed a whole sentence at a time
+    // Grammar/clarity/style → whole-sentence review.
+    // Spelling is handled inline via right/left-click on the underline.
     showSentenceReview(issues, element, 0);
   });
 
   document.body.appendChild(bubble);
   assistantBubble = bubble;
+  assistantTarget = element;
+  positionAssistantBubble();
 }
 
 /* ────────────────────────────────────────────────────────────
