@@ -353,6 +353,20 @@ function getSoundexCache(dictionary: Set<string>): Map<string, string> {
  * Find the best spelling suggestions for a misspelled word.
  * Uses Levenshtein distance + Soundex phonetic matching.
  */
+/**
+ * True if `b` is `a` with exactly one pair of ADJACENT characters swapped
+ * (e.g. "beleive" → "believe"). Transposition is the most common real typo,
+ * so such a candidate is almost certainly the intended word.
+ */
+function isAdjacentTransposition(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let i = 0;
+  while (i < a.length && a[i] === b[i]) i++;
+  if (i >= a.length - 1) return false;
+  if (a[i] !== b[i + 1] || a[i + 1] !== b[i]) return false;
+  return a.slice(i + 2) === b.slice(i + 2);
+}
+
 function findSuggestions(
   word: string,
   dictionary: Set<string>,
@@ -363,30 +377,51 @@ function findSuggestions(
   const wordSoundex = soundex(lower);
   const soundexMap = getSoundexCache(dictionary);
 
-  // Candidates: words with similar length and either similar sound or close edit distance
   const candidates: Array<{ word: string; distance: number; score: number }> = [];
 
   for (const dictWord of dictionary) {
-    // Quick length filter: skip words with very different lengths
     if (Math.abs(dictWord.length - len) > 2) continue;
-
-    // Prioritize words that start with the same letter
     const sameStart = dictWord[0] === lower[0];
     if (!sameStart && Math.abs(dictWord.length - len) > 1) continue;
 
     const dist = levenshtein(lower, dictWord);
-    if (dist <= 2) {
-      // Phonetic bonus
-      const phoneticMatch = soundexMap.get(dictWord) === wordSoundex;
-      const score = dist - (phoneticMatch ? 0.5 : 0) - (sameStart ? 0.3 : 0);
-      candidates.push({ word: dictWord, distance: dist, score });
-    }
+    if (dist > 2) continue;
+
+    const phonetic = soundexMap.get(dictWord) === wordSoundex;
+    const prefix2 = dictWord.slice(0, 2) === lower.slice(0, 2);
+    const lenDiff = Math.abs(dictWord.length - len);
+
+    // Lower score = better. Heavily favour the obvious correction
+    // (close edit distance, shared prefix, similar length, same sound)
+    // so rare look-alikes like "wheals"/"wedels" don't crowd out "wheels".
+    let score = dist;
+    if (isAdjacentTransposition(lower, dictWord)) score -= 1.2; // classic typo
+    if (phonetic) score -= 0.5;
+    if (prefix2) score -= 0.4;
+    else if (sameStart) score -= 0.2;
+    score += 0.15 * lenDiff;
+    if (dictWord.length < len - 1) score += 0.6; // penalize big truncations
+
+    candidates.push({ word: dictWord, distance: dist, score });
   }
 
-  // Sort by score (lower is better), then alphabetically
-  candidates.sort((a, b) => a.score - b.score || a.word.localeCompare(b.word));
+  candidates.sort((a, b) => a.score - b.score || a.distance - b.distance || a.word.localeCompare(b.word));
+  if (candidates.length === 0) return [];
 
-  return candidates.slice(0, maxSuggestions).map((c) => c.word);
+  // Tier filter: only keep candidates in the BEST edit-distance tier. If a
+  // distance-1 fix exists we never show distance-2 noise; for distance-2
+  // (no close match) require a shared first letter to cut nonsense.
+  const bestDist = Math.min(...candidates.map((c) => c.distance));
+  const tier = candidates.filter(
+    (c) => c.distance <= bestDist && (bestDist <= 1 || c.word[0] === lower[0]),
+  );
+  // Only show alternates that are genuinely close to the best candidate.
+  // This drops same-distance look-alikes ("havn" → keep "haven", drop
+  // "haen"/"hahn") so the menu isn't padded with contextual nonsense.
+  const bestScore = tier[0]!.score;
+  const close = tier.filter((c) => c.score <= bestScore + 0.25);
+
+  return close.slice(0, maxSuggestions).map((c) => c.word);
 }
 
 /**
