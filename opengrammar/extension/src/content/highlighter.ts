@@ -462,6 +462,30 @@ function showAssistantBubble(element: HTMLElement, issues: Issue[]) {
 /* ────────────────────────────────────────────────────────────
    GRAMMARLY-STYLE TOOLTIP CARD (inline highlight → click)
 ──────────────────────────────────────────────────────────── */
+/**
+ * Place a panel relative to an anchor, staying fully inside the viewport.
+ * Must be called AFTER the element is in the DOM (uses its measured size).
+ * Opens below the anchor if it fits, else above, else clamps on-screen — so
+ * it never runs off the bottom where the user might not be able to scroll.
+ */
+function placeFixedPanel(el: HTMLElement, anchorRect: DOMRect, gap = 8) {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const w = el.offsetWidth || 334;
+  const h = el.offsetHeight || 300;
+  const left = Math.max(8, Math.min(anchorRect.left, vw - w - 8));
+  const spaceBelow = vh - anchorRect.bottom;
+  const spaceAbove = anchorRect.top;
+  let top: number;
+  if (h + gap <= spaceBelow) top = anchorRect.bottom + gap;
+  else if (h + gap <= spaceAbove) top = anchorRect.top - gap - h;
+  else top = spaceBelow >= spaceAbove ? vh - h - 8 : 8;
+  top = Math.max(8, Math.min(top, vh - h - 8));
+  el.style.position = 'fixed';
+  el.style.left = `${Math.round(left)}px`;
+  el.style.top = `${Math.round(top)}px`;
+}
+
 function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
   uiActive = true;
   currentTooltip?.remove();
@@ -471,17 +495,11 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
   const anchorRect = anchor.getBoundingClientRect();
   const c = getC(issue.type);
 
-  // Smart positioning: below anchor by default, flip if too close to bottom
-  let top = anchorRect.bottom + window.scrollY + 8;
-  if (top + 300 > window.innerHeight + window.scrollY)
-    top = anchorRect.top + window.scrollY - 310;
-  const left = Math.max(12, Math.min(anchorRect.left + window.scrollX - 8, window.innerWidth - 346));
-
   const card = document.createElement('div');
   card.className = 'opengrammar-tooltip';
   card.style.cssText = `
-    position: absolute;
-    left: ${left}px; top: ${top}px;
+    position: fixed;
+    left: -9999px; top: -9999px;
     width: 334px;
     background: #ffffff;
     border-radius: 12px;
@@ -489,7 +507,8 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
     z-index: 2147483647;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px;
-    overflow: hidden;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
     border: 1px solid rgba(0,0,0,0.07);
     animation: og-fade-in 0.12s ease;
   `;
@@ -666,6 +685,7 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
   setTimeout(() => document.addEventListener('click', closeOnOutsideClick), 100);
 
   document.body.appendChild(card);
+  placeFixedPanel(card, anchorRect, 8);
   currentTooltip = card;
 }
 
@@ -675,13 +695,11 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
 function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTMLElement, highlightAnchor: HTMLElement) {
   currentRephrasePanel?.remove();
 
-  const cardRect  = tooltipCard.getBoundingClientRect();
   const panel     = document.createElement('div');
   panel.className = 'opengrammar-rephrase-panel';
   panel.style.cssText = `
-    position: absolute;
-    left: ${cardRect.left + window.scrollX}px;
-    top: ${cardRect.bottom + window.scrollY + 6}px;
+    position: fixed;
+    left: -9999px; top: -9999px;
     width: 334px;
     background: white;
     border-radius: 12px;
@@ -689,7 +707,8 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
     border: 1px solid rgba(0,0,0,0.07);
     z-index: 2147483647;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    overflow: hidden;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
     animation: og-fade-in 0.12s ease;
   `;
 
@@ -802,6 +821,9 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
   });
 
   document.body.appendChild(panel);
+  const repositionPanel = () =>
+    placeFixedPanel(panel, tooltipCard.getBoundingClientRect(), 6);
+  repositionPanel();
   currentRephrasePanel = panel;
 
   // Auto-trigger rephrase with default goal
@@ -836,6 +858,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
             <div style="font-size:12px;color:#8e8e93;">Add your API key in the OpenGrammar popup settings, then try again.</div>
           </div>
         `;
+        repositionPanel();
         return;
       }
 
@@ -855,6 +878,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
             No alternatives generated. Try a different goal.
           </div>
         `;
+        repositionPanel();
         return;
       }
 
@@ -913,6 +937,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
         r.addEventListener('mouseenter', () => { r.style.background = '#f9fafb'; r.style.borderColor = '#d1d5db'; });
         r.addEventListener('mouseleave', () => { r.style.background = 'white'; r.style.borderColor = '#e5e7eb'; });
       });
+      repositionPanel();
 
     } catch (err) {
       content.innerHTML = `
@@ -920,6 +945,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
           Failed to get suggestions. Check your API key and backend connection.
         </div>
       `;
+      repositionPanel();
     }
   }
 
