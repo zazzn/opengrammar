@@ -202,7 +202,45 @@ export class RuleBasedAnalyzer {
       seenSpans.set(spanKey, issue);
     }
 
-    return RuleBasedAnalyzer.resolveOverlaps(result);
+    return RuleBasedAnalyzer.dropNoOps(RuleBasedAnalyzer.resolveOverlaps(result));
+  }
+
+  /**
+   * Normalize cosmetic-only differences so a "fix" that isn't really a fix
+   * (curly vs straight quotes, NBSP, trailing space, dash variants, case of
+   * surrounding whitespace) is recognized as a no-op.
+   */
+  private static normalizeForCompare(s: string): string {
+    return (s || '')
+      .normalize('NFC')
+      .replace(/[‘’‚‛]/g, "'")
+      .replace(/[“”„‟]/g, '"')
+      .replace(/[–—−]/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
+   * Never surface a card whose suggestion is empty or — for grammar/clarity/
+   * style — identical to the original after normalization. (Spelling is kept
+   * even with no suggestion: the spelling menu offers "add to dictionary".)
+   */
+  private static dropNoOps(issues: Issue[]): Issue[] {
+    return issues.filter((i) => {
+      if (i.type === 'spelling') return true;
+      const sug = i.suggestion;
+      if (sug == null || sug.trim() === '') return false;
+      // Non-actionable advice (e.g. "Consider using active voice") is NOT a
+      // literal replacement — accepting it would overwrite the user's text
+      // with the advice. Drop these; the LLM handles real style rewrites.
+      if (/^(consider|try|use\b|avoid|rephrase|reword|rewrite|make it)\b/i.test(sug.trim())) {
+        return false;
+      }
+      return (
+        RuleBasedAnalyzer.normalizeForCompare(i.original) !==
+        RuleBasedAnalyzer.normalizeForCompare(sug)
+      );
+    });
   }
 
   /**

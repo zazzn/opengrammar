@@ -432,6 +432,10 @@ export function checkSpelling(text: string, userDictionary?: Set<string>): Issue
       }
     }
 
+    // 5b. Mixed-case / CamelCase words (StopTech, JavaScript, iPhone, OpenAI)
+    // — virtually always brands, product or code names, not misspellings.
+    if (/[A-Z]/.test(word.slice(1)) && /[a-z]/.test(word)) continue;
+
     // 6. All-caps words (acronyms)
     if (word === word.toUpperCase()) continue;
 

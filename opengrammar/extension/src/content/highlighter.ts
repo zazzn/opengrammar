@@ -1,5 +1,6 @@
 import type { IgnoredIssue, Issue } from '../types';
 import { buildTextMap, offsetToRange, resolveInString, resolveSpan } from './textMap';
+import { renderInlineDiffHTML, summarizeChange } from './diff';
 
 let currentTooltip: HTMLElement | null = null;
 let currentRephrasePanel: HTMLElement | null = null;
@@ -516,80 +517,44 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
   // Inject keyframe once
   injectStyles();
 
+  const headline =
+    summarizeChange(issue.original, issue.suggestion) || getTypeLabel(issue.type);
+  const diffHtml = renderInlineDiffHTML(issue.original, issue.suggestion);
+  // Spelling/punctuation fixes are self-evident → collapse the rationale.
+  // Clarity/style need persuading → show it.
+  const whyOpen = issue.type === 'clarity' || issue.type === 'style';
+  const showRephrase = issue.type === 'clarity' || issue.type === 'style';
+
   card.innerHTML = `
-    <!-- Header: type badge + label -->
-    <div style="
-      padding: 13px 16px 10px;
-      display: flex; align-items: center; gap: 9px;
-      border-bottom: 1px solid #f0f0f0;
+    <!-- Header: category chip + concise what's-wrong -->
+    <div style="padding: 13px 16px 10px; border-bottom: 1px solid #f0f0f0;">
+      <div style="display:flex; align-items:center; gap:7px; margin-bottom:5px;">
+        <span style="width:7px;height:7px;border-radius:50%;background:${c.line};display:inline-block;"></span>
+        <span style="font-size:11px;font-weight:700;color:${c.line};text-transform:uppercase;letter-spacing:0.5px;">${getTypeLabel(issue.type)}</span>
+      </div>
+      <div style="font-size:14px;font-weight:600;color:#1c1c1e;line-height:1.4;">
+        ${escapeHtml(headline)}
+      </div>
+    </div>
+
+    <!-- The single minimal-change line (click to accept) -->
+    <div class="og-suggestion-click" style="
+      padding: 12px 16px; background:#fafafa; cursor:pointer;
+      transition:background 0.12s; border-bottom:1px solid #f0f0f0;
     ">
-      <span style="
-        display:inline-flex; align-items:center; justify-content:center;
-        width: 28px; height: 28px; border-radius: 50%;
-        background: ${c.line}18; flex-shrink: 0;
-      ">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="${c.line}">
-          <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm.75 10.5h-1.5v-1.5h1.5v1.5zm0-3h-1.5V4.5h1.5V8.5z"/>
-        </svg>
-      </span>
-      <div style="flex:1; min-width:0;">
-        <div style="display:flex; align-items:center; gap:7px;">
-          <span style="
-            font-size: 12px; font-weight: 600; color: ${c.line};
-            text-transform: uppercase; letter-spacing: 0.5px;
-          ">${getTypeLabel(issue.type)}</span>
-          <span style="
-            width: 4px; height: 4px; border-radius: 50%;
-            background: #ccc; display: inline-block;
-          "></span>
-          <span style="font-size: 12px; color: #8e8e93;">${getCategoryLabel(issue.type)}</span>
-        </div>
-        <div style="font-size: 13px; color: #3c3c43; line-height: 1.5; margin-top: 4px;">
-          ${escapeHtml(issue.reason)}
-        </div>
+      <div style="font-size:14px; line-height:1.6; word-break:break-word;">
+        ${diffHtml}
       </div>
+      <div style="margin-top:6px;font-size:11px;color:#8e8e93;">Click to apply</div>
     </div>
 
-    <!-- Diff: original → suggestion -->
-    <div style="padding: 12px 16px; background: #fafafa; display: flex; flex-direction: column; gap: 7px;">
-      <div style="
-        display: flex; align-items: stretch; gap: 8px;
-        background: #fff0f0; border-radius: 8px;
-        padding: 9px 11px;
-        border-left: 3px solid #e53935;
-      ">
-        <svg style="flex-shrink:0;margin-top:2px;" width="13" height="13" viewBox="0 0 16 16" fill="#e53935">
-          <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm.75 10.5h-1.5v-1.5h1.5v1.5zm0-3h-1.5V4.5h1.5V8.5z"/>
-        </svg>
-        <span style="
-          font-size: 14px; color: #b91c1c;
-          text-decoration: line-through; word-break: break-word; line-height: 1.4;
-        ">${escapeHtml(issue.original)}</span>
+    <!-- Why (collapsed for correctness, open for clarity/style) -->
+    <details ${whyOpen ? 'open' : ''} style="border-bottom:1px solid #f0f0f0;">
+      <summary style="padding:8px 16px;cursor:pointer;font-size:12px;color:#5f6368;font-weight:600;list-style:none;user-select:none;">Why?</summary>
+      <div style="padding:0 16px 10px;font-size:13px;color:#3c3c43;line-height:1.5;">
+        ${escapeHtml(issue.reason)}
       </div>
-
-      <div style="display:flex;justify-content:center;align-items:center;">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M8 2v12M4 10l4 4 4-4" stroke="#aaa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-
-      <div class="og-suggestion-click" style="
-        display: flex; align-items: stretch; gap: 8px;
-        background: #EEF2FF; border-radius: 8px;
-        padding: 9px 11px;
-        border-left: 3px solid #4F46E5;
-        cursor: pointer;
-        transition: background 0.12s;
-      ">
-        <svg style="flex-shrink:0;margin-top:2px;" width="13" height="13" viewBox="0 0 16 16" fill="#4F46E5">
-          <path d="M6.5 11.5L2.5 7.5l1.06-1.06 2.94 2.93 5.94-5.93 1.06 1.06z"/>
-        </svg>
-        <span style="
-          font-size: 14px; color: #3730A3;
-          font-weight: 600; word-break: break-word; line-height: 1.4;
-        ">${escapeHtml(issue.suggestion)}</span>
-      </div>
-    </div>
+    </details>
 
     <!-- Action buttons -->
     <div style="display:flex; border-top: 1px solid #f0f0f0;">
@@ -615,7 +580,7 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
         font-size: 13px; font-weight: 500;
         font-family: inherit;
         transition: background 0.12s;
-        display: flex; align-items: center; justify-content: center; gap: 5px;
+        display: ${showRephrase ? 'flex' : 'none'}; align-items: center; justify-content: center; gap: 5px;
       " title="Get AI rewrites (requires API key)">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#5f6368" stroke-width="1.5" stroke-linecap="round">
           <path d="M2 8a6 6 0 1 1 1.5 4M2 12V8h4"/>
@@ -642,8 +607,8 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
       applySuggestion(element, issue, anchor);
       hideTooltip();
     });
-    suggClick.addEventListener('mouseenter', () => { suggClick.style.background = '#E0E7FF'; });
-    suggClick.addEventListener('mouseleave', () => { suggClick.style.background = '#EEF2FF'; });
+    suggClick.addEventListener('mouseenter', () => { suggClick.style.background = '#f0f0ff'; });
+    suggClick.addEventListener('mouseleave', () => { suggClick.style.background = '#fafafa'; });
   }
 
   const applyBtn  = card.querySelector('.og-apply-btn') as HTMLButtonElement;
