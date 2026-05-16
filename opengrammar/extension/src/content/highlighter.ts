@@ -1,6 +1,7 @@
 import type { IgnoredIssue, Issue } from '../types';
 import { buildTextMap, offsetToRange, resolveInString, resolveSpan } from './textMap';
 import { renderInlineDiffHTML, summarizeChange } from './diff';
+import { stripQuotedBBCode } from './textExtractor';
 
 let currentTooltip: HTMLElement | null = null;
 let currentRephrasePanel: HTMLElement | null = null;
@@ -42,11 +43,13 @@ export function isUIActive(): boolean {
 /* ────────────────────────────────────────────────────────────
    GRAMMARLY COLOR SYSTEM — exact hex values from Grammarly
 ──────────────────────────────────────────────────────────── */
+// Red is reserved for spelling. Grammar = amber/yellow. Clarity = blue,
+// style = purple — so the four categories are visually distinct.
 const COLORS = {
-  grammar:  { line: '#e53935', bg: 'rgba(229,57,53,0.10)',  hover: 'rgba(229,57,53,0.20)',  dot: '#e53935' },
   spelling: { line: '#e53935', bg: 'rgba(229,57,53,0.10)',  hover: 'rgba(229,57,53,0.20)',  dot: '#e53935' },
-  clarity:  { line: '#f59e0b', bg: 'rgba(245,158,11,0.10)', hover: 'rgba(245,158,11,0.22)', dot: '#f59e0b' },
-  style:    { line: '#1565c0', bg: 'rgba(21,101,192,0.09)', hover: 'rgba(21,101,192,0.18)', dot: '#1565c0' },
+  grammar:  { line: '#f5a623', bg: 'rgba(245,166,35,0.12)', hover: 'rgba(245,166,35,0.24)', dot: '#f5a623' },
+  clarity:  { line: '#1565c0', bg: 'rgba(21,101,192,0.09)', hover: 'rgba(21,101,192,0.18)', dot: '#1565c0' },
+  style:    { line: '#7c3aed', bg: 'rgba(124,58,237,0.10)', hover: 'rgba(124,58,237,0.20)', dot: '#7c3aed' },
 };
 
 function getC(type: string) {
@@ -1083,7 +1086,9 @@ function showSentenceReview(
   currentRephrasePanel = null;
   injectStyles();
 
-  const text = getFullText(element);
+  // Blank quoted posts so sentence grouping/context never bleeds into
+  // someone else's quoted text (length-preserving → offsets still align).
+  const text = stripQuotedBBCode(getFullText(element));
   const groups = precomputed ?? getSentenceGroups(text, allIssues);
 
   if (groups.length === 0) { hideTooltip(); return; }
@@ -1122,8 +1127,7 @@ function showSentenceReview(
   card.className = 'opengrammar-tooltip';
   card.style.cssText = `
     position: fixed;
-    right: 24px;
-    bottom: 84px;
+    left: -9999px; top: -9999px;
     width: 360px;
     background: #ffffff;
     border-radius: 12px;
@@ -1327,6 +1331,10 @@ function showSentenceReview(
   setTimeout(() => document.addEventListener('click', closeOnOutsideClick), 100);
 
   document.body.appendChild(card);
+  // Anchor the panel to the editor (not the viewport corner) so it sits
+  // right by the text box; placeFixedPanel keeps it fully on-screen.
+  const anchorEl = (overlayTarget && overlayTarget.isConnected ? overlayTarget : element);
+  placeFixedPanel(card, anchorEl.getBoundingClientRect(), 8);
   currentTooltip = card;
 }
 
