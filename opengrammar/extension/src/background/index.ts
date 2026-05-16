@@ -16,6 +16,22 @@ import type {
 
 // Default backend URL
 const DEFAULT_BACKEND_URL = 'http://localhost:8787';
+
+/** Normalize an Ollama server URL to its OpenAI-compatible /v1 base. */
+function ollamaV1(url?: string): string {
+  const b = (url || 'http://localhost:11434').trim().replace(/\/+$/, '');
+  return /\/v1$/.test(b) ? b : `${b}/v1`;
+}
+
+/** The base URL the LLM provider should use, given the selected provider. */
+function providerBaseUrl(
+  provider: string | undefined,
+  customBaseUrl?: string,
+  ollamaUrl?: string,
+): string | undefined {
+  if (provider === 'ollama') return ollamaV1(ollamaUrl);
+  return customBaseUrl;
+}
 const REWRITE_PAGE_PATH = 'src/rewrite/index.html';
 const STATS_PAGE_PATH = 'src/stats/index.html';
 const DEFAULT_PROVIDER = 'openai';
@@ -247,6 +263,7 @@ async function handleGrammarCheck(
       backendUrl,
       provider,
       customBaseUrl,
+      ollamaUrl,
       disabledModules,
     } = await chrome.storage.sync.get([
       'apiKey',
@@ -257,6 +274,7 @@ async function handleGrammarCheck(
       'backendUrl',
       'provider',
       'customBaseUrl',
+      'ollamaUrl',
       'disabledModules',
     ]);
 
@@ -275,7 +293,7 @@ async function handleGrammarCheck(
       apiKey,
       model,
       provider: provider as LLMProvider,
-      baseUrl: customBaseUrl,
+      baseUrl: providerBaseUrl(provider, customBaseUrl, ollamaUrl),
       ignoredIssues: ignoredIssues || [],
       dictionary: dictionary || [],
       context,
@@ -333,13 +351,14 @@ async function handleAutocomplete(
   sendResponse: (response: AutocompleteResponse) => void,
 ) {
   try {
-    const { apiKey, model, backendUrl, provider, customBaseUrl, autocompleteEnabled } =
+    const { apiKey, model, backendUrl, provider, customBaseUrl, ollamaUrl, autocompleteEnabled } =
       await chrome.storage.sync.get([
         'apiKey',
         'model',
         'backendUrl',
         'provider',
         'customBaseUrl',
+        'ollamaUrl',
         'autocompleteEnabled',
       ]);
 
@@ -361,7 +380,7 @@ async function handleAutocomplete(
       apiKey,
       model,
       provider: (provider || 'openai') as LLMProvider,
-      baseUrl: customBaseUrl,
+      baseUrl: providerBaseUrl(provider, customBaseUrl, ollamaUrl),
       context: request.context,
     };
 
@@ -396,12 +415,13 @@ async function handleAutocomplete(
 
 async function handleRewrite(text: string, tone: string, sendResponse: (response: any) => void) {
   try {
-    const { apiKey, model, backendUrl, provider, customBaseUrl } = await chrome.storage.sync.get([
+    const { apiKey, model, backendUrl, provider, customBaseUrl, ollamaUrl } = await chrome.storage.sync.get([
       'apiKey',
       'model',
       'backendUrl',
       'provider',
       'customBaseUrl',
+      'ollamaUrl',
     ]);
 
     const baseUrl = backendUrl || DEFAULT_BACKEND_URL;
@@ -412,7 +432,7 @@ async function handleRewrite(text: string, tone: string, sendResponse: (response
       apiKey,
       model,
       provider: provider as LLMProvider,
-      baseUrl: customBaseUrl,
+      baseUrl: providerBaseUrl(provider, customBaseUrl, ollamaUrl),
     };
 
     const response = await fetch(`${baseUrl}/rewrite`, {
