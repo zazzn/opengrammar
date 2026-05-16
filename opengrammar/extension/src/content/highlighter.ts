@@ -1,6 +1,6 @@
 import type { IgnoredIssue, Issue } from '../types';
 import { buildTextMap, offsetToRange, resolveInString, resolveSpan } from './textMap';
-import { renderInlineDiffHTML, summarizeChange } from './diff';
+import { diffWords, renderInlineDiffHTML, summarizeChange } from './diff';
 import { stripQuotedBBCode } from './textExtractor';
 
 let currentTooltip: HTMLElement | null = null;
@@ -13,6 +13,9 @@ let overlayIssues: Issue[] = [];
 // Field the floating bubble is anchored to (tracked on scroll/resize)
 let assistantTarget: HTMLElement | null = null;
 let currentSpellMenu: HTMLElement | null = null;
+// Cache LLM whole-text corrections by (quote-stripped) source text so
+// reopening / navigating the review panel doesn't refetch.
+const correctionCache = new Map<string, string>();
 
 const BUBBLE_SIZE = 30; // px — small, fits inside the field corner
 const MIN_FIELD_HEIGHT = 38; // skip tiny inputs (matches Grammarly)
@@ -208,6 +211,42 @@ function applyContentEditableFix(
   range.insertNode(document.createTextNode(issue.suggestion));
   element.normalize();
   return true;
+}
+
+/**
+ * Replace one whole sentence span with the LLM-corrected text, validated
+ * (re-finds `origText` near the offset; drops instead of corrupting if it
+ * no longer matches). Reuses the same safe primitives as single-fix apply.
+ */
+function replaceSentence(
+  element: HTMLElement,
+  origText: string,
+  approxOffset: number,
+  newText: string,
+): boolean {
+  if (!origText || newText == null || origText === newText) return false;
+  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+    const input = element as HTMLInputElement | HTMLTextAreaElement;
+    const span = resolveInString(input.value, approxOffset, origText.length, origText);
+    if (!span) return false;
+    input.value = input.value.slice(0, span.start) + newText + input.value.slice(span.end);
+    input.focus();
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  }
+  if (element.isContentEditable) {
+    const map = buildTextMap(element);
+    const span = resolveSpan(map, approxOffset, origText.length, origText);
+    if (!span) return false;
+    const range = offsetToRange(map, span.start, span.end);
+    if (!range) return false;
+    range.deleteContents();
+    range.insertNode(document.createTextNode(newText));
+    element.normalize();
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  }
+  return false;
 }
 
 export function clearHighlights() {
@@ -984,6 +1023,70 @@ interface SentenceGroup {
   start: number;
   end: number;
   issues: Issue[];
+  /** Whole-sentence original/corrected (LLM pivot path). */
+  origText?: string;
+  corrText?: string;
+}
+
+/** Split text into sentences, keeping each one's start offset. */
+function splitSentences(s: string): Array<{ start: number; end: number; text: string }> {
+  const out: Array<{ start: number; end: number; text: string }> = [];
+  const re = /[^.!?\n]*[.!?]+|\n+|[^.!?\n]+$/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s)) !== null) {
+    if (m[0] === '') { re.lastIndex++; continue; }
+    const seg = m[0];
+    if (seg.trim().length === 0) continue;
+    out.push({ start: m.index, end: m.index + seg.length, text: seg });
+  }
+  return out;
+}
+
+/**
+ * Build review groups by diffing the original text against the LLM's
+ * whole-text correction — one coherent rewrite, no offset-merging of
+ * fragments. Pairs sentences by index; if the counts diverge (the model
+ * merged/split sentences) it falls back to one whole-text group so we
+ * never mis-pair and corrupt.
+ */
+function buildGroupsFromCorrection(original: string, corrected: string): SentenceGroup[] {
+  const norm = (x: string) => x.normalize('NFC').replace(/\s+/g, ' ').trim();
+  if (norm(original) === norm(corrected)) return [];
+
+  const o = splitSentences(original);
+  const c = splitSentences(corrected);
+  if (o.length === c.length && o.length > 0) {
+    const groups: SentenceGroup[] = [];
+    for (let i = 0; i < o.length; i++) {
+      const ot = o[i]!.text.trim();
+      const ct = c[i]!.text.trim();
+      if (norm(ot) === norm(ct)) continue;
+      groups.push({ start: o[i]!.start, end: o[i]!.end, issues: [], origText: ot, corrText: ct });
+    }
+    if (groups.length) return groups;
+  }
+  // Counts diverged → single whole-text group (still coherent).
+  return [{ start: 0, end: original.length, issues: [], origText: original.trim(), corrText: corrected.trim() }];
+}
+
+/** Offline/no-LLM fallback: apply ONLY spelling fixes per sentence (safe,
+ *  deterministic, single-word). Grammar needs the LLM, so it's left alone
+ *  rather than risk the old fragment-merge garble. */
+function buildSpellingOnlyGroups(text: string, allIssues: Issue[]): SentenceGroup[] {
+  const spelling = allIssues.filter((i) => i.type === 'spelling' && !i.ignored);
+  const base = getSentenceGroups(text, spelling);
+  for (const g of base) {
+    g.origText = text.slice(g.start, g.end).trim();
+    let s = text.slice(g.start, g.end);
+    for (const iss of [...g.issues].sort((a, b) => b.offset - a.offset)) {
+      const rel = iss.offset - g.start;
+      if (rel < 0 || rel + iss.length > s.length) continue;
+      if (s.substr(rel, iss.length) !== iss.original) continue;
+      s = s.slice(0, rel) + iss.suggestion + s.slice(rel + iss.length);
+    }
+    g.corrText = s.trim();
+  }
+  return base.filter((g) => g.origText !== g.corrText);
 }
 
 /**
@@ -1074,6 +1177,30 @@ function buildCorrectedSentence(text: string, group: SentenceGroup): string {
   return sentence.trim();
 }
 
+function showCheckingCard(element: HTMLElement) {
+  uiActive = true;
+  currentTooltip?.remove();
+  injectStyles();
+  const card = document.createElement('div');
+  card.className = 'opengrammar-tooltip';
+  card.style.cssText = `
+    position: fixed; left:-9999px; top:-9999px; width: 300px;
+    background:#fff; border-radius:12px; border:1px solid rgba(0,0,0,0.07);
+    box-shadow:0 4px 32px rgba(0,0,0,0.14); z-index:2147483647;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    animation: og-fade-in 0.12s ease;
+  `;
+  card.innerHTML = `
+    <div style="display:flex; align-items:center; gap:10px; padding:16px 18px;">
+      <div style="width:18px;height:18px;border:2px solid #e5e7eb;border-top-color:#4F46E5;border-radius:50%;animation:og-spin 0.7s linear infinite;"></div>
+      <span style="font-size:13px; color:#3c3c43;">Checking your writing…</span>
+    </div>`;
+  document.body.appendChild(card);
+  const anchorEl = overlayTarget && overlayTarget.isConnected ? overlayTarget : element;
+  placeFixedPanel(card, anchorEl.getBoundingClientRect(), 8);
+  currentTooltip = card;
+}
+
 function showSentenceReview(
   allIssues: Issue[],
   element: HTMLElement,
@@ -1086,11 +1213,35 @@ function showSentenceReview(
   currentRephrasePanel = null;
   injectStyles();
 
-  // Blank quoted posts so sentence grouping/context never bleeds into
-  // someone else's quoted text (length-preserving → offsets still align).
+  // Quote-stripped source (length-preserving, so offsets still map to DOM).
   const text = stripQuotedBBCode(getFullText(element));
-  const groups = precomputed ?? getSentenceGroups(text, allIssues);
 
+  // PIVOT: the corrected sentence comes from ONE coherent LLM rewrite of the
+  // whole text (errors-only), then diffed — never an offset-merge of rule
+  // fragments. Rule engine now only drives inline spelling underlines.
+  if (!precomputed) {
+    const proceed = (corrected: string, llm: boolean) => {
+      const changed = (corrected || '').trim() !== text.trim();
+      const g =
+        llm && changed
+          ? buildGroupsFromCorrection(text, corrected)
+          : buildSpellingOnlyGroups(text, allIssues);
+      if (g.length === 0) { hideTooltip(); return; }
+      showSentenceReview(allIssues, element, 0, g);
+    };
+    const cached = correctionCache.get(text);
+    if (cached !== undefined) { proceed(cached, cached.trim() !== text.trim()); return; }
+    showCheckingCard(element);
+    chrome.runtime.sendMessage({ type: 'CORRECT_TEXT', text }, (resp) => {
+      const corrected = (resp && resp.corrected) || text;
+      const llm = !!(resp && resp.llm);
+      if (llm) correctionCache.set(text, corrected);
+      proceed(corrected, llm);
+    });
+    return;
+  }
+
+  const groups = precomputed;
   if (groups.length === 0) { hideTooltip(); return; }
   const idx = Math.max(0, Math.min(groupIndex, groups.length - 1));
   const group = groups[idx]!;
@@ -1098,30 +1249,15 @@ function showSentenceReview(
   const isFirst = idx === 0;
   const isLast  = idx >= total - 1;
 
-  const originalHtml  = renderMarkedSentence(text, group);
-  const correctedText = buildCorrectedSentence(text, group);
-  const changeCount   = group.issues.length;
-  const totalFixes    = groups.reduce((n, g) => n + g.issues.length, 0);
-
-  const typeCounts = new Map<string, number>();
-  for (const i of group.issues) typeCounts.set(i.type, (typeCounts.get(i.type) || 0) + 1);
-  const typeSummary = [...typeCounts.entries()]
-    .map(([t, n]) => `${n} ${getTypeLabel(t).toLowerCase()}`)
-    .join(' · ');
-
-  const changeListHtml = [...group.issues]
-    .sort((a, b) => a.offset - b.offset)
-    .map((i) => {
-      const line = typeColorLine(i.type);
-      return `
-        <div style="display:flex;align-items:center;gap:6px;font-size:12px;line-height:1.5;padding:2px 0;">
-          <span style="flex-shrink:0;width:6px;height:6px;border-radius:50%;background:${line};"></span>
-          <span style="color:#b91c1c;text-decoration:line-through;word-break:break-word;">${escapeHtml(i.original)}</span>
-          <span style="color:#aaa;">→</span>
-          <span style="color:#3730A3;font-weight:600;word-break:break-word;">${escapeHtml(i.suggestion)}</span>
-        </div>`;
-    })
-    .join('');
+  const origText = (group.origText ?? text.slice(group.start, group.end)).trim();
+  const corrText = (group.corrText ?? origText).trim();
+  const diffNonEq = diffWords(origText, corrText).filter((o) => o.kind !== 'eq');
+  const changeCount   = Math.max(1, Math.ceil(diffNonEq.length / 2));
+  const totalFixes    = groups.length;
+  const typeSummary   = summarizeChange(origText, corrText) || '';
+  const originalHtml  = escapeHtml(origText);
+  const correctedText = corrText;
+  const changeListHtml = `<div style="font-size:13px; line-height:1.6; word-break:break-word;">${renderInlineDiffHTML(origText, corrText)}</div>`;
 
   const card = document.createElement('div');
   card.className = 'opengrammar-tooltip';
@@ -1208,7 +1344,7 @@ function showSentenceReview(
       <summary style="
         padding:8px 14px; cursor:pointer; font-size:12px; color:#5f6368;
         font-weight:600; list-style:none; user-select:none;
-      ">View ${changeCount} individual change${changeCount !== 1 ? 's' : ''}</summary>
+      ">View the change${changeCount !== 1 ? 's' : ''}</summary>
       <div style="padding:2px 14px 10px;">${changeListHtml}</div>
     </details>
 
@@ -1221,7 +1357,7 @@ function showSentenceReview(
         border:none; border-right:1px solid #f0f0f0; cursor:pointer;
         font-size:11px; font-weight:700; line-height:1.35;
         font-family:inherit; transition:background 0.12s;
-      ">Fix All<br><span style="font-weight:400; color:#8e8e93;">${totalFixes} change${totalFixes !== 1 ? 's' : ''}</span></button>` : ''}
+      ">Fix All<br><span style="font-weight:400; color:#8e8e93;">${totalFixes} sentence${totalFixes !== 1 ? 's' : ''}</span></button>` : ''}
       <button class="og-sr-accept" style="
         flex:2; padding:11px 10px;
         background:#4F46E5; color:white;
@@ -1251,18 +1387,17 @@ function showSentenceReview(
   card.addEventListener('mousedown', (e) => e.preventDefault());
 
   const acceptSentence = () => {
-    applyIssueSet(element, group.issues);
-    // Shift offsets of every later group so subsequent accepts land correctly
-    const delta = group.issues.reduce((d, i) => d + (i.suggestion.length - i.length), 0);
-    if (delta !== 0) {
-      for (let g = idx + 1; g < groups.length; g++) {
-        const grp = groups[g]!;
-        grp.start += delta;
-        grp.end += delta;
-        for (const iss of grp.issues) iss.offset += delta;
+    const ok = replaceSentence(element, origText, group.start, corrText);
+    // Shift later groups by the length delta so their spans stay anchored.
+    if (ok) {
+      const delta = corrText.length - origText.length;
+      if (delta !== 0) {
+        for (let g = idx + 1; g < groups.length; g++) {
+          groups[g]!.start += delta;
+          groups[g]!.end += delta;
+        }
       }
     }
-    // Drop the accepted group and show the next remaining one
     groups.splice(idx, 1);
     if (groups.length === 0) { hideTooltip(); return; }
     showSentenceReview(allIssues, element, Math.min(idx, groups.length - 1), groups);
@@ -1287,8 +1422,11 @@ function showSentenceReview(
   if (fixAllBtn) {
     fixAllBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const everything = groups.flatMap(g => g.issues);
-      applyIssueSet(element, everything);
+      // Apply highest-offset first so earlier spans stay valid.
+      const ordered = [...groups].sort((a, b) => b.start - a.start);
+      for (const g of ordered) {
+        replaceSentence(element, (g.origText ?? '').trim(), g.start, (g.corrText ?? '').trim());
+      }
       hideTooltip();
     });
     fixAllBtn.addEventListener('mouseenter', () => { fixAllBtn.style.background = '#f0f0ff'; });

@@ -169,6 +169,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.type === 'CORRECT_TEXT') {
+    correctText(request.text).then((r) => sendResponse(r));
+    return true;
+  }
+
   if (request.type === 'GET_OLLAMA_STATUS') {
     getOllamaStatus(request.baseUrl, request.model, request.probe).then((s) =>
       sendResponse(s),
@@ -493,6 +498,38 @@ async function getModels(provider: string, apiKey?: string, baseUrl?: string) {
   } catch (error) {
     console.error('Failed to fetch models:', error);
     return [];
+  }
+}
+
+async function correctText(
+  text: string,
+): Promise<{ original: string; corrected: string; llm: boolean }> {
+  try {
+    const { apiKey, model, provider, customBaseUrl, ollamaUrl, backendUrl } =
+      await chrome.storage.sync.get([
+        'apiKey',
+        'model',
+        'provider',
+        'customBaseUrl',
+        'ollamaUrl',
+        'backendUrl',
+      ]);
+    const base = backendUrl || DEFAULT_BACKEND_URL;
+    const r = await fetch(`${base}/correct`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        apiKey,
+        model,
+        provider,
+        baseUrl: providerBaseUrl(provider, customBaseUrl, ollamaUrl),
+      }),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  } catch {
+    return { original: text, corrected: text, llm: false };
   }
 }
 
