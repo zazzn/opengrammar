@@ -400,7 +400,11 @@ function handleGrammarSuccess(element: HTMLElement, text: string, issues: Issue[
   if (issues && issues.length > 0) {
     if (editableElement) editableElement.lastIssues = issues;
     void syncActiveContext(text, issues);
-    highlightIssues(element, issues);
+    // Don't tear down the review panel mid-batch: accepting a sentence
+    // dispatches `input` → re-analysis, and re-highlighting would wipe the
+    // open panel before the user finishes the remaining sentences. Defer
+    // the underline refresh until the panel is closed.
+    if (!isUIActive()) highlightIssues(element, issues);
 
     const statsPerType = { grammar: 0, spelling: 0, clarity: 0, style: 0 };
     for (const issue of issues) {
