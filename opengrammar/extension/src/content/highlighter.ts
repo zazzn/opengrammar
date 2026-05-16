@@ -805,8 +805,19 @@ interface SentenceGroup {
  * reviewed and accepted a whole sentence at a time instead of word-by-word.
  */
 function getSentenceGroups(text: string, issues: Issue[]): SentenceGroup[] {
+  // Re-validate every issue against the CURRENT text. If the text changed since
+  // analysis (e.g. the user just accepted a fix), a stale offset would splice
+  // the suggestion at the wrong place and garble the sentence ("haven't" ->
+  // "havenn't"). resolveInString drops issues that no longer match and rebases
+  // ones that merely shifted, so the panel only ever shows valid corrections.
   const fixable = issues
     .filter(i => !i.ignored && i.suggestion !== i.original)
+    .map((i) => {
+      const span = resolveInString(text, i.offset, i.length, i.original);
+      if (!span) return null;
+      return { ...i, offset: span.start, length: span.end - span.start };
+    })
+    .filter((i): i is Issue => i !== null)
     .sort((a, b) => a.offset - b.offset);
 
   const groups: SentenceGroup[] = [];
