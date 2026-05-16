@@ -226,8 +226,8 @@ function handleFocusOut(event: FocusEvent) {
     relatedTarget &&
     (relatedTarget.closest('.opengrammar-tooltip') ||
       relatedTarget.closest('.opengrammar-badge') ||
-      relatedTarget.closest('.opengrammar-highlight') ||
-      relatedTarget.classList.contains('opengrammar-highlight'))
+      relatedTarget.closest('#opengrammar-highlights') ||
+      relatedTarget.classList.contains('opengrammar-underline'))
   ) {
     console.log('[OpenGrammar] Focus moving to UI, staying active');
     return;
@@ -246,8 +246,8 @@ function handleFocusOut(event: FocusEvent) {
         currentActive &&
         (currentActive.closest('.opengrammar-tooltip') ||
           currentActive.closest('.opengrammar-badge') ||
-          currentActive.closest('.opengrammar-highlight') ||
-          currentActive.classList.contains('opengrammar-highlight'))
+          currentActive.closest('#opengrammar-highlights') ||
+          currentActive.classList.contains('opengrammar-underline'))
       ) {
         return;
       }

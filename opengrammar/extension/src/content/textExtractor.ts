@@ -1,3 +1,5 @@
+import { buildTextMap } from './textMap';
+
 /**
  * Extracts text from an editable element
  * Handles input, textarea, and contenteditable elements
@@ -19,9 +21,10 @@ export function extractText(element: HTMLElement): string {
   }
 
   if (element.isContentEditable) {
-    // For contenteditable, use innerText for better text representation
-    // This handles line breaks and formatting better than textContent
-    return element.innerText || element.textContent || '';
+    // Use the shared text map so the string we send to the backend is the SAME
+    // coordinate space the offsets are later mapped back through. Never use
+    // innerText here — it disagrees with the node walk and corrupts offsets.
+    return buildTextMap(element).text;
   }
 
   // Check for role="textbox"
