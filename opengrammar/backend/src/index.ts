@@ -729,6 +729,67 @@ app.post('/rephrase', async (c) => {
   }
 });
 
+// Whole-text correctness rewrite. The LLM sees full context and returns one
+// coherent corrected version (errors only — no rephrasing/meaning change).
+// This is the source of truth for the sentence-review panel, replacing the
+// fragile offset-merge of heterogeneous rule/LLM fragment edits.
+app.post('/correct', async (c) => {
+  try {
+    const { text, apiKey, model, provider, baseUrl } = (await c.req.json()) as {
+      text: string;
+      apiKey?: string;
+      model?: string;
+      provider?: string;
+      baseUrl?: string;
+    };
+    if (!text || typeof text !== 'string') {
+      return c.json({ error: 'text is required' }, 400);
+    }
+    // No LLM available → signal the extension to use its safe rule fallback.
+    if (!apiKey && provider !== 'ollama') {
+      return c.json({ original: text, corrected: text, llm: false });
+    }
+
+    const providerBaseUrl = baseUrl || getProviderBaseUrl(provider || 'openai');
+    const openai = new (await import('openai')).OpenAI({
+      apiKey: apiKey || 'ollama',
+      baseURL: providerBaseUrl,
+    });
+
+    const completion = await openai.chat.completions.create({
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a meticulous proofreader. Correct ONLY spelling, ' +
+            'grammar, punctuation, and capitalization errors. Do NOT rephrase, ' +
+            'reword, change tone/style, or add or remove information. Preserve ' +
+            'the original wording wherever it is already correct. Keep line ' +
+            'breaks. If a sentence is already correct, return it unchanged. ' +
+            'Return ONLY the corrected text, with no preamble, quotes, or notes.',
+        },
+        { role: 'user', content: text },
+      ],
+      model: model || 'gpt-4o-mini',
+      temperature: 0.1,
+      max_tokens: Math.min(4000, Math.ceil(text.length / 2) + 600),
+    });
+
+    const corrected = completion.choices[0]?.message?.content?.trim() || text;
+    return c.json({ original: text, corrected, llm: true });
+  } catch (error) {
+    console.error('Correct error:', error);
+    // Fail safe: return the original so the extension falls back, never garbles.
+    let original = '';
+    try {
+      original = ((await c.req.json()) as { text?: string }).text || '';
+    } catch {
+      /* noop */
+    }
+    return c.json({ original, corrected: original, llm: false });
+  }
+});
+
 // Autocomplete / next-word suggestions
 app.post('/autocomplete', async (c) => {
   try {
