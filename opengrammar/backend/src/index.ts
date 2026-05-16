@@ -537,6 +537,66 @@ app.post('/models', async (c) => {
   }
 });
 
+// Ollama reachability + model readiness. A model existing in /api/tags does
+// NOT mean it's loaded — Ollama loads on first use. /api/ps reports what's
+// actually running. With ?model and probe=true we do a 1-token generate to
+// force-load and confirm the model truly works.
+app.post('/ollama-status', async (c) => {
+  let body: { baseUrl?: string; model?: string; probe?: boolean } = {};
+  try {
+    body = await c.req.json();
+  } catch {
+    /* empty body ok */
+  }
+  // Native Ollama API lives at the server root, not under /v1.
+  const root = (body.baseUrl || 'http://localhost:11434')
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\/v1$/, '');
+
+  const fetchJson = async (path: string, ms: number, init?: RequestInit) => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
+    try {
+      const r = await fetch(`${root}${path}`, { ...init, signal: ctrl.signal });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(t);
+    }
+  };
+
+  const tags = await fetchJson('/api/tags', 3000);
+  if (!tags) {
+    return c.json({ reachable: false, installed: [], running: [], modelReady: false });
+  }
+  const installed: string[] = (tags.models || []).map((m: any) => m.name);
+  const psData = await fetchJson('/api/ps', 3000);
+  const running: string[] = ((psData && psData.models) || []).map((m: any) => m.name);
+
+  let modelReady = body.model ? running.includes(body.model) : false;
+  let probeError: string | undefined;
+  if (body.model && body.probe && !modelReady) {
+    // Force-load with a tiny generation (model load can take a while).
+    const gen = await fetchJson('/api/generate', 30000, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: body.model,
+        prompt: 'ok',
+        stream: false,
+        options: { num_predict: 1 },
+      }),
+    });
+    if (gen && (gen.response !== undefined || gen.done)) modelReady = true;
+    else probeError = 'Model failed to load — check it is pulled and the server has resources.';
+  }
+
+  return c.json({ reachable: true, installed, running, modelReady, error: probeError });
+});
+
 // Main analysis endpoint
 app.post('/analyze', async (c) => {
   const startTime = Date.now();
