@@ -1,6 +1,43 @@
 import { buildTextMap } from './textMap';
 
 /**
+ * Blank out forum quote blocks (`[QUOTE=...]...[/QUOTE]`, depth-aware) so we
+ * never spell/grammar-check someone else's quoted post. Replaces quoted chars
+ * with spaces but KEEPS newlines and overall length, so every offset the
+ * backend returns still maps 1:1 to the editor text (no offset drift).
+ */
+export function stripQuotedBBCode(text: string): string {
+  if (!/\[quote/i.test(text)) return text;
+  const tokenRe = /\[quote\b[^\]]*\]|\[\/quote\]/gi;
+  const chars = text.split('');
+  let depth = 0;
+  let blankFrom = -1;
+  let m: RegExpExecArray | null;
+  while ((m = tokenRe.exec(text)) !== null) {
+    const isOpen = m[0][1] !== '/';
+    if (isOpen) {
+      if (depth === 0) blankFrom = m.index;
+      depth++;
+    } else if (depth > 0) {
+      depth--;
+      if (depth === 0 && blankFrom >= 0) {
+        for (let i = blankFrom; i < m.index + m[0].length; i++) {
+          if (chars[i] !== '\n' && chars[i] !== '\r') chars[i] = ' ';
+        }
+        blankFrom = -1;
+      }
+    }
+  }
+  // Unclosed quote (user still pasting): blank from the open tag to the end.
+  if (depth > 0 && blankFrom >= 0) {
+    for (let i = blankFrom; i < chars.length; i++) {
+      if (chars[i] !== '\n' && chars[i] !== '\r') chars[i] = ' ';
+    }
+  }
+  return chars.join('');
+}
+
+/**
  * Extracts text from an editable element
  * Handles input, textarea, and contenteditable elements
  */
