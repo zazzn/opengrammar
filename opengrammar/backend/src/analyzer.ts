@@ -372,7 +372,7 @@ export class LLMAnalyzer {
   static async analyze(
     text: string,
     apiKey: string,
-    model: string = 'gpt-3.5-turbo',
+    model: string = 'gpt-4o-mini',
     provider: LLMProvider = 'openai',
     baseUrl?: string,
     context?: AnalysisContext,

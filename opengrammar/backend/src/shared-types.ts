@@ -88,12 +88,16 @@ export interface ProviderConfig {
   description: string;
 }
 
+// Curated default model lists, ordered best-first for grammar/writing
+// correction (strong instruction-following + low latency, cost-effective).
+// When an API key is set these are refined by the provider's live /models
+// list; obsolete/decommissioned models have been removed.
 export const PROVIDERS: ProviderConfig[] = [
   {
     id: 'openai',
     name: 'OpenAI',
     baseUrl: 'https://api.openai.com/v1',
-    models: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
+    models: ['gpt-4o-mini', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4.1'],
     requiresApiKey: true,
     description: 'Official OpenAI API',
   },
@@ -102,9 +106,10 @@ export const PROVIDERS: ProviderConfig[] = [
     name: 'OpenRouter',
     baseUrl: 'https://openrouter.ai/api/v1',
     models: [
-      'meta-llama/llama-3-70b-instruct',
-      'anthropic/claude-3.5-sonnet',
-      'google/gemma-2-27b-it',
+      'openai/gpt-4o-mini',
+      'anthropic/claude-3.5-haiku',
+      'meta-llama/llama-3.3-70b-instruct',
+      'google/gemini-2.0-flash-001',
     ],
     requiresApiKey: true,
     description: 'Access 100+ models with one API',
@@ -114,10 +119,9 @@ export const PROVIDERS: ProviderConfig[] = [
     name: 'Groq',
     baseUrl: 'https://api.groq.com/openai/v1',
     models: [
-      'llama-3.1-70b-versatile',
+      'llama-3.3-70b-versatile',
       'llama-3.1-8b-instant',
       'gemma2-9b-it',
-      'mixtral-8x7b-32768',
     ],
     requiresApiKey: true,
     description: 'Blazing fast inference',
@@ -127,8 +131,9 @@ export const PROVIDERS: ProviderConfig[] = [
     name: 'Together AI',
     baseUrl: 'https://api.together.xyz/v1',
     models: [
-      'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
-      'mistralai/Mixtral-8x7B-Instruct-v0.1',
+      'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+      'Qwen/Qwen2.5-72B-Instruct-Turbo',
+      'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
     ],
     requiresApiKey: true,
     description: 'Open source models at scale',
@@ -137,7 +142,7 @@ export const PROVIDERS: ProviderConfig[] = [
     id: 'ollama',
     name: 'Ollama (Local)',
     baseUrl: 'http://localhost:11434/v1',
-    models: ['qwen2.5:0.5b', 'qwen2.5:1.5b', 'phi4-mini:3.8b', 'llama3.2:3b', 'mistral:7b'],
+    models: ['qwen3', 'qwen2.5', 'llama3.1', 'gemma2', 'mistral'],
     requiresApiKey: false,
     description: 'Run models locally on your machine',
   },

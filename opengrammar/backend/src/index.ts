@@ -628,7 +628,7 @@ app.post('/analyze', async (c) => {
         const llmIssues = await LLMAnalyzer.analyze(
           text,
           apiKey || '',
-          model || 'gpt-3.5-turbo',
+          model || 'gpt-4o-mini',
           llmProvider,
           baseUrl,
           context,
@@ -807,7 +807,7 @@ app.post('/rewrite', async (c) => {
         },
         { role: 'user', content: text },
       ],
-      model: model || 'gpt-3.5-turbo',
+      model: model || 'gpt-4o-mini',
       temperature: 0.7,
       max_tokens: 1000,
     });
