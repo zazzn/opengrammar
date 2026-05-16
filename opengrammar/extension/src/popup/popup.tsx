@@ -15,7 +15,14 @@ interface Settings {
   backendUrl: string;
   provider: string;
   customBaseUrl: string;
+  ollamaUrl: string;
   backendHealthy: boolean;
+}
+
+/** Normalize an Ollama server URL to its OpenAI-compatible /v1 base. */
+export function ollamaV1(url: string): string {
+  const b = (url || 'http://localhost:11434').trim().replace(/\/+$/, '');
+  return /\/v1$/.test(b) ? b : `${b}/v1`;
 }
 
 /* ─── Score ring SVG component ─── */
@@ -124,6 +131,8 @@ const SettingsPanel = ({
   showAdvanced,
   setAdvanced,
   advancedRef,
+  scanModels,
+  scannedCount,
 }: any) => (
   <div className={`settings-area ${!settings.enabled ? 'muted' : ''}`}>
     <div className="field-group">
@@ -196,6 +205,36 @@ const SettingsPanel = ({
             <input type="url" value={settings.customBaseUrl} onChange={(e) => saveSettings({ customBaseUrl: e.target.value })} placeholder="https://your-api.com/v1" className="text-input" />
           </div>
         )}
+        {settings.provider === 'ollama' && (
+          <div className="field-group">
+            <label className="field-label">Ollama Server URL</label>
+            <p className="field-hint" style={{ marginBottom: 5 }}>Default: http://localhost:11434</p>
+            <div className="input-row">
+              <input
+                type="url"
+                value={settings.ollamaUrl}
+                onChange={(e) => saveSettings({ ollamaUrl: e.target.value })}
+                onBlur={() => scanModels()}
+                placeholder="http://localhost:11434"
+                className="text-input"
+              />
+              <button
+                type="button"
+                className="icon-btn"
+                title="Scan installed models"
+                onClick={() => scanModels()}
+                disabled={fetchingModels}
+              >↻</button>
+            </div>
+            <p className="field-hint" style={{ marginTop: 5 }}>
+              {fetchingModels
+                ? 'Scanning…'
+                : scannedCount > 0
+                  ? `${scannedCount} model${scannedCount !== 1 ? 's' : ''} found`
+                  : 'No models found — is Ollama running at this URL?'}
+            </p>
+          </div>
+        )}
         <div className="field-group">
           <label className="field-label">Backend URL</label>
           <p className="field-hint" style={{ marginBottom: 5 }}>Default: http://localhost:8787</p>
@@ -214,7 +253,7 @@ const SettingsPanel = ({
 const Popup = () => {
   const [settings, setSettings] = useState<Settings>({
     enabled: true, apiKey: '', model: 'gpt-4o-mini', backendUrl: 'http://localhost:8787',
-    provider: 'openai', customBaseUrl: '', backendHealthy: true,
+    provider: 'openai', customBaseUrl: '', ollamaUrl: 'http://localhost:11434', backendHealthy: true,
   });
   const [providerModelMemory, setProviderModelMemory] = useState<Record<string, string>>({});
   const [showApiKey, setShowApiKey]   = useState(false);
@@ -230,12 +269,13 @@ const Popup = () => {
   useEffect(() => { if (settings.provider) loadModels(); }, [settings.provider]);
 
   const loadSettings = () => {
-    chrome.storage.sync.get(['enabled', 'apiKey', 'model', 'backendUrl', 'provider', 'customBaseUrl', 'backendHealthy', 'providerModelMemory'], (result) => {
+    chrome.storage.sync.get(['enabled', 'apiKey', 'model', 'backendUrl', 'provider', 'customBaseUrl', 'ollamaUrl', 'backendHealthy', 'providerModelMemory'], (result) => {
       const memory = (result.providerModelMemory || {}) as Record<string, string>;
       const selectedProvider = result.provider || 'openai';
       setSettings({
         enabled: result.enabled !== false, apiKey: result.apiKey || '', model: memory[selectedProvider] || result.model || 'gpt-4o-mini',
         backendUrl: result.backendUrl || 'http://localhost:8787', provider: selectedProvider, customBaseUrl: result.customBaseUrl || '',
+        ollamaUrl: result.ollamaUrl || 'http://localhost:11434',
         backendHealthy: result.backendHealthy !== false,
       });
       setProviderModelMemory(memory);
@@ -247,7 +287,13 @@ const Popup = () => {
 
   const loadModels = async () => {
     setFetching(true);
-    try { const r = await chrome.runtime.sendMessage({ type: 'GET_MODELS', provider: settings.provider, apiKey: settings.apiKey, baseUrl: settings.provider === 'custom' ? settings.customBaseUrl : undefined }); if (r.models) setModels(r.models); } catch {} finally { setFetching(false); }
+    const baseUrl =
+      settings.provider === 'custom'
+        ? settings.customBaseUrl
+        : settings.provider === 'ollama'
+          ? ollamaV1(settings.ollamaUrl)
+          : undefined;
+    try { const r = await chrome.runtime.sendMessage({ type: 'GET_MODELS', provider: settings.provider, apiKey: settings.apiKey, baseUrl }); if (r.models) setModels(r.models); } catch {} finally { setFetching(false); }
   };
 
   const loadIssueStats = () => { chrome.storage.local.get(['lastIssueStats'], (r) => { if (r.lastIssueStats) setIssueStats(r.lastIssueStats as typeof issueStats); }); };
@@ -301,6 +347,7 @@ const Popup = () => {
         settings={settings} saveSettings={saveSettings} providers={providers} selectedProvider={selectedProvider} modelList={modelList}
         fetchingModels={fetchingModels} handleProviderChange={handleProviderChange} showApiKey={showApiKey} setShowApiKey={setShowApiKey}
         showAdvanced={showAdvanced} setAdvanced={setAdvanced} advancedRef={advancedRef}
+        scanModels={loadModels} scannedCount={availableModels.length}
       />
 
       {/* ── Footer ── */}

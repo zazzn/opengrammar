@@ -809,12 +809,15 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
 
     try {
       const stored = await new Promise<Record<string, string>>((res) =>
-        chrome.storage.sync.get(['apiKey', 'provider', 'model', 'backendUrl', 'customBaseUrl'], (r) => res(r as Record<string, string>))
+        chrome.storage.sync.get(['apiKey', 'provider', 'model', 'backendUrl', 'customBaseUrl', 'ollamaUrl'], (r) => res(r as Record<string, string>))
       );
       const apiKey    = stored.apiKey    || '';
       const provider  = stored.provider  || 'groq';
       const model     = stored.model     || '';
       const backendUrl = stored.backendUrl || 'http://localhost:8787';
+      const llmBaseUrl = provider === 'ollama'
+        ? ((stored.ollamaUrl || 'http://localhost:11434').trim().replace(/\/+$/, '').replace(/\/v1$/, '') + '/v1')
+        : stored.customBaseUrl || undefined;
 
       if (!apiKey && provider !== 'ollama') {
         content.innerHTML = `
@@ -830,7 +833,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
       const res = await fetch(`${backendUrl}/rephrase`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sentence: issue.original, goal, apiKey, provider, model }),
+        body: JSON.stringify({ sentence: issue.original, goal, apiKey, provider, model, baseUrl: llmBaseUrl }),
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
