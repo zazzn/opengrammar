@@ -202,7 +202,59 @@ export class RuleBasedAnalyzer {
       seenSpans.set(spanKey, issue);
     }
 
-    return result;
+    return RuleBasedAnalyzer.resolveOverlaps(result);
+  }
+
+  /**
+   * Collapse issues whose character ranges overlap so the user never sees two
+   * suggestions covering the same text (e.g. "havn"→"haven" and
+   * "havn't"→"haven't"). When ranges overlap, keep the higher-priority issue;
+   * on a priority tie keep the one covering the longer span (more comprehensive);
+   * on a length tie keep whichever was seen first.
+   */
+  private static resolveOverlaps(issues: Issue[]): Issue[] {
+    const sorted = [...issues].sort((a, b) => a.offset - b.offset || b.length - a.length);
+    const kept: Issue[] = [];
+
+    for (const issue of sorted) {
+      const start = issue.offset;
+      const end = issue.offset + issue.length;
+
+      let supersededIdx = -1;
+      let dropped = false;
+
+      for (let i = 0; i < kept.length; i++) {
+        const k = kept[i]!;
+        const kStart = k.offset;
+        const kEnd = k.offset + k.length;
+        const overlaps = start < kEnd && kStart < end;
+        if (!overlaps) continue;
+
+        if (RuleBasedAnalyzer.isBetterIssue(issue, k)) {
+          supersededIdx = i;
+        } else {
+          dropped = true;
+        }
+        break;
+      }
+
+      if (dropped) continue;
+      if (supersededIdx >= 0) {
+        kept[supersededIdx] = issue;
+      } else {
+        kept.push(issue);
+      }
+    }
+
+    return kept.sort((a, b) => a.offset - b.offset);
+  }
+
+  private static isBetterIssue(candidate: Issue, incumbent: Issue): boolean {
+    const cp = RuleBasedAnalyzer.getPriority(candidate.type);
+    const ip = RuleBasedAnalyzer.getPriority(incumbent.type);
+    if (cp !== ip) return cp > ip;
+    if (candidate.length !== incumbent.length) return candidate.length > incumbent.length;
+    return false;
   }
 
   private static handleExactSpanMatch(

@@ -1,9 +1,13 @@
 import type { IgnoredIssue, Issue } from '../types';
+import { buildTextMap, offsetToRange, resolveInString, resolveSpan } from './textMap';
 
 let currentTooltip: HTMLElement | null = null;
 let currentRephrasePanel: HTMLElement | null = null;
 let highlightContainer: HTMLElement | null = null;
 let assistantBubble: HTMLElement | null = null;
+// Contenteditable overlay state — so scroll/resize can re-place underlines
+let overlayTarget: HTMLElement | null = null;
+let overlayIssues: Issue[] = [];
 let inputMirrorOverlay: HTMLElement | null = null;
 let inputMirrorContent: HTMLElement | null = null;
 let inputMirrorTarget: HTMLElement | null = null;
@@ -81,84 +85,96 @@ export function highlightIssues(element: HTMLElement, issues: Issue[]) {
     return;
   }
 
-  issues.forEach((issue, idx) => {
-    if (issue.ignored) return;
-    try { wrapTextWithHighlight(element, issue, idx); }
-    catch (e) { console.debug('Highlight failed:', e); }
-  });
+  // Contenteditable: draw underlines in an OVERLAY — never mutate the editor's
+  // DOM (that is what stole the caret and corrupted offsets).
+  renderOverlayUnderlines(element, issues);
 }
 
-function wrapTextWithHighlight(root: HTMLElement, issue: Issue, issueIndex: number) {
-  const textNodes: Node[] = [];
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  let node: Node | null;
-  while ((node = walker.nextNode())) textNodes.push(node);
+function clearOverlayUnderlines() {
+  highlightContainer
+    ?.querySelectorAll('.opengrammar-underline')
+    .forEach((e) => e.remove());
+}
 
-  let charCount = 0;
-  const c = getC(issue.type);
+/**
+ * Draw wavy underlines for contenteditable issues in the fixed overlay layer.
+ * The editor's own DOM is never touched, so the caret and the host editor are
+ * unaffected. Underlines are positioned from Range.getClientRects() (one rect
+ * per visual line a span wraps across).
+ */
+function renderOverlayUnderlines(element: HTMLElement, issues: Issue[]) {
+  initHighlightContainer();
+  clearOverlayUnderlines();
+  overlayTarget = element;
+  overlayIssues = issues;
+  if (!highlightContainer) return;
 
-  for (const textNode of textNodes) {
-    const nodeLength = textNode.textContent?.length || 0;
-    const nodeStart = charCount;
-    const nodeEnd = charCount + nodeLength;
+  const map = buildTextMap(element);
 
-    if (issue.offset < nodeEnd && issue.offset + issue.length > nodeStart) {
-      const startInNode = Math.max(0, issue.offset - nodeStart);
-      const endInNode   = Math.min(nodeLength, issue.offset + issue.length - nodeStart);
+  for (const issue of issues) {
+    if (issue.ignored) continue;
+    const span = resolveSpan(map, issue.offset, issue.length, issue.original);
+    if (!span) continue;
+    const range = offsetToRange(map, span.start, span.end);
+    if (!range) continue;
 
-      if (startInNode < endInNode && textNode.parentNode) {
-        const makeSpan = (): HTMLElement => {
-          const span = document.createElement('span');
-          span.className = 'opengrammar-highlight';
-          span.style.cssText = `
-            background: ${c.bg};
-            border-bottom: 2px wavy ${c.line};
-            cursor: pointer;
-            padding-bottom: 1px;
-            border-radius: 2px;
-            transition: background 0.1s;
-          `;
-          span.dataset.issue = JSON.stringify(issue);
-          span.dataset.index = issueIndex.toString();
-          span.addEventListener('mouseenter', () => { span.style.background = c.hover; });
-          span.addEventListener('mouseleave', () => { span.style.background = c.bg; });
-          span.addEventListener('click', (e) => {
-            e.stopPropagation(); e.preventDefault();
-            showTooltip(span, issue, root);
-          });
-          return span;
-        };
-
-        try {
-          const range = document.createRange();
-          range.setStart(textNode, startInNode);
-          range.setEnd(textNode, endInNode);
-          const span = makeSpan();
-          range.surroundContents(span);
-        } catch {
-          const text = textNode.textContent || '';
-          const parent = textNode.parentNode;
-          if (parent) {
-            const frag = document.createDocumentFragment();
-            if (text.substring(0, startInNode)) frag.appendChild(document.createTextNode(text.substring(0, startInNode)));
-            const span = makeSpan();
-            span.textContent = text.substring(startInNode, endInNode);
-            frag.appendChild(span);
-            if (text.substring(endInNode)) frag.appendChild(document.createTextNode(text.substring(endInNode)));
-            parent.replaceChild(frag, textNode);
-          }
-        }
-      }
+    const c = getC(issue.type);
+    for (const r of Array.from(range.getClientRects())) {
+      if (r.width === 0 || r.height === 0) continue;
+      const u = document.createElement('div');
+      u.className = 'opengrammar-underline';
+      u.style.cssText = `
+        position: fixed;
+        left: ${r.left}px;
+        top: ${Math.round(r.bottom) - 2}px;
+        width: ${r.width}px;
+        height: 3px;
+        pointer-events: auto;
+        cursor: pointer;
+        z-index: 2147483646;
+        background-image:
+          linear-gradient(45deg, transparent 60%, ${c.line} 60%, ${c.line} 78%, transparent 78%),
+          linear-gradient(-45deg, transparent 60%, ${c.line} 60%, ${c.line} 78%, transparent 78%);
+        background-size: 6px 3px;
+        background-repeat: repeat-x;
+      `;
+      u.title = issue.reason || '';
+      u.addEventListener('mousedown', (e) => e.preventDefault());
+      u.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        showTooltip(u, issue, element);
+      });
+      highlightContainer.appendChild(u);
     }
-    charCount = nodeEnd;
   }
 }
 
+/**
+ * Apply a single correction to a contenteditable using the shared map.
+ * Validates the span still matches `original` (rebasing if the user edited),
+ * and drops the fix instead of corrupting text when it no longer matches.
+ * Returns true if applied.
+ */
+function applyContentEditableFix(
+  element: HTMLElement,
+  issue: Issue,
+): boolean {
+  const map = buildTextMap(element);
+  const span = resolveSpan(map, issue.offset, issue.length, issue.original);
+  if (!span) return false;
+  const range = offsetToRange(map, span.start, span.end);
+  if (!range) return false;
+  range.deleteContents();
+  range.insertNode(document.createTextNode(issue.suggestion));
+  element.normalize();
+  return true;
+}
+
 export function clearHighlights() {
-  document.querySelectorAll('.opengrammar-highlight, .opengrammar-success').forEach((el) => {
-    const parent = el.parentNode;
-    if (parent) { parent.replaceChild(document.createTextNode(el.textContent || ''), el); parent.normalize(); }
-  });
+  clearOverlayUnderlines();
+  overlayTarget = null;
+  overlayIssues = [];
   document.querySelectorAll('.opengrammar-badge').forEach((el) => el.remove());
   destroyInputMirror();
   assistantBubble?.remove(); assistantBubble = null;
@@ -170,6 +186,11 @@ export function clearHighlights() {
 export function refreshFloatingDecorations() {
   if (inputMirrorOverlay && inputMirrorTarget) positionInputMirror(inputMirrorTarget);
   if (inputMirrorContent && inputMirrorTarget) syncInputMirrorScroll(inputMirrorTarget);
+  // Re-place contenteditable underlines (Range rects are viewport-relative, so
+  // they must be recomputed when the field scrolls or the layout changes).
+  if (overlayTarget && overlayIssues.length && overlayTarget.isConnected) {
+    renderOverlayUnderlines(overlayTarget, overlayIssues);
+  }
   document.querySelectorAll('.opengrammar-badge').forEach((badge) => {
     if (!inputMirrorTarget) return;
     const rect = inputMirrorTarget.getBoundingClientRect();
@@ -241,12 +262,8 @@ function showAssistantBubble(element: HTMLElement, issues: Issue[]) {
   bubble.addEventListener('mousedown', (e) => e.preventDefault());
   bubble.addEventListener('click', (e) => {
     e.preventDefault(); e.stopPropagation();
-    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-      showIssuePanel(bubble, issues, element, 0, () => undefined);
-      return;
-    }
-    const first = document.querySelector('.opengrammar-highlight') as HTMLElement | null;
-    if (first) showTooltip(first, issues[0]!, element);
+    // All issues are reviewed a whole sentence at a time
+    showSentenceReview(issues, element, 0);
   });
 
   document.body.appendChild(bubble);
@@ -435,7 +452,7 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
 
   rephraseBtn.addEventListener('click', (e) => {
     e.stopPropagation(); e.preventDefault();
-    showRephrasePanel(card, issue, element);
+    showRephrasePanel(card, issue, element, anchor);
   });
   rephraseBtn.addEventListener('mouseenter', () => { rephraseBtn.style.background = '#f8f9fa'; });
   rephraseBtn.addEventListener('mouseleave', () => { rephraseBtn.style.background = 'white'; });
@@ -466,7 +483,7 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
 /* ────────────────────────────────────────────────────────────
    REPHRASE PANEL (slides below tooltip card)
 ──────────────────────────────────────────────────────────── */
-function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTMLElement) {
+function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTMLElement, highlightAnchor: HTMLElement) {
   currentRephrasePanel?.remove();
 
   const cardRect  = tooltipCard.getBoundingClientRect();
@@ -691,7 +708,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
           e.stopPropagation();
           const text = useBtn.dataset.text ? decodeHtmlEntities(useBtn.dataset.text) : '';
           if (text && element) {
-            applySuggestion(element, { ...issue, original: issue.original, suggestion: text }, anchor as HTMLElement);
+            applySuggestion(element, { ...issue, suggestion: text }, highlightAnchor);
           }
           hideTooltip();
           currentRephrasePanel?.remove();
@@ -717,8 +734,6 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
     }
   }
 
-  // anchor reference for use button
-  const anchor = document.querySelector('.opengrammar-tooltip') as HTMLElement;
 }
 
 function decodeHtmlEntities(str: string): string {
@@ -728,204 +743,397 @@ function decodeHtmlEntities(str: string): string {
 }
 
 /* ────────────────────────────────────────────────────────────
-   ISSUE PANEL (for input/textarea badge)
-   Grammarly-style: nav arrows + same card design
+   SPELL CHECK REVIEW PANEL
+   Shows spelling issues one-by-one with full sentence context,
+   Fix This / Fix All Spelling / Skip navigation.
 ──────────────────────────────────────────────────────────── */
-function showIssuePanel(
-  anchor: HTMLElement,
-  issues: Issue[],
+
+function getFullText(element: HTMLElement): string {
+  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+    return (element as HTMLInputElement | HTMLTextAreaElement).value;
+  }
+  return element.textContent || '';
+}
+
+/**
+ * Apply an arbitrary set of issues to the element atomically. Fixes are applied
+ * in reverse offset order so that earlier character positions stay valid while
+ * later ones are rewritten. Used for "Accept Sentence" and "Fix All".
+ */
+function applyIssueSet(element: HTMLElement, issues: Issue[]) {
+  const toFix = [...issues]
+    .filter(i => !i.ignored && i.suggestion !== i.original)
+    .sort((a, b) => b.offset - a.offset);
+  if (toFix.length === 0) return;
+
+  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+    const input = element as HTMLInputElement | HTMLTextAreaElement;
+    let text = input.value;
+    for (const issue of toFix) {
+      const span = resolveInString(text, issue.offset, issue.length, issue.original);
+      if (!span) continue; // stale — skip rather than corrupt
+      text = text.substring(0, span.start) + issue.suggestion + text.substring(span.end);
+    }
+    input.value = text;
+    input.focus();
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  } else if (element.isContentEditable) {
+    // Build the map ONCE; apply highest-offset first so earlier text nodes
+    // (and therefore the snapshot map) stay valid for the remaining fixes.
+    const map = buildTextMap(element);
+    for (const issue of toFix) {
+      const span = resolveSpan(map, issue.offset, issue.length, issue.original);
+      if (!span) continue; // text changed since analysis — skip, don't corrupt
+      const range = offsetToRange(map, span.start, span.end);
+      if (!range) continue;
+      range.deleteContents();
+      range.insertNode(document.createTextNode(issue.suggestion));
+    }
+    element.normalize();
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+}
+
+interface SentenceGroup {
+  start: number;
+  end: number;
+  issues: Issue[];
+}
+
+/**
+ * Group fixable issues by the sentence they fall in, so corrections can be
+ * reviewed and accepted a whole sentence at a time instead of word-by-word.
+ */
+function getSentenceGroups(text: string, issues: Issue[]): SentenceGroup[] {
+  const fixable = issues
+    .filter(i => !i.ignored && i.suggestion !== i.original)
+    .sort((a, b) => a.offset - b.offset);
+
+  const groups: SentenceGroup[] = [];
+  for (const issue of fixable) {
+    let s = issue.offset;
+    while (s > 0) {
+      const ch = text[s - 1];
+      if (ch === '.' || ch === '!' || ch === '?' || ch === '\n') break;
+      s--;
+    }
+    while (s < issue.offset && (text[s] === ' ' || text[s] === '\n')) s++;
+
+    let e = issue.offset + issue.length;
+    while (e < text.length) {
+      const ch = text[e];
+      if (ch === '.' || ch === '!' || ch === '?' || ch === '\n') { e++; break; }
+      e++;
+    }
+
+    const last = groups[groups.length - 1];
+    if (last && s < last.end && last.start < e) {
+      last.start = Math.min(last.start, s);
+      last.end = Math.max(last.end, e);
+      last.issues.push(issue);
+    } else {
+      groups.push({ start: s, end: e, issues: [issue] });
+    }
+  }
+  return groups;
+}
+
+function typeColorLine(type: string): string {
+  return getC(type).line;
+}
+
+/**
+ * Render a sentence as HTML with each issue span marked with a wavy underline.
+ * Offsets in `issues` are absolute; `sentenceStart` maps them into the slice.
+ */
+function renderMarkedSentence(text: string, group: SentenceGroup): string {
+  const sentence = text.slice(group.start, group.end);
+  const spans = [...group.issues].sort((a, b) => a.offset - b.offset);
+  let cursor = 0;
+  let html = '';
+  for (const issue of spans) {
+    const rel = Math.max(0, issue.offset - group.start);
+    const relEnd = Math.min(sentence.length, issue.offset + issue.length - group.start);
+    if (relEnd <= rel) continue;
+    if (rel > cursor) html += escapeHtml(sentence.slice(cursor, rel));
+    const line = typeColorLine(issue.type);
+    html += `<mark style="background:${line}14;border-radius:3px;padding:0 1px;text-decoration:underline;text-decoration-style:wavy;text-decoration-color:${line};color:#b91c1c;font-style:normal;font-weight:600;">${escapeHtml(sentence.slice(rel, relEnd))}</mark>`;
+    cursor = relEnd;
+  }
+  if (cursor < sentence.length) html += escapeHtml(sentence.slice(cursor));
+  return html.trim();
+}
+
+/** Build the corrected sentence string by applying the group's fixes. */
+function buildCorrectedSentence(text: string, group: SentenceGroup): string {
+  let sentence = text.slice(group.start, group.end);
+  const ordered = [...group.issues].sort((a, b) => b.offset - a.offset);
+  for (const issue of ordered) {
+    const rel = issue.offset - group.start;
+    const relEnd = rel + issue.length;
+    if (rel < 0 || relEnd > sentence.length) continue;
+    sentence = sentence.slice(0, rel) + issue.suggestion + sentence.slice(relEnd);
+  }
+  return sentence.trim();
+}
+
+function showSentenceReview(
+  allIssues: Issue[],
   element: HTMLElement,
-  currentIndex: number,
-  onIndexChange: (n: number) => void,
+  groupIndex: number,
+  precomputed?: SentenceGroup[],
 ) {
   uiActive = true;
   currentTooltip?.remove();
+  currentRephrasePanel?.remove();
+  currentRephrasePanel = null;
+  injectStyles();
 
-  const issue      = issues[currentIndex]!;
-  const anchorRect = anchor.getBoundingClientRect();
-  const c          = getC(issue.type);
+  const text = getFullText(element);
+  const groups = precomputed ?? getSentenceGroups(text, allIssues);
 
-  const panel = document.createElement('div');
-  panel.className = 'opengrammar-tooltip';
+  if (groups.length === 0) { hideTooltip(); return; }
+  const idx = Math.max(0, Math.min(groupIndex, groups.length - 1));
+  const group = groups[idx]!;
+  const total = groups.length;
+  const isFirst = idx === 0;
+  const isLast  = idx >= total - 1;
 
-  let top = anchorRect.bottom + 10;
-  if (top + 300 > window.innerHeight) top = anchorRect.top - 310;
+  const originalHtml  = renderMarkedSentence(text, group);
+  const correctedText = buildCorrectedSentence(text, group);
+  const changeCount   = group.issues.length;
+  const totalFixes    = groups.reduce((n, g) => n + g.issues.length, 0);
 
-  panel.style.cssText = `
+  const typeCounts = new Map<string, number>();
+  for (const i of group.issues) typeCounts.set(i.type, (typeCounts.get(i.type) || 0) + 1);
+  const typeSummary = [...typeCounts.entries()]
+    .map(([t, n]) => `${n} ${getTypeLabel(t).toLowerCase()}`)
+    .join(' · ');
+
+  const changeListHtml = [...group.issues]
+    .sort((a, b) => a.offset - b.offset)
+    .map((i) => {
+      const line = typeColorLine(i.type);
+      return `
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;line-height:1.5;padding:2px 0;">
+          <span style="flex-shrink:0;width:6px;height:6px;border-radius:50%;background:${line};"></span>
+          <span style="color:#b91c1c;text-decoration:line-through;word-break:break-word;">${escapeHtml(i.original)}</span>
+          <span style="color:#aaa;">→</span>
+          <span style="color:#3730A3;font-weight:600;word-break:break-word;">${escapeHtml(i.suggestion)}</span>
+        </div>`;
+    })
+    .join('');
+
+  const card = document.createElement('div');
+  card.className = 'opengrammar-tooltip';
+  card.style.cssText = `
     position: fixed;
-    left: ${Math.max(10, Math.min(anchorRect.left - 140, window.innerWidth - 346))}px;
-    top: ${top}px;
-    width: 334px;
+    right: 24px;
+    bottom: 84px;
+    width: 360px;
     background: #ffffff;
     border-radius: 12px;
     box-shadow: 0 4px 32px rgba(0,0,0,0.14), 0 1px 6px rgba(0,0,0,0.07);
-    border: 1px solid rgba(0,0,0,0.07);
     z-index: 2147483647;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 14px; overflow: hidden;
+    font-size: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.07);
     animation: og-fade-in 0.12s ease;
   `;
 
-  const hasMultiple = issues.length > 1;
-
-  panel.innerHTML = `
-    <!-- Navigation bar -->
+  card.innerHTML = `
+    <!-- Header: progress + nav arrows -->
     <div style="
+      padding: 11px 14px 9px;
       display:flex; align-items:center; justify-content:space-between;
-      padding: 10px 14px;
-      background: #fafafa;
       border-bottom: 1px solid #f0f0f0;
+      background: #fafafa;
     ">
-      <div style="display:flex;align-items:center;gap:8px;">
+      <div style="display:flex; align-items:center; gap:9px;">
         <span style="
-          display:inline-flex;align-items:center;justify-content:center;
-          width:8px;height:8px;border-radius:50%;background:${c.line};
-          flex-shrink:0;
-        "></span>
-        <span style="font-size:13px;font-weight:600;color:#1c1c1e;">
-          ${issues.length} suggestion${issues.length !== 1 ? 's' : ''}
+          display:inline-flex; align-items:center; justify-content:center;
+          width:28px; height:28px; border-radius:50%;
+          background:#4F46E518; flex-shrink:0;
+        ">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#4F46E5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 11.5 11 2.5l2.5 2.5L4.5 14H2z"/><path d="M9.5 4 12 6.5"/>
+          </svg>
         </span>
+        <div>
+          <div style="font-size:12px; font-weight:600; color:#4F46E5; text-transform:uppercase; letter-spacing:0.5px;">Sentence ${idx + 1} of ${total}</div>
+          <div style="font-size:11px; color:#8e8e93;">${changeCount} change${changeCount !== 1 ? 's' : ''}${typeSummary ? ' · ' + escapeHtml(typeSummary) : ''}</div>
+        </div>
       </div>
-      ${hasMultiple ? `
-      <div style="display:flex;gap:4px;align-items:center;">
-        <button class="og-prev-btn" style="
-          width:28px;height:28px;display:flex;align-items:center;justify-content:center;
-          background:white;border:1px solid #e5e5ea;border-radius:7px;
-          cursor:${currentIndex === 0 ? 'default' : 'pointer'};
-          opacity:${currentIndex === 0 ? '0.35' : '1'};
-          font-size:16px;color:#3c3c43;transition:background 0.1s;
+      ${total > 1 ? `
+      <div style="display:flex; gap:4px; align-items:center;">
+        <button class="og-sr-prev" style="
+          width:28px; height:28px;
+          display:flex; align-items:center; justify-content:center;
+          background:white; border:1px solid #e5e5ea; border-radius:7px;
+          cursor:${isFirst ? 'default' : 'pointer'};
+          opacity:${isFirst ? '0.3' : '1'};
+          font-size:16px; color:#3c3c43; line-height:1;
         ">‹</button>
-        <span style="font-size:12px;color:#8e8e93;min-width:30px;text-align:center;">
-          ${currentIndex + 1}/${issues.length}
-        </span>
-        <button class="og-next-btn" style="
-          width:28px;height:28px;display:flex;align-items:center;justify-content:center;
-          background:white;border:1px solid #e5e5ea;border-radius:7px;
-          cursor:${currentIndex >= issues.length - 1 ? 'default' : 'pointer'};
-          opacity:${currentIndex >= issues.length - 1 ? '0.35' : '1'};
-          font-size:16px;color:#3c3c43;transition:background 0.1s;
+        <button class="og-sr-next" style="
+          width:28px; height:28px;
+          display:flex; align-items:center; justify-content:center;
+          background:white; border:1px solid #e5e5ea; border-radius:7px;
+          cursor:${isLast ? 'default' : 'pointer'};
+          opacity:${isLast ? '0.3' : '1'};
+          font-size:16px; color:#3c3c43; line-height:1;
         ">›</button>
       </div>` : ''}
     </div>
 
-    <!-- Issue body -->
-    <div style="padding: 11px 14px 9px; border-bottom: 1px solid #f0f0f0;">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-        <span style="font-size:12px;font-weight:600;color:${c.line};text-transform:uppercase;letter-spacing:0.5px;">
-          ${getTypeLabel(issue.type)}
-        </span>
-        <span style="width:3px;height:3px;border-radius:50%;background:#ccc;display:inline-block;"></span>
-        <span style="font-size:12px;color:#8e8e93;">${getCategoryLabel(issue.type)}</span>
-      </div>
-      <p style="margin:0;font-size:13px;color:#3c3c43;line-height:1.5;">${escapeHtml(issue.reason)}</p>
-    </div>
-
-    <!-- Diff -->
-    <div style="padding: 11px 14px; background:#fafafa; display:flex;flex-direction:column;gap:7px;">
+    <!-- Original sentence with errors marked inline -->
+    <div style="padding: 11px 14px 9px;">
+      <div style="font-size:10px; color:#8e8e93; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:5px;">Original sentence</div>
       <div style="
-        display:flex;align-items:flex-start;gap:8px;
-        background:#fff0f0;border-radius:7px;padding:8px 10px;
-        border-left:3px solid #e53935;
-      ">
-        <span style="font-size:14px;color:#b91c1c;text-decoration:line-through;word-break:break-word;line-height:1.4;">
-          ${escapeHtml(issue.original)}
-        </span>
-      </div>
-      <div style="display:flex;justify-content:center;">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M8 2v12M4 10l4 4 4-4" stroke="#aaa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <div class="og-suggestion-click" style="
-        display:flex;align-items:flex-start;gap:8px;
-        background:#EEF2FF;border-radius:7px;padding:8px 10px;
-        border-left:3px solid #4F46E5;
-        cursor:pointer;transition:background 0.12s;
-      ">
-        <span style="font-size:14px;color:#3730A3;font-weight:600;word-break:break-word;line-height:1.4;">
-          ${escapeHtml(issue.suggestion)}
-        </span>
-      </div>
+        font-size:13px; color:#3c3c43; line-height:1.6; word-break:break-word;
+        background:#fff7f7; border:1px solid #ffe0e0; border-radius:7px; padding:8px 10px;
+      ">${originalHtml}</div>
     </div>
 
-    <!-- Actions -->
-    <div style="display:flex;border-top:1px solid #f0f0f0;">
-      <button class="og-apply-btn" style="
-        flex:1;padding:11px 16px;
-        background:#4F46E5;color:white;
-        border:none;cursor:pointer;
-        font-size:13px;font-weight:600;
-        border-radius:0 0 0 12px;
-        font-family:inherit;
+    <!-- Corrected sentence (all fixes applied) -->
+    <div class="og-sr-accept-box" style="padding: 0 14px 10px; cursor:pointer;">
+      <div style="font-size:10px; color:#8e8e93; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:5px;">Corrected sentence</div>
+      <div style="
+        font-size:13px; color:#1c1c1e; line-height:1.6; word-break:break-word; font-weight:500;
+        background:#EEF2FF; border:1px solid #C7D2FE; border-radius:7px; padding:8px 10px;
         transition:background 0.12s;
-        display:flex;align-items:center;justify-content:center;gap:5px;
+      ">${escapeHtml(correctedText)}</div>
+    </div>
+
+    <!-- Per-change breakdown -->
+    <details style="border-top:1px solid #f0f0f0;">
+      <summary style="
+        padding:8px 14px; cursor:pointer; font-size:12px; color:#5f6368;
+        font-weight:600; list-style:none; user-select:none;
+      ">View ${changeCount} individual change${changeCount !== 1 ? 's' : ''}</summary>
+      <div style="padding:2px 14px 10px;">${changeListHtml}</div>
+    </details>
+
+    <!-- Action buttons -->
+    <div style="display:flex; border-top:1px solid #f0f0f0;">
+      ${total > 1 ? `
+      <button class="og-sr-fix-all" style="
+        flex:1; padding:10px 8px;
+        background:white; color:#4F46E5;
+        border:none; border-right:1px solid #f0f0f0; cursor:pointer;
+        font-size:11px; font-weight:700; line-height:1.35;
+        font-family:inherit; transition:background 0.12s;
+      ">Fix All<br><span style="font-weight:400; color:#8e8e93;">${totalFixes} change${totalFixes !== 1 ? 's' : ''}</span></button>` : ''}
+      <button class="og-sr-accept" style="
+        flex:2; padding:11px 10px;
+        background:#4F46E5; color:white;
+        border:none; cursor:pointer;
+        font-size:13px; font-weight:600;
+        border-radius:0 0 0 ${total > 1 ? '0' : '12px'};
+        font-family:inherit; transition:background 0.12s;
+        display:flex; align-items:center; justify-content:center; gap:5px;
       ">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="white">
           <path d="M6.5 11.5L2.5 7.5l1.06-1.06 2.94 2.93 5.94-5.93 1.06 1.06z"/>
         </svg>
-        Accept
+        Accept Sentence
       </button>
-      <button class="og-ignore-btn" style="
-        flex:1;padding:11px 16px;
-        background:white;color:#5f6368;
-        border:none;border-left:1px solid #f0f0f0;
-        cursor:pointer;font-size:13px;font-weight:500;
+      <button class="og-sr-skip" style="
+        flex:1; padding:11px 10px;
+        background:white; color:#5f6368;
+        border:none; border-left:1px solid #f0f0f0;
+        cursor:pointer;
+        font-size:13px; font-weight:500;
         border-radius:0 0 12px 0;
-        font-family:inherit;transition:background 0.12s;
-      ">Dismiss</button>
+        font-family:inherit; transition:background 0.12s;
+      ">Skip</button>
     </div>
   `;
 
-  panel.addEventListener('mousedown', (e) => e.preventDefault());
+  card.addEventListener('mousedown', (e) => e.preventDefault());
 
-  const applyBtn  = panel.querySelector('.og-apply-btn') as HTMLButtonElement;
-  const ignoreBtn = panel.querySelector('.og-ignore-btn') as HTMLButtonElement;
-  const suggClick = panel.querySelector('.og-suggestion-click') as HTMLElement;
+  const acceptSentence = () => {
+    applyIssueSet(element, group.issues);
+    // Shift offsets of every later group so subsequent accepts land correctly
+    const delta = group.issues.reduce((d, i) => d + (i.suggestion.length - i.length), 0);
+    if (delta !== 0) {
+      for (let g = idx + 1; g < groups.length; g++) {
+        const grp = groups[g]!;
+        grp.start += delta;
+        grp.end += delta;
+        for (const iss of grp.issues) iss.offset += delta;
+      }
+    }
+    // Drop the accepted group and show the next remaining one
+    groups.splice(idx, 1);
+    if (groups.length === 0) { hideTooltip(); return; }
+    showSentenceReview(allIssues, element, Math.min(idx, groups.length - 1), groups);
+  };
 
-  if (suggClick) {
-    suggClick.addEventListener('click', (e) => { e.stopPropagation(); applySuggestion(element, issue, anchor); hideTooltip(); });
-    suggClick.addEventListener('mouseenter', () => { suggClick.style.background = '#E0E7FF'; });
-    suggClick.addEventListener('mouseleave', () => { suggClick.style.background = '#EEF2FF'; });
+  const acceptBox = card.querySelector('.og-sr-accept-box') as HTMLElement | null;
+  const correctedInner = acceptBox?.firstElementChild?.nextElementSibling as HTMLElement | undefined;
+  if (acceptBox) {
+    acceptBox.addEventListener('click', (e) => { e.stopPropagation(); acceptSentence(); });
+    acceptBox.addEventListener('mouseenter', () => { if (correctedInner) correctedInner.style.background = '#E0E7FF'; });
+    acceptBox.addEventListener('mouseleave', () => { if (correctedInner) correctedInner.style.background = '#EEF2FF'; });
   }
-  applyBtn.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault(); applySuggestion(element, issue, anchor); hideTooltip(); });
-  applyBtn.addEventListener('mouseenter', () => { applyBtn.style.background = '#4338CA'; });
-  applyBtn.addEventListener('mouseleave', () => { applyBtn.style.background = '#4F46E5'; });
 
-  ignoreBtn.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault(); ignoreIssue(issue, anchor); hideTooltip(); });
-  ignoreBtn.addEventListener('mouseenter', () => { ignoreBtn.style.background = '#f8f9fa'; });
-  ignoreBtn.addEventListener('mouseleave', () => { ignoreBtn.style.background = 'white'; });
+  const acceptBtn = card.querySelector('.og-sr-accept') as HTMLButtonElement | null;
+  if (acceptBtn) {
+    acceptBtn.addEventListener('click', (e) => { e.stopPropagation(); acceptSentence(); });
+    acceptBtn.addEventListener('mouseenter', () => { acceptBtn.style.background = '#4338CA'; });
+    acceptBtn.addEventListener('mouseleave', () => { acceptBtn.style.background = '#4F46E5'; });
+  }
 
-  if (hasMultiple) {
-    const prevBtn = panel.querySelector('.og-prev-btn') as HTMLButtonElement | null;
-    const nextBtn = panel.querySelector('.og-next-btn') as HTMLButtonElement | null;
-    if (prevBtn && currentIndex > 0) {
-      prevBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const ni = currentIndex - 1;
-        onIndexChange(ni);
-        showIssuePanel(anchor, issues, element, ni, onIndexChange);
-      });
-    }
-    if (nextBtn && currentIndex < issues.length - 1) {
-      nextBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const ni = currentIndex + 1;
-        onIndexChange(ni);
-        showIssuePanel(anchor, issues, element, ni, onIndexChange);
-      });
-    }
+  const fixAllBtn = card.querySelector('.og-sr-fix-all') as HTMLButtonElement | null;
+  if (fixAllBtn) {
+    fixAllBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const everything = groups.flatMap(g => g.issues);
+      applyIssueSet(element, everything);
+      hideTooltip();
+    });
+    fixAllBtn.addEventListener('mouseenter', () => { fixAllBtn.style.background = '#f0f0ff'; });
+    fixAllBtn.addEventListener('mouseleave', () => { fixAllBtn.style.background = 'white'; });
+  }
+
+  const skipBtn = card.querySelector('.og-sr-skip') as HTMLButtonElement | null;
+  if (skipBtn) {
+    skipBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!isLast) showSentenceReview(allIssues, element, idx + 1, groups);
+      else hideTooltip();
+    });
+    skipBtn.addEventListener('mouseenter', () => { skipBtn.style.background = '#f8f9fa'; });
+    skipBtn.addEventListener('mouseleave', () => { skipBtn.style.background = 'white'; });
+  }
+
+  const prevBtn = card.querySelector('.og-sr-prev') as HTMLButtonElement | null;
+  if (prevBtn && !isFirst) {
+    prevBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showSentenceReview(allIssues, element, idx - 1, groups);
+    });
+  }
+
+  const nextBtn = card.querySelector('.og-sr-next') as HTMLButtonElement | null;
+  if (nextBtn && !isLast) {
+    nextBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showSentenceReview(allIssues, element, idx + 1, groups);
+    });
   }
 
   const closeOnOutsideClick = (e: MouseEvent) => {
-    if (!panel.contains(e.target as Node) && !anchor.contains(e.target as Node)) {
+    if (!card.contains(e.target as Node)) {
       hideTooltip();
       document.removeEventListener('click', closeOnOutsideClick);
     }
   };
   setTimeout(() => document.addEventListener('click', closeOnOutsideClick), 100);
 
-  document.body.appendChild(panel);
-  currentTooltip = panel;
+  document.body.appendChild(card);
+  currentTooltip = card;
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -1004,16 +1212,13 @@ function showInputBadge(element: HTMLElement, issues: Issue[]) {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   `;
   badge.textContent = issues.length.toString();
-  let currentIssueIndex = 0;
 
   badge.addEventListener('mouseenter', () => { badge.style.transform = 'scale(1.12)'; });
   badge.addEventListener('mouseleave', () => { badge.style.transform = 'scale(1)'; });
   badge.addEventListener('mousedown', (e) => e.preventDefault());
   badge.addEventListener('click', (e) => {
     e.stopPropagation(); e.preventDefault();
-    if (issues.length > 0) {
-      showIssuePanel(badge, issues, element, currentIssueIndex, (ni) => { currentIssueIndex = ni; });
-    }
+    if (issues.length > 0) showSentenceReview(issues, element, 0);
   });
 
   document.body.appendChild(badge);
@@ -1104,17 +1309,22 @@ function applySuggestion(element: HTMLElement, issue: Issue, highlightEl: HTMLEl
   if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
     const input = element as HTMLInputElement | HTMLTextAreaElement;
     const text  = input.value;
-    input.value = text.substring(0, issue.offset) + issue.suggestion + text.substring(issue.offset + issue.length);
+    // Validate the offset still points at the original text (it may have
+    // shifted from earlier accepts); re-find locally or drop instead of
+    // slicing the wrong characters.
+    const span = resolveInString(text, issue.offset, issue.length, issue.original);
+    if (!span) return;
+    input.value = text.substring(0, span.start) + issue.suggestion + text.substring(span.end);
     input.focus();
     input.dispatchEvent(new Event('input', { bubbles: true }));
   } else if (element.isContentEditable) {
-    const textNode = document.createTextNode(issue.suggestion);
-    if (highlightEl.parentNode) {
-      highlightEl.parentNode.replaceChild(textNode, highlightEl);
-      textNode.parentNode?.normalize();
+    // No DOM mutation for highlights anymore, so highlightEl is irrelevant here.
+    // Map-based, validated replacement (rebases or drops if text changed).
+    if (applyContentEditableFix(element, issue)) {
+      element.dispatchEvent(new Event('input', { bubbles: true }));
     }
-    element.dispatchEvent(new Event('input', { bubbles: true }));
   }
+  void highlightEl;
 }
 
 function ignoreIssue(issue: Issue, highlightEl: HTMLElement) {
@@ -1133,11 +1343,14 @@ function ignoreIssue(issue: Issue, highlightEl: HTMLElement) {
     }
   });
 
-  if (highlightEl.classList.contains('opengrammar-highlight')) {
-    const parent = highlightEl.parentNode;
-    if (parent) { parent.replaceChild(document.createTextNode(highlightEl.textContent || ''), highlightEl); parent.normalize(); }
+  // Drop this issue and re-render the remaining overlay underlines (no DOM
+  // mutation of the editor — the underline lives in our overlay).
+  issue.ignored = true;
+  if (overlayTarget) {
+    overlayIssues = overlayIssues.filter((i) => i !== issue);
+    renderOverlayUnderlines(overlayTarget, overlayIssues);
   }
-  if (highlightEl.classList.contains('opengrammar-badge')) highlightEl.remove();
+  if (highlightEl.classList?.contains('opengrammar-badge')) highlightEl.remove();
 }
 
 function normalizeIgnoredIssues(value: unknown): IgnoredIssue[] {

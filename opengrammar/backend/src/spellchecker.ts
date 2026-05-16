@@ -283,6 +283,59 @@ const SAFE_WORDS = new Set([
   'appearing',
 ]);
 
+/**
+ * Returns true if `word` is a valid morphological inflection of a dictionary word.
+ * Handles common English suffixes so that "dogs", "running", "baked", etc. are
+ * never incorrectly flagged as spelling mistakes.
+ */
+function isMorphologicalVariant(word: string, dictionary: Set<string>): boolean {
+  const w = word.toLowerCase();
+  if (w.length < 3) return false;
+
+  // Simple -s plurals / 3rd-person present: dogs → dog, runs → run
+  if (w.endsWith('s') && w.length > 3 && dictionary.has(w.slice(0, -1))) return true;
+
+  // -es plurals: boxes → box, churches → church
+  if (w.endsWith('es') && w.length > 4 && dictionary.has(w.slice(0, -2))) return true;
+
+  // -ies → -y: categories → category, puppies → puppy
+  if (w.endsWith('ies') && w.length > 4 && dictionary.has(w.slice(0, -3) + 'y')) return true;
+
+  // -ing forms: talking → talk, making → make, running → run (doubled consonant)
+  if (w.endsWith('ing') && w.length > 5) {
+    if (dictionary.has(w.slice(0, -3))) return true;
+    if (dictionary.has(w.slice(0, -3) + 'e')) return true;   // making → make
+    if (w.length > 6 && dictionary.has(w.slice(0, -4))) return true; // running → run
+  }
+
+  // -ed past tense: talked → talk, baked → bake, stopped → stop
+  if (w.endsWith('ed') && w.length > 4) {
+    if (dictionary.has(w.slice(0, -2))) return true;
+    if (dictionary.has(w.slice(0, -1))) return true;          // baked → bake (d → e)
+    if (w.length > 5 && dictionary.has(w.slice(0, -3))) return true; // stopped → stop
+  }
+
+  // -ly adverbs: quickly → quick, happily handled via -ily → -y below
+  if (w.endsWith('ly') && w.length > 4 && dictionary.has(w.slice(0, -2))) return true;
+
+  // -ily adverbs: happily → happy
+  if (w.endsWith('ily') && w.length > 5 && dictionary.has(w.slice(0, -3) + 'y')) return true;
+
+  // -er comparatives / agent nouns: faster → fast, teacher → teach
+  if (w.endsWith('er') && w.length > 4 && dictionary.has(w.slice(0, -2))) return true;
+
+  // -est superlatives: fastest → fast
+  if (w.endsWith('est') && w.length > 5 && dictionary.has(w.slice(0, -3))) return true;
+
+  // -ness: darkness → dark, kindness → kind
+  if (w.endsWith('ness') && w.length > 6 && dictionary.has(w.slice(0, -4))) return true;
+
+  // -ment: enjoyment → enjoy, improvement → improve
+  if (w.endsWith('ment') && w.length > 6 && dictionary.has(w.slice(0, -4))) return true;
+
+  return false;
+}
+
 // Cache for Soundex values to speed up suggestions
 let _soundexCache: Map<string, string> | null = null;
 
@@ -387,6 +440,9 @@ export function checkSpelling(text: string, userDictionary?: Set<string>): Issue
 
     // 8. Very short words (2 chars) — too many false positives
     if (word.length <= 2) continue;
+
+    // 9. Valid morphological inflections (plurals, -ing, -ed, -ly, -er, -est, -ness…)
+    if (isMorphologicalVariant(lower, dictionary)) continue;
 
     // This word is not in the dictionary — find suggestions
     const suggestions = findSuggestions(lower, dictionary);

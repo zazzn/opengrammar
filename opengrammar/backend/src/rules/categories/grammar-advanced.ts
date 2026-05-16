@@ -3,13 +3,8 @@ import { createRegexRule, type Rule } from '../types.js';
 
 export const advancedGrammarRules: Rule[] = [
   // Spacing Errors
-  createRegexRule({
-    id: 'double-space',
-    category: 'grammar',
-    pattern: /[^.](\s{2,})/g,
-    suggestion: ' ',
-    reason: 'Multiple spaces detected. Use single space.',
-  }),
+  // NOTE: the "double-space" rule was intentionally removed — multiple spaces are
+  // often deliberate (alignment, formatting) and flagging them is high-noise.
   createRegexRule({
     id: 'space-before-punct',
     category: 'grammar',
