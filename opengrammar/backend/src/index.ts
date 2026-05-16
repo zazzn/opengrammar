@@ -879,7 +879,38 @@ function enrichIssues(
   });
 }
 
+/**
+ * Drop issues that would corrupt or confuse:
+ *  - `original` not actually present in the analyzed text (the LLM
+ *    sometimes hallucinates a span — applying it garbles the sentence),
+ *  - long grammar/clarity "rewrites" that discard most of the original
+ *    words (they change meaning, not fix an error). Small targeted fixes
+ *    keep high word-overlap and pass.
+ */
+function sanitizeIssues(issues: Issue[], text: string): Issue[] {
+  const normText = text.toLowerCase().replace(/\s+/g, ' ');
+  const words = (s: string) =>
+    s.toLowerCase().match(/[a-z0-9']+/g) || [];
+  return issues.filter((i) => {
+    const orig = (i.original || '').trim();
+    if (orig) {
+      const normOrig = orig.toLowerCase().replace(/\s+/g, ' ');
+      if (!normText.includes(normOrig)) return false; // hallucinated span
+    }
+    if ((i.type === 'grammar' || i.type === 'clarity') && orig.length > 25) {
+      const ow = words(orig);
+      const sw = new Set(words(i.suggestion || ''));
+      if (ow.length >= 5) {
+        const kept = ow.filter((w) => sw.has(w)).length / ow.length;
+        if (kept < 0.4) return false; // rewrite loses the original meaning
+      }
+    }
+    return true;
+  });
+}
+
 function dedupeAndRankIssues(issues: Issue[], text: string, context?: AnalysisContext): Issue[] {
+  issues = sanitizeIssues(issues, text);
   const deduped = new Map<string, Issue>();
 
   for (const issue of issues) {

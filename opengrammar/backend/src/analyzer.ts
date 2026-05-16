@@ -288,6 +288,12 @@ export class RuleBasedAnalyzer {
   }
 
   private static isBetterIssue(candidate: Issue, incumbent: Issue): boolean {
+    // Spelling always survives an overlap with a non-spelling issue, so a
+    // misspelled word always keeps its own (red) underline + replace menu
+    // instead of being swallowed by a larger grammar/clarity rewrite.
+    const cS = candidate.type === 'spelling';
+    const iS = incumbent.type === 'spelling';
+    if (cS !== iS) return cS;
     const cp = RuleBasedAnalyzer.getPriority(candidate.type);
     const ip = RuleBasedAnalyzer.getPriority(incumbent.type);
     if (cp !== ip) return cp > ip;
