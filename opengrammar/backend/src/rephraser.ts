@@ -60,9 +60,9 @@ export class Rephraser {
 
     try {
       if (provider === 'groq') {
-        return await Rephraser.rephraseWithGroq(userPrompt, apiKey, model || 'llama3-8b-8192');
+        return await Rephraser.rephraseWithGroq(userPrompt, apiKey, model || 'llama-3.1-8b-instant');
       } else {
-        return await Rephraser.rephraseWithOpenAI(userPrompt, apiKey, model || 'gpt-3.5-turbo', provider, baseUrl);
+        return await Rephraser.rephraseWithOpenAI(userPrompt, apiKey, model || 'gpt-4o-mini', provider, baseUrl);
       }
     } catch (err) {
       console.error(`[Rephraser] ${provider} error:`, err);
