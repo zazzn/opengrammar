@@ -169,6 +169,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.type === 'GET_OLLAMA_STATUS') {
+    getOllamaStatus(request.baseUrl, request.model, request.probe).then((s) =>
+      sendResponse(s),
+    );
+    return true;
+  }
+
   if (request.type === 'GET_BACKEND_URL') {
     getBackendUrl().then((url) => sendResponse({ url }));
     return true;
@@ -486,6 +493,21 @@ async function getModels(provider: string, apiKey?: string, baseUrl?: string) {
   } catch (error) {
     console.error('Failed to fetch models:', error);
     return [];
+  }
+}
+
+async function getOllamaStatus(baseUrl?: string, model?: string, probe?: boolean) {
+  try {
+    const backendUrl = await getBackendUrl();
+    const response = await fetch(`${backendUrl}/ollama-status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ baseUrl, model, probe }),
+    });
+    if (!response.ok) throw new Error('status request failed');
+    return await response.json();
+  } catch (error) {
+    return { reachable: false, installed: [], running: [], modelReady: false };
   }
 }
 

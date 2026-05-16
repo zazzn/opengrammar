@@ -25,6 +25,28 @@ export function ollamaV1(url: string): string {
   return /\/v1$/.test(b) ? b : `${b}/v1`;
 }
 
+/**
+ * Best local models for grammar/writing correction, best → acceptable.
+ * Strong instruction-following + low latency is what matters here.
+ * qwen2.5:7b is the top pick: excellent at editing/rewriting, fast on
+ * modest hardware. We match by prefix since installed names carry tags
+ * (e.g. "qwen2.5:7b-instruct-q4_K_M").
+ */
+const RECOMMENDED_OLLAMA = [
+  'qwen3', 'qwen2.5', 'llama3.1', 'llama3.2', 'gemma2', 'mistral-nemo', 'mistral', 'phi3.5', 'phi3',
+];
+function pickRecommended(installed: string[]): string | null {
+  // Code/embedding variants are poor at prose grammar — skip them.
+  const general = installed.filter(
+    (m) => !/(coder|embed|vision|math|guard)/i.test(m),
+  );
+  for (const fam of RECOMMENDED_OLLAMA) {
+    const hit = general.find((m) => m.toLowerCase().startsWith(fam));
+    if (hit) return hit;
+  }
+  return general[0] || installed[0] || null;
+}
+
 /* ─── Score ring SVG component ─── */
 function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
   const r      = (size - 6) / 2;
@@ -133,6 +155,8 @@ const SettingsPanel = ({
   advancedRef,
   scanModels,
   scannedCount,
+  ollamaStatus,
+  testOllama,
 }: any) => (
   <div className={`settings-area ${!settings.enabled ? 'muted' : ''}`}>
     <div className="field-group">
@@ -188,8 +212,18 @@ const SettingsPanel = ({
         className="select-input"
         disabled={fetchingModels}
       >
-        {fetchingModels ? <option>Loading…</option> : modelList.map((m: string) => <option key={m} value={m}>{m}</option>)}
+        {fetchingModels
+          ? <option>Loading…</option>
+          : modelList.map((m: string) => {
+              const rec = settings.provider === 'ollama' && m === pickRecommended(modelList);
+              return <option key={m} value={m}>{m}{rec ? '  (Recommended)' : ''}</option>;
+            })}
       </select>
+      {settings.provider === 'ollama' && pickRecommended(modelList) && (
+        <p className="field-hint" style={{ marginTop: 5 }}>
+          Recommended for grammar: <strong>{pickRecommended(modelList)}</strong>
+        </p>
+      )}
     </div>
 
     <button type="button" className={`advanced-toggle ${showAdvanced ? 'open' : ''}`} onClick={() => setAdvanced((v: boolean) => !v)}>
@@ -233,6 +267,37 @@ const SettingsPanel = ({
                   ? `${scannedCount} model${scannedCount !== 1 ? 's' : ''} found`
                   : 'No models found — is Ollama running at this URL?'}
             </p>
+            {(() => {
+              const st = ollamaStatus || {};
+              const color = st.testing
+                ? '#f59e0b'
+                : !st.reachable
+                  ? '#e53935'
+                  : st.modelReady
+                    ? '#16a34a'
+                    : '#f59e0b';
+              const label = st.testing
+                ? 'Testing model…'
+                : !st.reachable
+                  ? 'Server offline'
+                  : st.modelReady
+                    ? 'Ready · model loaded'
+                    : 'Online · model not loaded (loads on first use)';
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 6 }}>
+                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                  <span className="status-text" style={{ flex: 1 }}>{label}</span>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    style={{ width: 'auto', padding: '3px 9px', fontSize: 12 }}
+                    title="Load the selected model and confirm it responds"
+                    onClick={() => testOllama && testOllama()}
+                    disabled={st.testing || !st.reachable}
+                  >Test</button>
+                </div>
+              );
+            })()}
           </div>
         )}
         <div className="field-group">
@@ -263,10 +328,14 @@ const Popup = () => {
   const [fetchingModels, setFetching] = useState(false);
   const [showAdvanced, setAdvanced]   = useState(false);
   const [issueStats, setIssueStats]   = useState({ grammar: 0, style: 0, clarity: 0, total: 0 });
+  const [ollamaStatus, setOllamaStatus] = useState<{ reachable: boolean; running: string[]; modelReady: boolean; testing: boolean }>({ reachable: false, running: [], modelReady: false, testing: false });
   const advancedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { loadSettings(); loadProviders(); loadIssueStats(); }, []);
   useEffect(() => { if (settings.provider) loadModels(); }, [settings.provider]);
+  useEffect(() => {
+    if (settings.provider === 'ollama' && settings.ollamaUrl) checkOllama(false);
+  }, [settings.provider, settings.ollamaUrl, settings.model]);
 
   const loadSettings = () => {
     chrome.storage.sync.get(['enabled', 'apiKey', 'model', 'backendUrl', 'provider', 'customBaseUrl', 'ollamaUrl', 'backendHealthy', 'providerModelMemory'], (result) => {
@@ -293,7 +362,37 @@ const Popup = () => {
         : settings.provider === 'ollama'
           ? ollamaV1(settings.ollamaUrl)
           : undefined;
-    try { const r = await chrome.runtime.sendMessage({ type: 'GET_MODELS', provider: settings.provider, apiKey: settings.apiKey, baseUrl }); if (r.models) setModels(r.models); } catch {} finally { setFetching(false); }
+    try {
+      const r = await chrome.runtime.sendMessage({ type: 'GET_MODELS', provider: settings.provider, apiKey: settings.apiKey, baseUrl });
+      const models: string[] = r?.models || [];
+      if (models.length) setModels(models);
+      // For Ollama, default to the recommended model if the user hasn't
+      // explicitly picked one that's actually installed.
+      if (settings.provider === 'ollama' && models.length) {
+        const rec = pickRecommended(models);
+        if (rec && !models.includes(settings.model)) saveSettings({ model: rec });
+      }
+    } catch {} finally { setFetching(false); }
+  };
+
+  const checkOllama = async (probe: boolean) => {
+    if (probe) setOllamaStatus((s) => ({ ...s, testing: true }));
+    try {
+      const r = await chrome.runtime.sendMessage({
+        type: 'GET_OLLAMA_STATUS',
+        baseUrl: ollamaV1(settings.ollamaUrl),
+        model: settings.model,
+        probe,
+      });
+      setOllamaStatus({
+        reachable: !!r?.reachable,
+        running: r?.running || [],
+        modelReady: !!r?.modelReady,
+        testing: false,
+      });
+    } catch {
+      setOllamaStatus({ reachable: false, running: [], modelReady: false, testing: false });
+    }
   };
 
   const loadIssueStats = () => { chrome.storage.local.get(['lastIssueStats'], (r) => { if (r.lastIssueStats) setIssueStats(r.lastIssueStats as typeof issueStats); }); };
@@ -348,6 +447,7 @@ const Popup = () => {
         fetchingModels={fetchingModels} handleProviderChange={handleProviderChange} showApiKey={showApiKey} setShowApiKey={setShowApiKey}
         showAdvanced={showAdvanced} setAdvanced={setAdvanced} advancedRef={advancedRef}
         scanModels={loadModels} scannedCount={availableModels.length}
+        ollamaStatus={ollamaStatus} testOllama={() => checkOllama(true)}
       />
 
       {/* ── Footer ── */}
