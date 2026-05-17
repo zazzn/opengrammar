@@ -443,6 +443,30 @@ function handleGrammarSuccess(element: HTMLElement, text: string, issues: Issue[
   }
 }
 
+/**
+ * A field holds no prose to proofread when it's a single token that's a
+ * URL / host:port / path / email / code-ish value (config inputs like an
+ * Ollama or Whisper endpoint). Prose always has spaces.
+ */
+function looksNonProse(s: string): boolean {
+  const t = s.trim();
+  if (!t || /\s/.test(t)) return false; // has spaces → treat as prose
+  return (
+    t.includes('://') ||
+    /^[\w.+-]+@[\w-]+\.[a-z]{2,}$/i.test(t) || // email
+    /^(?:[\w-]+\.)+[a-z]{2,}(?::\d+)?(?:[/?#]\S*)?$/i.test(t) || // host[:port][/path]
+    /^[a-z]:\\/i.test(t) ||
+    t.startsWith('/') ||
+    t.startsWith('\\') ||
+    (/[:/\\@]/.test(t) && /[.:]\d|\.\w/.test(t)) // generic code/path-ish
+  );
+}
+
+const NON_PROSE_INPUT_TYPES = new Set([
+  'url', 'email', 'password', 'number', 'tel', 'search',
+  'date', 'time', 'datetime-local', 'month', 'week', 'color', 'range',
+]);
+
 const checkGrammar = async (element: HTMLElement) => {
   if (!checkContext()) return;
 
@@ -455,6 +479,17 @@ const checkGrammar = async (element: HTMLElement) => {
   // writing. Offsets stay 1:1 with the editor text because length is kept.
   const text = stripQuotedBBCode(extractText(element));
   if (!text || text.trim().length < 5) {
+    clearHighlights();
+    return;
+  }
+
+  // Never analyze non-prose fields (URL/endpoint/path/email config inputs):
+  // no bubble, no underline, no caret disturbance — nothing to proofread.
+  const inputType =
+    element.tagName === 'INPUT'
+      ? ((element as HTMLInputElement).type || '').toLowerCase()
+      : '';
+  if (NON_PROSE_INPUT_TYPES.has(inputType) || looksNonProse(text)) {
     clearHighlights();
     return;
   }
