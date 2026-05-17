@@ -36,7 +36,7 @@ let lastInputSelection: {
 let disabledDomains: string[] = [];
 let checkAsYouTypeEnabled = true;
 let showNotificationsEnabled = true;
-let autocompleteEnabled = true;
+let autocompleteEnabled = false; // opt-in; see loadUserSettings()
 
 let isContextInvalidated = false;
 
@@ -163,7 +163,10 @@ async function loadUserSettings() {
     disabledDomains = result.disabledDomains || [];
     checkAsYouTypeEnabled = result.checkAsYouType !== false;
     showNotificationsEnabled = result.showNotifications !== false;
-    autocompleteEnabled = result.autocompleteEnabled !== false;
+    // Tab/ghost autocomplete is OPT-IN (default off). This is a proofreading
+    // tool, not a predictive-text tool; the unwanted Tab suggestions were a
+    // top complaint. Only on if the user explicitly enabled it.
+    autocompleteEnabled = result.autocompleteEnabled === true;
   } catch (e) {
     if (e instanceof Error && e.message.includes('context invalidated')) {
       isContextInvalidated = true;
@@ -826,7 +829,7 @@ chrome.storage?.onChanged?.addListener((changes) => {
     showNotificationsEnabled = changes.showNotifications.newValue !== false;
   }
   if (changes.autocompleteEnabled) {
-    autocompleteEnabled = changes.autocompleteEnabled.newValue !== false;
+    autocompleteEnabled = changes.autocompleteEnabled.newValue === true;
     if (!autocompleteEnabled) autocompleteManager.hide();
   }
 });
