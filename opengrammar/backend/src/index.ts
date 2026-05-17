@@ -765,7 +765,9 @@ app.post('/correct', async (c) => {
             'grammar, punctuation, and capitalization errors. Do NOT rephrase, ' +
             'reword, change tone/style, or add or remove information. Preserve ' +
             'the original wording wherever it is already correct. Keep line ' +
-            'breaks. If a sentence is already correct, return it unchanged. ' +
+            'breaks. Leave URLs, email addresses, file paths, code, @mentions, ' +
+            'and #hashtags EXACTLY as written — never alter or "fix" them. ' +
+            'If a sentence is already correct, return it unchanged. ' +
             'Return ONLY the corrected text, with no preamble, quotes, or notes.',
         },
         { role: 'user', content: text },
@@ -948,6 +950,10 @@ function enrichIssues(
  *    words (they change meaning, not fix an error). Small targeted fixes
  *    keep high word-overlap and pass.
  */
+// URLs, emails, @handles, #hashtags, file paths, code-ish tokens — not prose.
+const NON_PROSE =
+  /(https?:\/\/|www\.|\b[\w.+-]+@[\w-]+\.\w|\b[\w-]+\.(?:com|org|net|io|dev|co|gov|edu|us|uk|ca)\b|[\\/][\w.-]+[\\/]|\b[a-z]:\\|<\/?\w+>|`[^`]+`|\$\{)/i;
+
 function sanitizeIssues(issues: Issue[], text: string): Issue[] {
   const normText = text.toLowerCase().replace(/\s+/g, ' ');
   const words = (s: string) =>
@@ -957,6 +963,11 @@ function sanitizeIssues(issues: Issue[], text: string): Issue[] {
     if (orig) {
       const normOrig = orig.toLowerCase().replace(/\s+/g, ' ');
       if (!normText.includes(normOrig)) return false; // hallucinated span
+    }
+    // Grammar/clarity must only touch real prose — never "fix" inside a URL,
+    // email, path, handle, or code token (and not the surrounding fragment).
+    if (i.type === 'grammar' || i.type === 'clarity' || i.type === 'style') {
+      if (NON_PROSE.test(orig) || NON_PROSE.test(i.suggestion || '')) return false;
     }
     if ((i.type === 'grammar' || i.type === 'clarity') && orig.length > 25) {
       const ow = words(orig);

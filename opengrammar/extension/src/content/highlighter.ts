@@ -146,10 +146,19 @@ function renderOverlayUnderlines(element: HTMLElement, issues: Issue[]) {
     if (!range) continue;
 
     const c = getC(issue.type);
+    // Font size of the text being underlined — used to place the wave under
+    // the GLYPHS, not at the bottom of a tall line-box (which made the
+    // underline appear well below single lines with large line-height).
+    const cEl =
+      (range.startContainer.nodeType === 1
+        ? (range.startContainer as Element)
+        : range.startContainer.parentElement) || element;
+    const fs = parseFloat(getComputedStyle(cEl).fontSize) || 16;
     for (const r of Array.from(range.getClientRects())) {
       if (r.width === 0 || r.height === 0) continue;
-      // Cover the whole word so it's an easy click / right-click target;
-      // the wavy line is drawn only along the bottom edge.
+      // Gap between the glyph bottom and the line-box bottom (half-leading).
+      const leadBelow = Math.max(0, Math.round((r.height - fs * 1.15) / 2));
+      // Outer = transparent hit area covering the word (easy click target).
       const u = document.createElement('div');
       u.className = 'opengrammar-underline';
       u.style.cssText = `
@@ -161,13 +170,20 @@ function renderOverlayUnderlines(element: HTMLElement, issues: Issue[]) {
         pointer-events: auto;
         cursor: pointer;
         z-index: 2147483646;
+      `;
+      // Inner = the 3px wavy line, anchored just under the glyphs.
+      const wave = document.createElement('div');
+      wave.style.cssText = `
+        position: absolute; left: 0; width: 100%; height: 3px;
+        bottom: ${leadBelow}px;
         background-image:
           linear-gradient(45deg, transparent 60%, ${c.line} 60%, ${c.line} 78%, transparent 78%),
           linear-gradient(-45deg, transparent 60%, ${c.line} 60%, ${c.line} 78%, transparent 78%);
         background-size: 6px 3px;
-        background-position: bottom;
         background-repeat: repeat-x;
+        pointer-events: none;
       `;
+      u.appendChild(wave);
       u.title = issue.reason || '';
       u.addEventListener('mousedown', (e) => e.preventDefault());
       if (issue.type === 'spelling') {
