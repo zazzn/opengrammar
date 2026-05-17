@@ -1,6 +1,7 @@
 import type { IgnoredIssue, Issue } from '../types';
 import { buildTextMap, offsetToRange, resolveInString, resolveSpan } from './textMap';
 import { diffWords, renderInlineDiffHTML, summarizeChange } from './diff';
+import { applyFix } from './editorAdapter';
 import { stripQuotedBBCode } from './textExtractor';
 
 let currentTooltip: HTMLElement | null = null;
@@ -310,55 +311,29 @@ function renderInputUnderlines(element: HTMLElement, issues: Issue[]) {
  * and drops the fix instead of corrupting text when it no longer matches.
  * Returns true if applied.
  */
-function applyContentEditableFix(
-  element: HTMLElement,
-  issue: Issue,
-): boolean {
-  const map = buildTextMap(element);
-  const span = resolveSpan(map, issue.offset, issue.length, issue.original);
-  if (!span) return false;
-  const range = offsetToRange(map, span.start, span.end);
-  if (!range) return false;
-  range.deleteContents();
-  range.insertNode(document.createTextNode(issue.suggestion));
-  element.normalize();
-  return true;
+function applyContentEditableFix(element: HTMLElement, issue: Issue): boolean {
+  return applyFix(element, {
+    original: issue.original,
+    offset: issue.offset,
+    length: issue.length,
+    replacement: issue.suggestion,
+  });
 }
 
-/**
- * Replace one whole sentence span with the LLM-corrected text, validated
- * (re-finds `origText` near the offset; drops instead of corrupting if it
- * no longer matches). Reuses the same safe primitives as single-fix apply.
- */
+/** Replace one whole sentence span with the LLM-corrected text — same
+ *  validated one-primitive path as every other apply. */
 function replaceSentence(
   element: HTMLElement,
   origText: string,
   approxOffset: number,
   newText: string,
 ): boolean {
-  if (!origText || newText == null || origText === newText) return false;
-  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-    const input = element as HTMLInputElement | HTMLTextAreaElement;
-    const span = resolveInString(input.value, approxOffset, origText.length, origText);
-    if (!span) return false;
-    input.value = input.value.slice(0, span.start) + newText + input.value.slice(span.end);
-    input.focus();
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    return true;
-  }
-  if (element.isContentEditable) {
-    const map = buildTextMap(element);
-    const span = resolveSpan(map, approxOffset, origText.length, origText);
-    if (!span) return false;
-    const range = offsetToRange(map, span.start, span.end);
-    if (!range) return false;
-    range.deleteContents();
-    range.insertNode(document.createTextNode(newText));
-    element.normalize();
-    element.dispatchEvent(new Event('input', { bubbles: true }));
-    return true;
-  }
-  return false;
+  return applyFix(element, {
+    original: origText,
+    offset: approxOffset,
+    length: origText.length,
+    replacement: newText,
+  });
 }
 
 export function clearHighlights() {
@@ -1644,24 +1619,13 @@ function applySuggestion(element: HTMLElement, issue: Issue, highlightEl: HTMLEl
     payload: { count: 1, domain: window.location.hostname },
   });
 
-  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-    const input = element as HTMLInputElement | HTMLTextAreaElement;
-    const text  = input.value;
-    // Validate the offset still points at the original text (it may have
-    // shifted from earlier accepts); re-find locally or drop instead of
-    // slicing the wrong characters.
-    const span = resolveInString(text, issue.offset, issue.length, issue.original);
-    if (!span) return;
-    input.value = text.substring(0, span.start) + issue.suggestion + text.substring(span.end);
-    input.focus();
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-  } else if (element.isContentEditable) {
-    // No DOM mutation for highlights anymore, so highlightEl is irrelevant here.
-    // Map-based, validated replacement (rebases or drops if text changed).
-    if (applyContentEditableFix(element, issue)) {
-      element.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-  }
+  // One validated apply primitive for every field/editor type.
+  applyFix(element, {
+    original: issue.original,
+    offset: issue.offset,
+    length: issue.length,
+    replacement: issue.suggestion,
+  });
   void highlightEl;
 }
 
