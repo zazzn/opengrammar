@@ -79,9 +79,6 @@ function escapeHtml(text: string): string {
   return d.innerHTML;
 }
 
-function escapeHtmlPreservingWhitespace(text: string): string {
-  return escapeHtml(text).replace(/\n/g, '<br>').replace(/ {2}/g, ' &nbsp;');
-}
 
 /* ────────────────────────────────────────────────────────────
    HIGHLIGHT OVERLAY
@@ -99,22 +96,49 @@ function initHighlightContainer() {
   }
 }
 
+/**
+ * Inline layer = MECHANICAL fixes only: spelling, plus the small/local
+ * grammar fixes that are deterministic (punctuation, capitalization,
+ * apostrophes, a/an, doubled words, single short-token swaps). Anything
+ * clause-level (real grammar, clarity, style) is NOT underlined — it is
+ * reachable only via the Grammar/Tone (AI review) button.
+ */
+function isMechanical(i: Issue): boolean {
+  if (i.ignored) return false;
+  if (i.type === 'spelling') return true;
+  if (i.type === 'clarity' || i.type === 'style') return false;
+  const o = (i.original || '').trim();
+  const s = (i.suggestion || '').trim();
+  if (!s || o === s) return false;
+  const bare = (x: string) => x.replace(/[^A-Za-z0-9]/g, '').toLowerCase();
+  if (bare(o) === bare(s)) return true; // only punctuation / case / spacing
+  if (!/\s/.test(o) && !/\s/.test(s) && o.length <= 14 && s.length <= 18) return true;
+  const ops = diffWords(o, s).filter((op) => op.kind !== 'eq');
+  const changed = ops.map((op) => op.text).join('');
+  return ops.length <= 2 && changed.length <= 14;
+}
+
 export function highlightIssues(element: HTMLElement, issues: Issue[]) {
   initHighlightContainer();
   clearHighlights();
-  if (issues.length === 0) return;
+  if (!issues || issues.length === 0) return;
 
+  // ONE indicator: the AI Grammar/Tone review button (opens the LLM
+  // whole-text review). It's the only floating control now.
   showAssistantBubble(element, issues);
 
-  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-    showInputMirror(element, issues);
-    showInputBadge(element, issues);
+  const mechanical = issues.filter(isMechanical);
+  if (mechanical.length === 0) {
+    overlayTarget = null;
+    overlayIssues = [];
     return;
   }
-
-  // Contenteditable: draw underlines in an OVERLAY — never mutate the editor's
-  // DOM (that is what stole the caret and corrupted offsets).
-  renderOverlayUnderlines(element, issues);
+  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+    renderInputUnderlines(element, mechanical);
+  } else {
+    // Contenteditable: overlay only — never mutate/recolor the host DOM.
+    renderOverlayUnderlines(element, mechanical);
+  }
 }
 
 function clearOverlayUnderlines() {
@@ -124,86 +148,158 @@ function clearOverlayUnderlines() {
 }
 
 /**
- * Draw wavy underlines for contenteditable issues in the fixed overlay layer.
- * The editor's own DOM is never touched, so the caret and the host editor are
- * unaffected. Underlines are positioned from Range.getClientRects() (one rect
- * per visual line a span wraps across).
+ * Build one positioned squiggle from a viewport-space rect. Shared by the
+ * contenteditable (Range) and input/textarea (measurement-mirror) paths so
+ * both look and behave identically. Outer div is a transparent hit area
+ * over the word; the wave is anchored just under the glyphs (not the
+ * bottom of a tall line-box).
  */
+function makeUnderlineDiv(
+  r: { left: number; top: number; width: number; height: number },
+  fs: number,
+  c: { line: string },
+  issue: Issue,
+  element: HTMLElement,
+): HTMLElement {
+  const leadBelow = Math.max(0, Math.round((r.height - fs * 1.15) / 2));
+  const u = document.createElement('div');
+  u.className = 'opengrammar-underline';
+  u.style.cssText = `
+    position: fixed;
+    left: ${r.left}px;
+    top: ${Math.round(r.top)}px;
+    width: ${r.width}px;
+    height: ${Math.round(r.height)}px;
+    pointer-events: auto;
+    cursor: pointer;
+    z-index: 2147483646;
+  `;
+  const wave = document.createElement('div');
+  wave.style.cssText = `
+    position: absolute; left: 0; width: 100%; height: 3px;
+    bottom: ${leadBelow}px;
+    background-image:
+      linear-gradient(45deg, transparent 60%, ${c.line} 60%, ${c.line} 78%, transparent 78%),
+      linear-gradient(-45deg, transparent 60%, ${c.line} 60%, ${c.line} 78%, transparent 78%);
+    background-size: 6px 3px;
+    background-repeat: repeat-x;
+    pointer-events: none;
+  `;
+  u.appendChild(wave);
+  u.title = issue.reason || '';
+  u.addEventListener('mousedown', (e) => e.preventDefault());
+  if (issue.type === 'spelling') {
+    const open = (e: Event) => {
+      e.stopPropagation();
+      e.preventDefault();
+      showSpellingMenu(u, issue, element);
+    };
+    u.addEventListener('click', open);
+    u.addEventListener('contextmenu', open);
+  } else {
+    // Mechanical grammar (punctuation/caps/apostrophe): one-issue card.
+    u.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      showTooltip(u, issue, element);
+    });
+  }
+  return u;
+}
+
+/** Contenteditable: draw mechanical underlines from live Ranges. */
 function renderOverlayUnderlines(element: HTMLElement, issues: Issue[]) {
   initHighlightContainer();
   clearOverlayUnderlines();
   overlayTarget = element;
   overlayIssues = issues;
   if (!highlightContainer) return;
-
   const map = buildTextMap(element);
-
   for (const issue of issues) {
     if (issue.ignored) continue;
     const span = resolveSpan(map, issue.offset, issue.length, issue.original);
     if (!span) continue;
     const range = offsetToRange(map, span.start, span.end);
     if (!range) continue;
-
-    const c = getC(issue.type);
-    // Font size of the text being underlined — used to place the wave under
-    // the GLYPHS, not at the bottom of a tall line-box (which made the
-    // underline appear well below single lines with large line-height).
     const cEl =
       (range.startContainer.nodeType === 1
         ? (range.startContainer as Element)
         : range.startContainer.parentElement) || element;
     const fs = parseFloat(getComputedStyle(cEl).fontSize) || 16;
+    const c = getC(issue.type);
     for (const r of Array.from(range.getClientRects())) {
       if (r.width === 0 || r.height === 0) continue;
-      // Gap between the glyph bottom and the line-box bottom (half-leading).
-      const leadBelow = Math.max(0, Math.round((r.height - fs * 1.15) / 2));
-      // Outer = transparent hit area covering the word (easy click target).
-      const u = document.createElement('div');
-      u.className = 'opengrammar-underline';
-      u.style.cssText = `
-        position: fixed;
-        left: ${r.left}px;
-        top: ${Math.round(r.top)}px;
-        width: ${r.width}px;
-        height: ${Math.round(r.height)}px;
-        pointer-events: auto;
-        cursor: pointer;
-        z-index: 2147483646;
-      `;
-      // Inner = the 3px wavy line, anchored just under the glyphs.
-      const wave = document.createElement('div');
-      wave.style.cssText = `
-        position: absolute; left: 0; width: 100%; height: 3px;
-        bottom: ${leadBelow}px;
-        background-image:
-          linear-gradient(45deg, transparent 60%, ${c.line} 60%, ${c.line} 78%, transparent 78%),
-          linear-gradient(-45deg, transparent 60%, ${c.line} 60%, ${c.line} 78%, transparent 78%);
-        background-size: 6px 3px;
-        background-repeat: repeat-x;
-        pointer-events: none;
-      `;
-      u.appendChild(wave);
-      u.title = issue.reason || '';
-      u.addEventListener('mousedown', (e) => e.preventDefault());
-      if (issue.type === 'spelling') {
-        // Spelling: quick inline replace menu on left- OR right-click.
-        const open = (e: Event) => {
-          e.stopPropagation();
-          e.preventDefault();
-          showSpellingMenu(u, issue, element);
-        };
-        u.addEventListener('click', open);
-        u.addEventListener('contextmenu', open);
-      } else {
-        // Grammar/clarity/style: the per-issue card.
-        u.addEventListener('click', (e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          showTooltip(u, issue, element);
-        });
+      highlightContainer.appendChild(makeUnderlineDiv(r, fs, c, issue, element));
+    }
+  }
+}
+
+/**
+ * Input/textarea: measure issue rects with a HIDDEN style-cloned mirror
+ * (visibility:hidden retains layout) and draw the same overlay squiggles.
+ * The real field is NEVER recolored or hidden — fixes the "text invisible
+ * for several seconds" bug.
+ */
+function renderInputUnderlines(element: HTMLElement, issues: Issue[]) {
+  initHighlightContainer();
+  clearOverlayUnderlines();
+  destroyInputMirror();
+  overlayTarget = element;
+  overlayIssues = issues;
+  const input = element as HTMLInputElement | HTMLTextAreaElement;
+  inputMirrorTarget = element;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'opengrammar-input-mirror';
+  overlay.style.cssText = `
+    position: fixed; visibility: hidden; pointer-events: none;
+    z-index: -1; overflow: hidden; background: transparent;
+  `;
+  const content = document.createElement('div');
+  content.className = 'opengrammar-input-mirror-content';
+  content.style.cssText = `
+    position: absolute; top: 0; left: 0;
+    width: max-content; min-width: 100%;
+    white-space: ${element.tagName === 'TEXTAREA' ? 'pre-wrap' : 'pre'};
+    word-break: break-word;
+  `;
+  copyTypographyStyles(element, overlay, content);
+  content.textContent = input.value; // single plain text node — measurement only
+  overlay.appendChild(content);
+  document.body.appendChild(overlay);
+  inputMirrorOverlay = overlay;
+  inputMirrorContent = content;
+  positionInputMirror(element);
+  syncInputMirrorScroll(element);
+
+  const sync = () => syncInputMirrorScroll(element);
+  input.addEventListener('scroll', sync, { passive: true });
+  cleanupInputMirror = () => input.removeEventListener('scroll', sync);
+
+  if (!highlightContainer) return;
+  const tnode = content.firstChild;
+  if (!tnode) return;
+  const len = (tnode.textContent || '').length;
+  const fs = parseFloat(getComputedStyle(input).fontSize) || 16;
+  const clip = input.getBoundingClientRect();
+  for (const issue of issues) {
+    if (issue.ignored) continue;
+    const span = resolveInString(input.value, issue.offset, issue.length, issue.original);
+    if (!span) continue;
+    const range = document.createRange();
+    try {
+      range.setStart(tnode, Math.min(span.start, len));
+      range.setEnd(tnode, Math.min(span.end, len));
+    } catch {
+      continue;
+    }
+    const c = getC(issue.type);
+    for (const r of Array.from(range.getClientRects())) {
+      if (r.width === 0 || r.height === 0) continue;
+      if (r.bottom < clip.top || r.top > clip.bottom || r.right < clip.left || r.left > clip.right) {
+        continue; // scrolled out of the field
       }
-      highlightContainer.appendChild(u);
+      highlightContainer.appendChild(makeUnderlineDiv(r, fs, c, issue, element));
     }
   }
 }
@@ -269,7 +365,6 @@ export function clearHighlights() {
   clearOverlayUnderlines();
   overlayTarget = null;
   overlayIssues = [];
-  document.querySelectorAll('.opengrammar-badge').forEach((el) => el.remove());
   destroyInputMirror();
   assistantBubble?.remove(); assistantBubble = null;
   assistantTarget = null;
@@ -280,20 +375,16 @@ export function clearHighlights() {
 }
 
 export function refreshFloatingDecorations() {
-  if (inputMirrorOverlay && inputMirrorTarget) positionInputMirror(inputMirrorTarget);
-  if (inputMirrorContent && inputMirrorTarget) syncInputMirrorScroll(inputMirrorTarget);
-  // Re-place contenteditable underlines (Range rects are viewport-relative, so
-  // they must be recomputed when the field scrolls or the layout changes).
   positionAssistantBubble();
+  // Re-measure underlines (rects are viewport-relative) for whichever field
+  // type is active. One unified overlay path.
   if (overlayTarget && overlayIssues.length && overlayTarget.isConnected) {
-    renderOverlayUnderlines(overlayTarget, overlayIssues);
+    if (overlayTarget.tagName === 'INPUT' || overlayTarget.tagName === 'TEXTAREA') {
+      renderInputUnderlines(overlayTarget, overlayIssues);
+    } else {
+      renderOverlayUnderlines(overlayTarget, overlayIssues);
+    }
   }
-  document.querySelectorAll('.opengrammar-badge').forEach((badge) => {
-    if (!inputMirrorTarget) return;
-    const rect = inputMirrorTarget.getBoundingClientRect();
-    (badge as HTMLElement).style.left = `${rect.right - 35}px`;
-    (badge as HTMLElement).style.top  = `${rect.top + 5}px`;
-  });
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -1493,93 +1584,9 @@ function showSentenceReview(
 }
 
 /* ────────────────────────────────────────────────────────────
-   INPUT / TEXTAREA MIRROR & BADGE
+   INPUT / TEXTAREA MEASUREMENT MIRROR (geometry only — never visible,
+   never recolors the field). Used by renderInputUnderlines().
 ──────────────────────────────────────────────────────────── */
-function showInputMirror(element: HTMLElement, issues: Issue[]) {
-  destroyInputMirror();
-  inputMirrorTarget = element;
-
-  const overlay = document.createElement('div');
-  overlay.className = 'opengrammar-input-mirror';
-  overlay.style.cssText = `
-    position: fixed; pointer-events: none;
-    z-index: 2147483645; overflow: hidden;
-    background: transparent; border-radius: inherit;
-  `;
-
-  const content = document.createElement('div');
-  content.className = 'opengrammar-input-mirror-content';
-  content.style.cssText = `
-    position: absolute; top: 0; left: 0;
-    width: max-content; min-width: 100%;
-    color: inherit;
-    white-space: ${element.tagName === 'TEXTAREA' ? 'pre-wrap' : 'pre'};
-    word-break: break-word;
-  `;
-
-  copyTypographyStyles(element, overlay, content);
-  content.innerHTML = buildMirrorMarkup(getElementText(element), issues);
-  overlay.appendChild(content);
-  document.body.appendChild(overlay);
-
-  const input = element as HTMLInputElement | HTMLTextAreaElement;
-  const origColor = input.dataset.ogOriginalColor || window.getComputedStyle(input).color;
-  input.dataset.ogOriginalColor = origColor;
-  input.style.color = 'transparent';
-  input.style.webkitTextFillColor = 'transparent';
-  input.style.caretColor = origColor;
-
-  const sync = () => syncInputMirrorScroll(element);
-  input.addEventListener('scroll', sync, { passive: true });
-  cleanupInputMirror = () => {
-    input.removeEventListener('scroll', sync);
-    input.style.color = input.dataset.ogOriginalColor || '';
-    input.style.webkitTextFillColor = '';
-  };
-
-  inputMirrorOverlay = overlay;
-  inputMirrorContent = content;
-  positionInputMirror(element);
-  syncInputMirrorScroll(element);
-}
-
-function showInputBadge(element: HTMLElement, issues: Issue[]) {
-  document.querySelectorAll('.opengrammar-badge').forEach((el) => el.remove());
-
-  const rect      = element.getBoundingClientRect();
-  const badge     = document.createElement('div');
-  badge.className = 'opengrammar-badge';
-  const hasErrors = issues.some(i => i.type === 'grammar' || i.type === 'spelling');
-
-  badge.style.cssText = `
-    position: fixed;
-    left: ${rect.right - 32}px; top: ${rect.top + 6}px;
-    min-width: 22px; height: 22px; padding: 0 5px;
-    background: ${hasErrors ? '#e53935' : '#f59e0b'};
-    color: white;
-    border-radius: 11px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 700;
-    z-index: 2147483646;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-    transition: transform 0.15s;
-    pointer-events: auto;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  `;
-  badge.textContent = issues.length.toString();
-
-  badge.addEventListener('mouseenter', () => { badge.style.transform = 'scale(1.12)'; });
-  badge.addEventListener('mouseleave', () => { badge.style.transform = 'scale(1)'; });
-  badge.addEventListener('mousedown', (e) => e.preventDefault());
-  badge.addEventListener('click', (e) => {
-    e.stopPropagation(); e.preventDefault();
-    if (issues.length > 0) showSentenceReview(issues, element, 0);
-  });
-
-  document.body.appendChild(badge);
-}
-
 function copyTypographyStyles(element: HTMLElement, overlay: HTMLElement, content: HTMLElement) {
   const styles = window.getComputedStyle(element);
   const target = element as HTMLInputElement | HTMLTextAreaElement;
@@ -1614,31 +1621,6 @@ function syncInputMirrorScroll(element: HTMLElement) {
   if (!inputMirrorContent) return;
   const input = element as HTMLInputElement | HTMLTextAreaElement;
   inputMirrorContent.style.transform = `translate(${-input.scrollLeft}px, ${-input.scrollTop}px)`;
-}
-
-function buildMirrorMarkup(text: string, issues: Issue[]): string {
-  if (!issues.length) return escapeHtmlPreservingWhitespace(text);
-  const sorted = [...issues].sort((a, b) => a.offset - b.offset);
-  let cursor = 0;
-  const parts: string[] = [];
-  for (const issue of sorted) {
-    const start = Math.max(0, Math.min(issue.offset, text.length));
-    const end   = Math.max(start, Math.min(issue.offset + issue.length, text.length));
-    if (cursor < start) parts.push(escapeHtmlPreservingWhitespace(text.slice(cursor, start)));
-    const c = getC(issue.type);
-    parts.push(
-      `<span style="color:${c.line};background:${c.bg};border-bottom:2px wavy ${c.line};border-radius:2px;">${escapeHtmlPreservingWhitespace(text.slice(start, end) || issue.original)}</span>`,
-    );
-    cursor = end;
-  }
-  if (cursor < text.length) parts.push(escapeHtmlPreservingWhitespace(text.slice(cursor)));
-  return parts.join('');
-}
-
-function getElementText(element: HTMLElement): string {
-  return element.tagName === 'TEXTAREA'
-    ? (element as HTMLTextAreaElement).value
-    : (element as HTMLInputElement).value;
 }
 
 function destroyInputMirror() {
