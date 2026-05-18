@@ -77,7 +77,14 @@ export interface AutocompleteResponse {
   error?: string;
 }
 
-export type LLMProvider = 'openai' | 'openrouter' | 'groq' | 'together' | 'ollama' | 'custom';
+export type LLMProvider =
+  | 'openai'
+  | 'openrouter'
+  | 'groq'
+  | 'together'
+  | 'abacus'
+  | 'ollama'
+  | 'custom';
 
 export interface ProviderConfig {
   id: LLMProvider;
@@ -137,6 +144,14 @@ export const PROVIDERS: ProviderConfig[] = [
     ],
     requiresApiKey: true,
     description: 'Open source models at scale',
+  },
+  {
+    id: 'abacus',
+    name: 'Abacus RouteLLM',
+    baseUrl: 'https://routellm.abacus.ai/v1',
+    models: ['route-llm', 'claude-haiku-4.5', 'claude-sonnet-4.5', 'gpt-5.2-pro'],
+    requiresApiKey: true,
+    description: 'Smart routing across top models (OpenAI-compatible)',
   },
   {
     id: 'ollama',

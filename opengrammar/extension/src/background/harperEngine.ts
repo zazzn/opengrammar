@@ -1,0 +1,198 @@
+// Harper local engine — the instant, on-device MECHANICAL tier.
+//
+// Runs Automattic Harper (Rust → WASM, Apache-2.0) inside the MV3 background
+// service worker. Content scripts can't host the WASM (they inherit the host
+// page CSP), and `WorkerLinter` spins up a blob worker that MV3 forbids — so
+// `LocalLinter` in the SW is the only viable placement. It blocks the SW event
+// loop while linting, which is acceptable for single-editor-sized text.
+//
+// The LLM `/correct` + `/rephrase` grammar/tone button path is unaffected;
+// this engine only feeds the inline mechanical underline layer.
+import {
+  LocalLinter,
+  createBinaryModuleFromUrl,
+  Dialect,
+  SuggestionKind,
+} from 'harper.js';
+import type { Lint } from 'harper.js';
+import type { Issue } from '../types';
+import { rankByContext, warmContextModel } from './contextRanker';
+
+let linterPromise: Promise<LocalLinter> | null = null;
+
+function getLinter(): Promise<LocalLinter> {
+  if (!linterPromise) {
+    linterPromise = (async () => {
+      const wasmUrl = chrome.runtime.getURL('wasm/harper_wasm_bg.wasm');
+      const binary = createBinaryModuleFromUrl(wasmUrl);
+      const linter = new LocalLinter({ binary, dialect: Dialect.American });
+      await linter.setup();
+      return linter;
+    })();
+    // If setup throws, drop the cached promise so a later call can retry.
+    linterPromise.catch(() => {
+      linterPromise = null;
+    });
+  }
+  return linterPromise;
+}
+
+/** Warm the engine ahead of first use (called on install/startup). */
+export async function warmHarper(): Promise<void> {
+  try {
+    await Promise.all([getLinter(), warmContextModel()]);
+    console.log('[harper] local engine ready');
+  } catch (e) {
+    console.warn('[harper] warm failed:', e);
+  }
+}
+
+// Harper reports spans as Unicode *code-point* indices. JS strings, DOM ranges,
+// and the rest of the extension's position model are all UTF-16. Build a
+// code-point → UTF-16 offset lookup for one text so spans land on glyphs.
+function buildCpToUtf16(text: string): (cp: number) => number {
+  const map: number[] = [];
+  let u16 = 0;
+  for (const ch of text) {
+    map.push(u16);
+    u16 += ch.length; // 2 for astral (surrogate pair), else 1
+  }
+  map.push(u16); // sentinel: code-point count → total UTF-16 length
+  const end = u16;
+  return (cp: number) => {
+    if (cp <= 0) return 0;
+    if (cp >= map.length) return end;
+    return map[cp];
+  };
+}
+
+// Map a Harper lint kind to the extension's four-bucket taxonomy. The inline
+// highlighter additionally runs `isMechanical()` — only spelling plus
+// punctuation/case-style grammar actually paints an underline, so
+// over-classifying as "grammar" here is harmless (it gets filtered downstream).
+function mapType(kind: string): Issue['type'] {
+  const k = kind.toLowerCase();
+  if (
+    k.includes('spell') ||
+    k.includes('typo') ||
+    k.includes('eggcorn') ||
+    k.includes('malapropism')
+  ) {
+    return 'spelling';
+  }
+  if (
+    k.includes('capital') ||
+    k.includes('punctuation') ||
+    k.includes('grammar') ||
+    k.includes('agreement') ||
+    k.includes('boundary') ||
+    k.includes('number') ||
+    k.includes('regional')
+  ) {
+    return 'grammar';
+  }
+  if (
+    k.includes('read') ||
+    k.includes('clarity') ||
+    k.includes('repetition')
+  ) {
+    return 'clarity';
+  }
+  return 'style';
+}
+
+/**
+ * Lint text with Harper and return issues in the extension's `Issue` shape.
+ * Offsets/lengths are UTF-16 (matching `textMap`/DOM). Only lints that carry a
+ * concrete, non-no-op suggestion are surfaced — the inline layer is one-click
+ * mechanical fixes, so an unactionable lint has no place there. All WASM
+ * objects are freed before returning.
+ */
+export async function harperLint(text: string): Promise<Issue[]> {
+  if (!text || !text.trim()) return [];
+
+  const linter = await getLinter();
+  const lints: Lint[] = await linter.lint(text, { language: 'plaintext' });
+  const cpToU16 = buildCpToUtf16(text);
+  const issues: Issue[] = [];
+
+  for (const lint of lints) {
+    try {
+      if (lint.suggestion_count() === 0) continue;
+
+      const span = lint.span();
+      const startU16 = cpToU16(span.start);
+      const endU16 = cpToU16(span.end);
+      span.free();
+
+      if (endU16 <= startU16) continue;
+      const original = text.slice(startU16, endU16);
+
+      const kind = lint.lint_kind();
+      const type = mapType(kind);
+
+      const rawSuggs = lint.suggestions();
+      const sg = rawSuggs.map((s) => ({ k: s.kind(), t: s.get_replacement_text() }));
+      for (const s of rawSuggs) s.free();
+      if (sg.length === 0) continue;
+
+      let suggestion: string;
+      let reason = lint.message();
+
+      if (type === 'spelling') {
+        // Spelling suggestions are all Replace-kind. Pick the best (promoting
+        // transpositions) and expose the rest via the menu's existing
+        // "Other suggestions: …" parsing in highlighter.ts.
+        const cands = sg
+          .filter((x) => x.k === SuggestionKind.Replace)
+          .map((x) => x.t)
+          .filter((t) => t && t !== original);
+        if (cands.length === 0) continue;
+        // Context re-ranker owns the decision: neighbour-aware noisy-channel
+        // with a conservative override gate, and an internal transposition
+        // fallback when the n-gram model is unavailable.
+        const ranked = await rankByContext(
+          text,
+          startU16,
+          endU16 - startU16,
+          original,
+          cands,
+        );
+        suggestion = ranked[0];
+        const alts = ranked.slice(1);
+        if (alts.length > 0) reason = `${reason} Other suggestions: ${alts.join(', ')}.`;
+      } else {
+        const s0 = sg[0];
+        switch (s0.k) {
+          case SuggestionKind.Remove:
+            suggestion = '';
+            break;
+          case SuggestionKind.InsertAfter:
+            suggestion = original + s0.t;
+            break;
+          default:
+            suggestion = s0.t;
+            break;
+        }
+      }
+
+      // Drop no-ops — nothing to one-click apply.
+      if (suggestion === original) continue;
+
+      issues.push({
+        type,
+        original,
+        suggestion,
+        reason,
+        offset: startU16,
+        length: endU16 - startU16,
+        source: 'rule',
+        confidence: 0.95,
+      });
+    } finally {
+      lint.free();
+    }
+  }
+
+  return issues;
+}

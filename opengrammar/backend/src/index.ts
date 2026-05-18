@@ -597,6 +597,66 @@ app.post('/ollama-status', async (c) => {
   return c.json({ reachable: true, installed, running, modelReady, error: probeError });
 });
 
+// Last Ollama target served (set by /correct + /rewrite). Used by the
+// graceful-shutdown hook so stopping the server doesn't leave a model
+// resident — the in-use case is handled by the idle keep_alive.
+let lastOllamaTarget: { root: string; model?: string } | null = null;
+
+/** Native Ollama API root (server root, not the OpenAI-compatible /v1). */
+function ollamaRoot(baseUrl?: string): string {
+  return (baseUrl || 'http://localhost:11434')
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\/v1$/, '');
+}
+
+// Evict the given model plus anything /api/ps reports running (a
+// generate call with keep_alive:0 and no prompt unloads it). Shared by the
+// /ollama-unload route and the shutdown hook. Best-effort; never throws.
+async function nativeOllamaUnload(root: string, model?: string): Promise<string[]> {
+  const call = async (path: string, ms: number, init?: RequestInit) => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
+    try {
+      const r = await fetch(`${root}${path}`, { ...init, signal: ctrl.signal });
+      return r.ok ? await r.json() : null;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(t);
+    }
+  };
+
+  const targets = new Set<string>();
+  if (model) targets.add(model);
+  const ps = await call('/api/ps', 3000);
+  for (const m of (ps && ps.models) || []) if (m?.name) targets.add(m.name);
+
+  const unloaded: string[] = [];
+  for (const mdl of targets) {
+    const r = await call('/api/generate', 8000, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: mdl, keep_alive: 0 }),
+    });
+    if (r) unloaded.push(mdl);
+  }
+  return unloaded;
+}
+
+// Explicitly unload Ollama model(s) so memory/VRAM returns to the system.
+// Called by the extension when switching away from Ollama or disabling.
+app.post('/ollama-unload', async (c) => {
+  let body: { baseUrl?: string; model?: string } = {};
+  try {
+    body = await c.req.json();
+  } catch {
+    /* empty body ok */
+  }
+  const unloaded = await nativeOllamaUnload(ollamaRoot(body.baseUrl), body.model);
+  return c.json({ unloaded });
+});
+
 // Main analysis endpoint
 app.post('/analyze', async (c) => {
   const startTime = Date.now();
@@ -735,12 +795,13 @@ app.post('/rephrase', async (c) => {
 // fragile offset-merge of heterogeneous rule/LLM fragment edits.
 app.post('/correct', async (c) => {
   try {
-    const { text, apiKey, model, provider, baseUrl } = (await c.req.json()) as {
+    const { text, apiKey, model, provider, baseUrl, keepAlive } = (await c.req.json()) as {
       text: string;
       apiKey?: string;
       model?: string;
       provider?: string;
       baseUrl?: string;
+      keepAlive?: string;
     };
     if (!text || typeof text !== 'string') {
       return c.json({ error: 'text is required' }, 400);
@@ -751,12 +812,16 @@ app.post('/correct', async (c) => {
     }
 
     const providerBaseUrl = baseUrl || getProviderBaseUrl(provider || 'openai');
+    if (provider === 'ollama') {
+      lastOllamaTarget = { root: ollamaRoot(providerBaseUrl), model };
+    }
     const openai = new (await import('openai')).OpenAI({
       apiKey: apiKey || 'ollama',
       baseURL: providerBaseUrl,
     });
 
     const completion = await openai.chat.completions.create({
+      ...ollamaKeepAliveParam(provider, keepAlive),
       messages: [
         {
           role: 'system',
@@ -775,7 +840,8 @@ app.post('/correct', async (c) => {
       model: model || 'gpt-4o-mini',
       temperature: 0.1,
       max_tokens: Math.min(4000, Math.ceil(text.length / 2) + 600),
-    });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
 
     const corrected = completion.choices[0]?.message?.content?.trim() || text;
     return c.json({ original: text, corrected, llm: true });
@@ -838,13 +904,16 @@ app.post('/autocomplete', async (c) => {
 // Tone rewriting endpoint
 app.post('/rewrite', async (c) => {
   try {
-    const { text, tone, apiKey, model, provider, baseUrl } = await c.req.json();
+    const { text, tone, apiKey, model, provider, baseUrl, keepAlive } = await c.req.json();
 
     if (!text || !tone) {
       return c.json({ error: 'Text and tone are required' }, 400);
     }
 
     const providerBaseUrl = baseUrl || getProviderBaseUrl(provider || 'openai');
+    if (provider === 'ollama') {
+      lastOllamaTarget = { root: ollamaRoot(providerBaseUrl), model };
+    }
 
     const openai = new (await import('openai')).OpenAI({
       apiKey: apiKey || 'ollama',
@@ -852,6 +921,8 @@ app.post('/rewrite', async (c) => {
     });
 
     const toneInstructions: Record<string, string> = {
+      polish:
+        'Lightly polish the wording for clarity and flow. Do NOT change the meaning, facts, or overall tone, and keep the length similar',
       formal: 'Make the text more formal and professional',
       casual: 'Make the text more casual and conversational',
       professional: 'Make the text more professional and business-appropriate',
@@ -863,6 +934,7 @@ app.post('/rewrite', async (c) => {
     };
 
     const completion = await openai.chat.completions.create({
+      ...ollamaKeepAliveParam(provider, keepAlive),
       messages: [
         {
           role: 'system',
@@ -873,7 +945,8 @@ app.post('/rewrite', async (c) => {
       model: model || 'gpt-4o-mini',
       temperature: 0.7,
       max_tokens: 1000,
-    });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
 
     const rewrittenText = completion.choices[0]?.message?.content || text;
 
@@ -911,12 +984,27 @@ app.notFound((c) => {
   return c.json({ error: 'Not found' }, 404);
 });
 
+// Ollama-only: extra body field controlling how long Ollama keeps the model
+// resident after a request. Accepts an Ollama duration token ("0" = unload
+// immediately, "30s", "2m", "5m", "-1" = keep forever). Returns {} for other
+// providers (they'd ignore it anyway, but we don't send noise).
+function ollamaKeepAliveParam(
+  provider: string | undefined,
+  keepAlive: string | undefined,
+): Record<string, unknown> {
+  if (provider !== 'ollama' || !keepAlive) return {};
+  // Numeric tokens ("0", "-1") → number (seconds); durations ("2m") → string.
+  const v = /^-?\d+$/.test(keepAlive) ? Number(keepAlive) : keepAlive;
+  return { keep_alive: v };
+}
+
 function getProviderBaseUrl(provider: string): string {
   const urls: Record<string, string> = {
     openai: 'https://api.openai.com/v1',
     openrouter: 'https://openrouter.ai/api/v1',
     groq: 'https://api.groq.com/openai/v1',
     together: 'https://api.together.xyz/v1',
+    abacus: 'https://routellm.abacus.ai/v1',
     ollama: 'http://localhost:11434/v1',
     custom: '',
   };
@@ -1136,6 +1224,30 @@ function getHeuristicAutocomplete(text: string, cursor: number) {
     replaceEnd: cursor,
     source: 'heuristic' as const,
   };
+}
+
+// Graceful shutdown: on Ctrl+C / SIGTERM, evict the last Ollama model so
+// stopping the server returns its memory/VRAM. Time-boxed so a stuck/absent
+// Ollama can't hang the exit. Registered once even across `bun --hot`
+// reloads (guard on globalThis) to avoid stacking listeners.
+{
+  const G = globalThis as unknown as { __ogOllamaShutdownHooked?: boolean };
+  if (!G.__ogOllamaShutdownHooked && typeof process !== 'undefined' && process.on) {
+    G.__ogOllamaShutdownHooked = true;
+    let shuttingDown = false;
+    const onSignal = () => {
+      if (shuttingDown) return;
+      shuttingDown = true;
+      const done = () => process.exit(0);
+      const work = lastOllamaTarget
+        ? nativeOllamaUnload(lastOllamaTarget.root, lastOllamaTarget.model)
+        : Promise.resolve([]);
+      const budget = new Promise((r) => setTimeout(r, 4000));
+      void Promise.race([work, budget]).then(done, done);
+    };
+    process.on('SIGINT', onSignal);
+    process.on('SIGTERM', onSignal);
+  }
 }
 
 export default app;

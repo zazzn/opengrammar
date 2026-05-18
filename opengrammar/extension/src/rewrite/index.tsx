@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import './rewrite.css';
+import { getApiKey } from '../shared/apiKeyStore';
 
 type Tone =
   | 'formal'
@@ -36,13 +37,13 @@ const RewritePopup = () => {
     setError('');
 
     try {
-      const { apiKey, model, provider, customBaseUrl, backendUrl } = await chrome.storage.sync.get([
-        'apiKey',
+      const { model, provider, customBaseUrl, backendUrl } = await chrome.storage.sync.get([
         'model',
         'provider',
         'customBaseUrl',
         'backendUrl',
       ]);
+      const apiKey = await getApiKey();
 
       const baseUrl = backendUrl || 'http://localhost:8787';
 

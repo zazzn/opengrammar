@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import './popup.css';
 import type { ProviderConfig } from '../types';
+import { getApiKey, setApiKey } from '../shared/apiKeyStore';
 
 interface Settings {
   enabled: boolean;
@@ -16,6 +17,7 @@ interface Settings {
   provider: string;
   customBaseUrl: string;
   ollamaUrl: string;
+  ollamaKeepAlive: string;
   backendHealthy: boolean;
 }
 
@@ -298,6 +300,24 @@ const SettingsPanel = ({
                 </div>
               );
             })()}
+            <div style={{ marginTop: 10 }}>
+              <label className="field-label">Unload model when idle</label>
+              <select
+                className="select-input"
+                value={settings.ollamaKeepAlive}
+                onChange={(e) => saveSettings({ ollamaKeepAlive: e.target.value })}
+              >
+                <option value="0">Immediately after each use</option>
+                <option value="30s">After 30 seconds idle</option>
+                <option value="2m">After 2 minutes idle</option>
+                <option value="5m">After 5 minutes idle</option>
+                <option value="-1">Never — keep loaded</option>
+              </select>
+              <p className="field-hint" style={{ marginTop: 5 }}>
+                Returns system/VRAM when not in use. Shorter frees memory sooner;
+                longer keeps repeat checks fast.
+              </p>
+            </div>
           </div>
         )}
         <div className="field-group">
@@ -318,7 +338,7 @@ const SettingsPanel = ({
 const Popup = () => {
   const [settings, setSettings] = useState<Settings>({
     enabled: true, apiKey: '', model: 'gpt-4o-mini', backendUrl: 'http://localhost:8787',
-    provider: 'openai', customBaseUrl: '', ollamaUrl: 'http://localhost:11434', backendHealthy: true,
+    provider: 'openai', customBaseUrl: '', ollamaUrl: 'http://localhost:11434', ollamaKeepAlive: '2m', backendHealthy: true,
   });
   const [providerModelMemory, setProviderModelMemory] = useState<Record<string, string>>({});
   const [showApiKey, setShowApiKey]   = useState(false);
@@ -338,17 +358,20 @@ const Popup = () => {
   }, [settings.provider, settings.ollamaUrl, settings.model]);
 
   const loadSettings = () => {
-    chrome.storage.sync.get(['enabled', 'apiKey', 'model', 'backendUrl', 'provider', 'customBaseUrl', 'ollamaUrl', 'backendHealthy', 'providerModelMemory'], (result) => {
+    chrome.storage.sync.get(['enabled', 'model', 'backendUrl', 'provider', 'customBaseUrl', 'ollamaUrl', 'ollamaKeepAlive', 'backendHealthy', 'providerModelMemory'], (result) => {
       const memory = (result.providerModelMemory || {}) as Record<string, string>;
       const selectedProvider = result.provider || 'openai';
       setSettings({
-        enabled: result.enabled !== false, apiKey: result.apiKey || '', model: memory[selectedProvider] || result.model || 'gpt-4o-mini',
+        enabled: result.enabled !== false, apiKey: '', model: memory[selectedProvider] || result.model || 'gpt-4o-mini',
         backendUrl: result.backendUrl || 'http://localhost:8787', provider: selectedProvider, customBaseUrl: result.customBaseUrl || '',
         ollamaUrl: result.ollamaUrl || 'http://localhost:11434',
+        ollamaKeepAlive: result.ollamaKeepAlive || '2m',
         backendHealthy: result.backendHealthy !== false,
       });
       setProviderModelMemory(memory);
       setLoading(false);
+      // API key lives in the encrypted store (chrome.storage.local), not sync.
+      void getApiKey().then((k) => setSettings((s) => ({ ...s, apiKey: k })));
     });
   };
 
@@ -402,7 +425,11 @@ const Popup = () => {
     setSettings(next);
     const mem = { ...providerModelMemory, ...(next.provider ? { [next.provider]: next.model } : {}) };
     setProviderModelMemory(mem);
-    chrome.storage.sync.set({ ...next, providerModelMemory: mem });
+    // The API key never goes to chrome.storage.sync — it's encrypted at rest
+    // in chrome.storage.local via the shared keyStore.
+    const { apiKey: _apiKey, ...syncable } = next;
+    chrome.storage.sync.set({ ...syncable, providerModelMemory: mem });
+    if ('apiKey' in updates) void setApiKey(updates.apiKey ?? '');
   };
 
   const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {

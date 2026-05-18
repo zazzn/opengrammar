@@ -1,3 +1,13 @@
+> **Fork notice.** This is a **modified fork** of
+> [OpenGrammar](https://github.com/swadhinbiswas/opengrammar) by Swadhin
+> Biswas, distributed under the **Apache License 2.0**. It contains
+> substantial changes (a new Harper-based inline engine, a local n-gram
+> context re-ranker, re-architected LLM correction, encrypted API-key
+> storage, additional providers, and more — see [`NOTICE`](NOTICE) for the
+> full list of modifications). It is **not affiliated with or endorsed by
+> the original author**. The original `LICENSE` and `NOTICE` are retained
+> as required by Apache-2.0.
+
 <div align="center">
   <img src="logo.svg" alt="OpenGrammar Logo" width="120" height="120">
   

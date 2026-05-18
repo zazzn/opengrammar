@@ -134,42 +134,9 @@
         </div>
       </section>
 
-      <!-- API Settings -->
+      <!-- Backend & API Keys -->
       <section class="settings-section">
-        <h2>AI Settings</h2>
-        
-        <div class="setting-group">
-          <label for="apiKey">
-            <span class="setting-label">OpenAI API Key</span>
-            <span class="setting-description">
-              Your API key is stored locally and never sent to our servers. 
-              <a href="https://platform.openai.com/api-keys" target="_blank">Get your API key</a>
-            </span>
-          </label>
-          <div class="input-group">
-            <input type="password" id="apiKey" class="text-input" placeholder="sk-...">
-            <button id="toggleApiKey" class="btn-icon" title="Show/Hide">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="setting-group">
-          <label for="model">
-            <span class="setting-label">AI Model</span>
-            <span class="setting-description">Choose the AI model for advanced grammar checking</span>
-          </label>
-          <select id="model" class="select-input">
-            <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Fast & Affordable)</option>
-            <option value="gpt-4">GPT-4 (High Quality)</option>
-            <option value="gpt-4-turbo">GPT-4 Turbo (Latest)</option>
-            <option value="gpt-4o">GPT-4o (Optimized)</option>
-            <option value="gpt-4o-mini">GPT-4o Mini (Cost Effective)</option>
-          </select>
-        </div>
+        <h2>Backend &amp; API Keys</h2>
 
         <div class="setting-group">
           <label for="backendUrl">
@@ -183,6 +150,21 @@
             <span class="status-indicator"></span>
             <span class="status-text">Checking...</span>
           </div>
+        </div>
+
+        <div class="setting-group">
+          <label>
+            <span class="setting-label">API keys</span>
+            <span class="setting-description">
+              Provider, model and API key are configured in the OpenGrammar
+              popup. The key is stored <strong>encrypted on this device</strong>
+              (AES-GCM) &mdash; never synced and never written in plaintext.
+            </span>
+          </label>
+          <button id="removeApiKeys" class="btn-danger" style="margin-top: 8px;">
+            Remove all API keys
+          </button>
+          <span id="removeApiKeysStatus" class="setting-description" style="margin-left: 10px;"></span>
         </div>
       </section>
 

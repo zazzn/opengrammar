@@ -1,9 +1,8 @@
 import type { AnalyticsSummary, IgnoredIssue } from '../types';
+import { clearAllApiKeys } from '../shared/apiKeyStore';
 
 interface Settings {
   enabled: boolean;
-  apiKey: string;
-  model: string;
   backendUrl: string;
   checkAsYouType: boolean;
   showNotifications: boolean;
@@ -25,10 +24,9 @@ const elements = {
   checkPunctuation: document.getElementById('checkPunctuation') as HTMLInputElement,
   checkStyle: document.getElementById('checkStyle') as HTMLInputElement,
   checkClarity: document.getElementById('checkClarity') as HTMLInputElement,
-  apiKey: document.getElementById('apiKey') as HTMLInputElement,
-  toggleApiKey: document.getElementById('toggleApiKey') as HTMLButtonElement,
-  model: document.getElementById('model') as HTMLSelectElement,
   backendUrl: document.getElementById('backendUrl') as HTMLInputElement,
+  removeApiKeys: document.getElementById('removeApiKeys') as HTMLButtonElement,
+  removeApiKeysStatus: document.getElementById('removeApiKeysStatus') as HTMLElement,
   backendStatus: document.getElementById('backendStatus') as HTMLElement,
   newDomain: document.getElementById('newDomain') as HTMLInputElement,
   addDomain: document.getElementById('addDomain') as HTMLButtonElement,
@@ -55,8 +53,6 @@ const elements = {
 
 let settings: Settings = {
   enabled: true,
-  apiKey: '',
-  model: 'gpt-3.5-turbo',
   backendUrl: '',
   checkAsYouType: true,
   showNotifications: true,
@@ -92,8 +88,6 @@ async function loadSettings() {
     chrome.storage.sync.get(
       [
         'enabled',
-        'apiKey',
-        'model',
         'backendUrl',
         'checkAsYouType',
         'showNotifications',
@@ -105,8 +99,6 @@ async function loadSettings() {
       (result) => {
         settings = {
           enabled: result.enabled !== false,
-          apiKey: result.apiKey || '',
-          model: result.model || 'gpt-3.5-turbo',
           backendUrl: result.backendUrl || '',
           checkAsYouType: result.checkAsYouType !== false,
           showNotifications: result.showNotifications !== false,
@@ -127,8 +119,6 @@ async function loadSettings() {
         elements.checkPunctuation.checked = !settings.disabledModules.includes('punctuation');
         elements.checkStyle.checked = !settings.disabledModules.includes('style');
         elements.checkClarity.checked = !settings.disabledModules.includes('clarity');
-        elements.apiKey.value = settings.apiKey;
-        elements.model.value = settings.model;
         elements.backendUrl.value = settings.backendUrl;
 
         resolve();
@@ -179,8 +169,6 @@ async function saveSettings() {
     chrome.storage.sync.set(
       {
         enabled: settings.enabled,
-        apiKey: settings.apiKey,
-        model: settings.model,
         backendUrl: settings.backendUrl,
         checkAsYouType: settings.checkAsYouType,
         showNotifications: settings.showNotifications,
@@ -241,21 +229,22 @@ function setupEventListeners() {
   elements.checkStyle.addEventListener('change', updateDisabledModules);
   elements.checkClarity.addEventListener('change', updateDisabledModules);
 
-  // API Key
-  elements.apiKey.addEventListener('input', () => {
-    settings.apiKey = elements.apiKey.value;
-    saveSettings();
-  });
-
-  elements.toggleApiKey.addEventListener('click', () => {
-    const type = elements.apiKey.type === 'password' ? 'text' : 'password';
-    elements.apiKey.type = type;
-  });
-
-  // Model
-  elements.model.addEventListener('change', () => {
-    settings.model = elements.model.value;
-    saveSettings();
+  // Remove all API keys (encrypted store lives in chrome.storage.local;
+  // provider/model/key are configured in the popup, not here).
+  elements.removeApiKeys.addEventListener('click', async () => {
+    if (!confirm('Remove all stored API keys from this device? You will need to re-enter them in the popup.')) {
+      return;
+    }
+    elements.removeApiKeys.disabled = true;
+    try {
+      await clearAllApiKeys();
+      elements.removeApiKeysStatus.textContent = 'All API keys removed.';
+    } catch {
+      elements.removeApiKeysStatus.textContent = 'Failed to remove keys — try again.';
+    } finally {
+      elements.removeApiKeys.disabled = false;
+      setTimeout(() => { elements.removeApiKeysStatus.textContent = ''; }, 4000);
+    }
   });
 
   // Backend URL
