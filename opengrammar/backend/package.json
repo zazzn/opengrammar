@@ -10,7 +10,7 @@
   "bugs": {
     "url": "https://github.com/swadhinbiswas/opengrammar/issues"
   },
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": "Swadhin Biswas",
   "keywords": [
     "grammar",

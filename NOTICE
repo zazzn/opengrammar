@@ -1,0 +1,76 @@
+OpenGrammar (modified fork)
+
+This software is a derivative work of the OpenGrammar project:
+
+  Original work:  OpenGrammar — Copyright 2026 Swadhin Biswas
+  Upstream:       https://github.com/swadhinbiswas/opengrammar
+  License:        Apache License, Version 2.0
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy
+of the License in the accompanying LICENSE file or at
+http://www.apache.org/licenses/LICENSE-2.0.
+
+-------------------------------------------------------------------------------
+Modifications (Apache-2.0 section 4(b): notice of changes)
+-------------------------------------------------------------------------------
+This fork has been substantially modified relative to the upstream project.
+Significant changes include:
+
+  • Inline mechanical checking re-implemented on Automattic Harper (Rust →
+    WebAssembly) instead of the original inline engine.
+  • Added a local n-gram noisy-channel context re-ranker for spelling
+    candidate disambiguation, with a bundled pruned frequency model.
+  • Correction flow re-architected to whole-sentence LLM rewrite
+    (/correct, /rephrase) rather than offset-merged rule fragments.
+  • Ollama memory management: configurable idle keep_alive, explicit
+    /ollama-unload, and graceful unload on shutdown.
+  • Added the Abacus RouteLLM provider.
+  • Provider API key now AES-GCM encrypted at rest (never synced/plaintext).
+  • Options/popup/highlighter UI rework, including an on-demand "Improve"
+    (tone rewrite) control on the floating assistant.
+  • Added a server-less inline-engine regression harness.
+
+These changes are the work of the fork's contributors and are not endorsed
+by or affiliated with the original author.
+
+This product includes third-party software.
+
+-------------------------------------------------------------------------------
+Harper (harper.js)
+-------------------------------------------------------------------------------
+The inline mechanical writing engine is powered by Harper, by Automattic, Inc.
+and the Harper contributors.
+
+  Project:  https://github.com/Automattic/harper
+  License:  Apache License, Version 2.0
+  Source:   harper.js (npm), Rust core compiled to WebAssembly
+
+Harper is redistributed in this extension as a WebAssembly binary
+(wasm/harper_wasm_bg.wasm) together with its JavaScript bindings. A verbatim
+copy of the Apache License 2.0 under which Harper is licensed is included at:
+
+  third_party/harper/LICENSE
+
+You may obtain a copy of the Apache License 2.0 at:
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+-------------------------------------------------------------------------------
+N-gram frequency model (inline context re-ranker)
+-------------------------------------------------------------------------------
+The local context re-ranker (ngram/model.bin) is a compact, pruned table of
+unigram and bigram *frequency counts* derived from the public word- and
+bigram-frequency lists published by Peter Norvig:
+
+  https://norvig.com/ngrams/count_1w.txt
+  https://norvig.com/ngrams/count_2w.txt
+
+Only aggregate statistical counts (facts, not expressive content) are used,
+and they are transformed into a pruned binary log-probability model by
+scripts/build-ngram-model.mjs. No source text is redistributed. The model is
+regenerable with `npm run build:ngram`.

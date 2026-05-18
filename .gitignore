@@ -16,5 +16,14 @@ opengrammar/backend/*.js
 opengrammar/backend/*.d.ts
 opengrammar/backend/*.map
 
+# Harper WASM is copied from node_modules at predev/prebuild — never commit it
+opengrammar/extension/public/wasm/
+
+# n-gram corpus download cache (regenerable; model.bin IS committed)
+opengrammar/extension/.ngram-cache/
+
+# Local agent/tooling config — never publish
+.claude/
+
 # Local Netlify folder
 .netlify

@@ -8,6 +8,10 @@
  *
  * Usage:  node simulate.mjs            (defaults to http://localhost:8787)
  *         BACKEND=http://host:port node simulate.mjs
+ *
+ * This covers the BACKEND /analyze path (LLM grammar/tone button). The
+ * INLINE Harper + context-ranker path has its own server-less net:
+ *   extension/  →  npm run simulate:inline   (scripts/simulate-inline.mjs)
  */
 const BASE = process.env.BACKEND || 'http://localhost:8787';
 

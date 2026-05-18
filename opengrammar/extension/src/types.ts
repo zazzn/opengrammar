@@ -1,4 +1,11 @@
-export type LLMProvider = 'openai' | 'openrouter' | 'groq' | 'together' | 'ollama' | 'custom';
+export type LLMProvider =
+  | 'openai'
+  | 'openrouter'
+  | 'groq'
+  | 'together'
+  | 'abacus'
+  | 'ollama'
+  | 'custom';
 
 export interface ProviderConfig {
   id: LLMProvider;
@@ -41,6 +48,8 @@ export interface AnalyzeRequest {
   dictionary?: string[];
   context?: AnalysisContext;
   disabledModules?: string[];
+  /** Ollama-only: idle keep-alive token ("0","30s","2m","5m","-1"). */
+  keepAlive?: string;
 }
 
 export interface AnalysisContext {
@@ -75,6 +84,7 @@ export interface HighlightData {
 export interface RewriteRequest {
   text: string;
   tone:
+    | 'polish'
     | 'formal'
     | 'casual'
     | 'professional'
@@ -87,6 +97,8 @@ export interface RewriteRequest {
   model?: string;
   provider?: LLMProvider;
   baseUrl?: string;
+  /** Ollama-only: idle keep-alive token ("0","30s","2m","5m","-1"). */
+  keepAlive?: string;
 }
 
 export interface RewriteResponse {

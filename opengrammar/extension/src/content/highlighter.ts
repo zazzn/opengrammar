@@ -3,6 +3,7 @@ import { buildTextMap, offsetToRange, resolveInString, resolveSpan } from './tex
 import { diffWords, renderInlineDiffHTML, summarizeChange } from './diff';
 import { applyFix } from './editorAdapter';
 import { stripQuotedBBCode } from './textExtractor';
+import { getApiKey } from '../shared/apiKeyStore';
 
 let currentTooltip: HTMLElement | null = null;
 let currentRephrasePanel: HTMLElement | null = null;
@@ -933,9 +934,9 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
 
     try {
       const stored = await new Promise<Record<string, string>>((res) =>
-        chrome.storage.sync.get(['apiKey', 'provider', 'model', 'backendUrl', 'customBaseUrl', 'ollamaUrl'], (r) => res(r as Record<string, string>))
+        chrome.storage.sync.get(['provider', 'model', 'backendUrl', 'customBaseUrl', 'ollamaUrl'], (r) => res(r as Record<string, string>))
       );
-      const apiKey    = stored.apiKey    || '';
+      const apiKey    = await getApiKey();
       const provider  = stored.provider  || 'groq';
       const model     = stored.model     || '';
       const backendUrl = stored.backendUrl || 'http://localhost:8787';
@@ -1430,6 +1431,18 @@ function showSentenceReview(
       <div style="padding:2px 14px 10px;">${changeListHtml}</div>
     </details>
 
+    <!-- Improve / tone rewrite (explicit button — never automatic) -->
+    <div class="og-sr-improve" style="border-top:1px solid #f0f0f0; padding:9px 14px;">
+      <button class="og-sr-improve-toggle" type="button" style="
+        width:100%; display:flex; align-items:center; justify-content:center; gap:6px;
+        background:#fff; border:1px solid #e5e5ea; border-radius:7px; padding:7px 10px;
+        font-size:12px; font-weight:600; color:#4F46E5; cursor:pointer; font-family:inherit;
+        transition:background 0.12s;
+      ">✦ Improve sentence ▾</button>
+      <div class="og-sr-improve-menu" style="display:none; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
+      <div class="og-sr-improve-status" style="display:none; font-size:11px; color:#8e8e93; margin-top:7px; text-align:center;"></div>
+    </div>
+
     <!-- Action buttons -->
     <div style="display:flex; border-top:1px solid #f0f0f0;">
       ${total > 1 ? `
@@ -1539,6 +1552,87 @@ function showSentenceReview(
     nextBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       showSentenceReview(allIssues, element, idx + 1, groups);
+    });
+  }
+
+  // ── Improve: explicit, on-demand tone rewrite of THIS sentence ──────────
+  // Whole-sentence LLM rewrite (the locked product model: tone/style is an
+  // explicit button, never inline/automatic). Applied via the same
+  // replaceSentence primitive as Accept.
+  const improveToggle = card.querySelector('.og-sr-improve-toggle') as HTMLButtonElement | null;
+  const improveMenu = card.querySelector('.og-sr-improve-menu') as HTMLElement | null;
+  const improveStatus = card.querySelector('.og-sr-improve-status') as HTMLElement | null;
+  if (improveToggle && improveMenu && improveStatus) {
+    const TONES: [string, string][] = [
+      ['polish', 'Polish'],
+      ['formal', 'Formal'],
+      ['professional', 'Professional'],
+      ['concise', 'Concise'],
+      ['detailed', 'Detailed'],
+      ['friendly', 'Friendly'],
+      ['casual', 'Casual'],
+      ['persuasive', 'Persuasive'],
+      ['neutral', 'Neutral'],
+    ];
+    for (const [tone, label] of TONES) {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.dataset.tone = tone;
+      chip.textContent = label;
+      chip.style.cssText = `
+        flex:1 1 auto; min-width:72px; padding:6px 8px;
+        background:#F5F3FF; color:#4F46E5; border:1px solid #DDD6FE;
+        border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;
+        font-family:inherit; transition:background 0.12s;
+      `;
+      chip.addEventListener('mouseenter', () => { chip.style.background = '#E0E7FF'; });
+      chip.addEventListener('mouseleave', () => { chip.style.background = '#F5F3FF'; });
+      improveMenu.appendChild(chip);
+    }
+
+    let improving = false;
+    improveToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = improveMenu.style.display !== 'none';
+      improveMenu.style.display = open ? 'none' : 'flex';
+      improveToggle.textContent = open ? '✦ Improve sentence ▾' : '✦ Improve sentence ▴';
+    });
+    improveToggle.addEventListener('mouseenter', () => { improveToggle.style.background = '#f5f3ff'; });
+    improveToggle.addEventListener('mouseleave', () => { improveToggle.style.background = '#fff'; });
+
+    improveMenu.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const chip = (e.target as HTMLElement).closest('[data-tone]') as HTMLElement | null;
+      if (!chip || improving) return;
+      const tone = chip.dataset.tone!;
+      const label = chip.textContent || tone;
+      improving = true;
+      improveMenu.style.pointerEvents = 'none';
+      improveMenu.style.opacity = '0.5';
+      improveStatus.style.display = 'block';
+      improveStatus.textContent = `Rewriting (${label})…`;
+      chrome.runtime.sendMessage(
+        { type: 'REWRITE_TEXT', text: origText, tone },
+        (resp) => {
+          const rewritten = resp && resp.rewritten ? String(resp.rewritten).trim() : '';
+          if (!rewritten || rewritten === origText) {
+            improving = false;
+            improveMenu.style.pointerEvents = '';
+            improveMenu.style.opacity = '';
+            improveStatus.textContent =
+              resp && resp.error ? 'Rewrite failed — check provider/API key.' : 'No change suggested.';
+            return;
+          }
+          const ok = replaceSentence(element, origText, group.start, rewritten);
+          improveStatus.textContent = ok ? 'Applied.' : 'Could not apply here.';
+          if (ok) setTimeout(() => hideTooltip(), 250);
+          else {
+            improving = false;
+            improveMenu.style.pointerEvents = '';
+            improveMenu.style.opacity = '';
+          }
+        },
+      );
     });
   }
 

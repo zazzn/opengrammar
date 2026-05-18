@@ -13,6 +13,8 @@ import type {
   RewriteResponse,
   Issue,
 } from '../types';
+import { harperLint, warmHarper } from './harperEngine';
+import { getApiKey } from '../shared/apiKeyStore';
 
 // Default backend URL
 const DEFAULT_BACKEND_URL = 'http://localhost:8787';
@@ -54,6 +56,7 @@ const DEFAULT_ANALYTICS: AnalyticsSummary = {
 // Initialize context menus
 chrome.runtime.onInstalled.addListener(() => {
   void initializeStoredDefaults();
+  void warmHarper();
   chrome.contextMenus.create({
     id: 'opengrammar-rewrite',
     title: 'Rewrite with OpenGrammar',
@@ -61,7 +64,14 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
+// Warm the local engine when the SW spins back up so the first keystroke
+// after an idle period doesn't pay the WASM init cost.
+chrome.runtime.onStartup.addListener(() => {
+  void warmHarper();
+});
+
 void initializeStoredDefaults();
+void warmHarper();
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'CHECK_GRAMMAR') {
@@ -266,8 +276,8 @@ async function handleGrammarCheck(
   sendResponse: (response: any) => void,
 ) {
   try {
+    const apiKey = await getApiKey();
     const {
-      apiKey,
       model,
       enabled,
       ignoredIssues,
@@ -278,7 +288,6 @@ async function handleGrammarCheck(
       ollamaUrl,
       disabledModules,
     } = await chrome.storage.sync.get([
-      'apiKey',
       'model',
       'enabled',
       'ignoredIssues',
@@ -296,6 +305,44 @@ async function handleGrammarCheck(
         metadata: { textLength: text.length, issuesCount: 0, processingTimeMs: 0 },
       });
       return;
+    }
+
+    // Inline tier: Harper local engine. Instant, on-device, mechanical.
+    // The grammar/tone button (CORRECT_TEXT → /correct) is a separate path and
+    // is unaffected. Only if Harper itself fails to init do we fall through to
+    // the legacy backend /analyze pipeline below.
+    try {
+      const t0 = Date.now();
+      const harperIssues = await harperLint(text);
+      const filtered = filterIssues(harperIssues, ignoredIssues || [], dictionary || []);
+
+      await trackAnalyticsEvent('analysis_runs', {
+        count: 1,
+        domain: context?.domain,
+        provider: 'harper',
+      });
+      if (filtered.length > 0) {
+        await trackAnalyticsEvent('issues_found', {
+          count: filtered.length,
+          domain: context?.domain,
+          provider: 'harper',
+        });
+      }
+
+      void updateBadge(filtered.length, undefined);
+
+      sendResponse({
+        issues: filtered,
+        metadata: {
+          textLength: text.length,
+          issuesCount: filtered.length,
+          processingTimeMs: Date.now() - t0,
+          provider: 'harper',
+        },
+      });
+      return;
+    } catch (harperError) {
+      console.warn('[harper] lint failed, falling back to backend:', harperError);
     }
 
     const baseUrl = backendUrl || DEFAULT_BACKEND_URL;
@@ -363,9 +410,9 @@ async function handleAutocomplete(
   sendResponse: (response: AutocompleteResponse) => void,
 ) {
   try {
-    const { apiKey, model, backendUrl, provider, customBaseUrl, ollamaUrl, autocompleteEnabled } =
+    const apiKey = await getApiKey();
+    const { model, backendUrl, provider, customBaseUrl, ollamaUrl, autocompleteEnabled } =
       await chrome.storage.sync.get([
-        'apiKey',
         'model',
         'backendUrl',
         'provider',
@@ -427,14 +474,16 @@ async function handleAutocomplete(
 
 async function handleRewrite(text: string, tone: string, sendResponse: (response: any) => void) {
   try {
-    const { apiKey, model, backendUrl, provider, customBaseUrl, ollamaUrl } = await chrome.storage.sync.get([
-      'apiKey',
-      'model',
-      'backendUrl',
-      'provider',
-      'customBaseUrl',
-      'ollamaUrl',
-    ]);
+    const apiKey = await getApiKey();
+    const { model, backendUrl, provider, customBaseUrl, ollamaUrl, ollamaKeepAlive } =
+      await chrome.storage.sync.get([
+        'model',
+        'backendUrl',
+        'provider',
+        'customBaseUrl',
+        'ollamaUrl',
+        'ollamaKeepAlive',
+      ]);
 
     const baseUrl = backendUrl || DEFAULT_BACKEND_URL;
 
@@ -445,6 +494,7 @@ async function handleRewrite(text: string, tone: string, sendResponse: (response
       model,
       provider: provider as LLMProvider,
       baseUrl: providerBaseUrl(provider, customBaseUrl, ollamaUrl),
+      keepAlive: ollamaKeepAlive,
     };
 
     const response = await fetch(`${baseUrl}/rewrite`, {
@@ -505,14 +555,15 @@ async function correctText(
   text: string,
 ): Promise<{ original: string; corrected: string; llm: boolean }> {
   try {
-    const { apiKey, model, provider, customBaseUrl, ollamaUrl, backendUrl } =
+    const apiKey = await getApiKey();
+    const { model, provider, customBaseUrl, ollamaUrl, backendUrl, ollamaKeepAlive } =
       await chrome.storage.sync.get([
-        'apiKey',
         'model',
         'provider',
         'customBaseUrl',
         'ollamaUrl',
         'backendUrl',
+        'ollamaKeepAlive',
       ]);
     const base = backendUrl || DEFAULT_BACKEND_URL;
     const r = await fetch(`${base}/correct`, {
@@ -524,6 +575,7 @@ async function correctText(
         model,
         provider,
         baseUrl: providerBaseUrl(provider, customBaseUrl, ollamaUrl),
+        keepAlive: ollamaKeepAlive,
       }),
     });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -552,6 +604,47 @@ async function getBackendUrl(): Promise<string> {
   const result = await chrome.storage.sync.get('backendUrl');
   return result.backendUrl || DEFAULT_BACKEND_URL;
 }
+
+/**
+ * Ask the backend to explicitly unload the Ollama model so memory/VRAM
+ * returns to the system. Fired when the user switches away from Ollama or
+ * disables the extension (the idle keep_alive handles the in-use case).
+ * Best-effort; failures are silent (Ollama may not be running).
+ */
+async function unloadOllama(ollamaUrl?: string, model?: string): Promise<void> {
+  try {
+    const base = await getBackendUrl();
+    await fetch(`${base}/ollama-unload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ baseUrl: ollamaUrl, model }),
+    });
+  } catch {
+    /* Ollama/backend not reachable — nothing to reclaim. */
+  }
+}
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'sync') return;
+
+  // Provider switched away from Ollama → free the local model's memory.
+  if (
+    changes.provider &&
+    changes.provider.oldValue === 'ollama' &&
+    changes.provider.newValue !== 'ollama'
+  ) {
+    chrome.storage.sync.get(['ollamaUrl', 'model'], (r) => {
+      void unloadOllama(r.ollamaUrl, r.model);
+    });
+  }
+
+  // Extension disabled while Ollama is the active provider → free memory.
+  if (changes.enabled && changes.enabled.newValue === false) {
+    chrome.storage.sync.get(['provider', 'ollamaUrl', 'model'], (r) => {
+      if (r.provider === 'ollama') void unloadOllama(r.ollamaUrl, r.model);
+    });
+  }
+});
 
 async function initializeStoredDefaults(): Promise<void> {
   const existing = await chrome.storage.sync.get([
