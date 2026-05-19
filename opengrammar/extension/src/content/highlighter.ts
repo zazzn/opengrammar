@@ -1644,16 +1644,18 @@ function showSentenceReview(
       ">${originalHtml}</div>
     </div>
 
-    <!-- Corrected sentence — the single preview surface. Picking a tone
-         swaps this content in place; the footer's Original button restores
-         the mechanical Harper correction. -->
+    <!-- Corrected sentence — the single preview surface. Renders with an
+         inline diff (red-strike removed, blue-bold added) so the user sees
+         what changed without expanding anything. Picking a tone swaps
+         this content in place; the footer's Original button restores the
+         mechanical Harper correction. -->
     <div class="og-sr-accept-box" style="padding: 0 14px 10px; cursor:pointer;">
       <div class="og-sr-corrected-label" style="font-size:10px; color:#8e8e93; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:5px;">Corrected sentence</div>
       <div class="og-sr-corrected-text" style="
         font-size:13px; color:#1c1c1e; line-height:1.6; word-break:break-word; font-weight:500;
         background:#EEF2FF; border:1px solid #C7D2FE; border-radius:7px; padding:8px 10px;
         transition:background 0.12s;
-      ">${escapeHtml(correctedText)}</div>
+      ">${renderInlineDiffHTML(origText, correctedText)}</div>
     </div>
 
     <!-- Per-change breakdown (diff vs original — also updates with tone) -->
@@ -1746,7 +1748,10 @@ function showSentenceReview(
         ? `Corrected sentence · ${currentLabel}`
         : 'Corrected sentence';
     }
-    if (textEl) textEl.textContent = currentText;
+    // Inline diff renders straight onto the Corrected sentence so the
+    // changes are obvious at a glance — no need to expand "View the
+    // changes" just to see what shifted.
+    if (textEl) textEl.innerHTML = renderInlineDiffHTML(origText, currentText);
     if (changesEl) changesEl.innerHTML = renderInlineDiffHTML(origText, currentText);
     const originalBtn = card.querySelector('.og-sr-original') as HTMLButtonElement | null;
     if (originalBtn) {
