@@ -5,6 +5,7 @@ import {
   highlightIssues,
   isUIActive,
   refreshFloatingDecorations,
+  updateSelectionBubble,
 } from './highlighter';
 import {
   extractText,
@@ -93,6 +94,11 @@ function initialize() {
   // Handle scroll events to reposition highlights
   window.addEventListener('scroll', debounce(handleScroll, 100), true);
   window.addEventListener('resize', debounce(handleScroll, 100), true);
+
+  // Selection-rewrite bubble: show whenever there's a non-empty selection
+  // inside an editable field (works on clean, error-free text too).
+  document.addEventListener('selectionchange', debounce(syncSelectionBubble, 180));
+  document.addEventListener('mouseup', debounce(syncSelectionBubble, 60), true);
 
   // Check for already focused elements on page load
   setTimeout(checkExistingFocusedElement, 500);
@@ -190,6 +196,54 @@ function isDomainDisabled(): boolean {
 /**
  * Check for already focused elements on page load
  */
+/** The editable element + selected text + best-effort offset, or null. */
+function getEditableSelection(): { el: HTMLElement; text: string; offset: number } | null {
+  const ae = document.activeElement as HTMLElement | null;
+  if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT')) {
+    const input = ae as HTMLInputElement | HTMLTextAreaElement;
+    const s = input.selectionStart;
+    const e = input.selectionEnd;
+    if (typeof s === 'number' && typeof e === 'number' && e > s) {
+      const text = String(input.value ?? '').slice(s, e);
+      if (text.trim().length >= 2) return { el: ae, text, offset: s };
+    }
+    return null;
+  }
+  const selObj = window.getSelection();
+  if (!selObj || selObj.isCollapsed || selObj.rangeCount === 0) return null;
+  const text = selObj.toString();
+  if (text.trim().length < 2) return null;
+  let node: Node | null = selObj.anchorNode;
+  while (node) {
+    if (node instanceof HTMLElement && node.isContentEditable) {
+      let offset = 0;
+      try {
+        const full = extractText(node) || '';
+        const i = full.indexOf(text);
+        offset = i >= 0 ? i : 0;
+      } catch {
+        offset = 0;
+      }
+      return { el: node, text, offset };
+    }
+    node = node.parentNode;
+  }
+  return null;
+}
+
+function syncSelectionBubble(): void {
+  // Don't tear down while the user is choosing a tone in the open menu
+  // (selectionchange fires when focus moves to a menu button).
+  if (document.querySelector('.og-selection-menu')) return;
+  if (isDomainDisabled()) {
+    updateSelectionBubble(null, '', 0);
+    return;
+  }
+  const r = getEditableSelection();
+  if (r) updateSelectionBubble(r.el, r.text, r.offset);
+  else updateSelectionBubble(null, '', 0);
+}
+
 function checkExistingFocusedElement() {
   if (!checkContext()) return;
   if (isDomainDisabled()) {

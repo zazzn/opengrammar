@@ -44,15 +44,9 @@ const DEFAULT_ANALYTICS: AnalyticsSummary = {
   providers: {},
 };
 
-// Initialize context menus
 chrome.runtime.onInstalled.addListener(() => {
   void initializeStoredDefaults();
   void warmHarper();
-  chrome.contextMenus.create({
-    id: 'opengrammar-rewrite',
-    title: 'Rewrite with OpenGrammar',
-    contexts: ['selection'],
-  });
 });
 
 // Warm the local engine when the SW spins back up so the first keystroke
@@ -222,15 +216,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse(history);
     });
     return true;
-  }
-});
-
-// Handle context menu clicks
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'opengrammar-rewrite' && info.selectionText) {
-    void storeRewriteContext(tab?.id, info.selectionText).then(() => {
-      chrome.tabs.create({ url: chrome.runtime.getURL(REWRITE_PAGE_PATH) });
-    });
   }
 });
 

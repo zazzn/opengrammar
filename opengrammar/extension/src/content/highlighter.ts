@@ -14,6 +14,13 @@ let overlayTarget: HTMLElement | null = null;
 let overlayIssues: Issue[] = [];
 // Field the floating bubble is anchored to (tracked on scroll/resize)
 let assistantTarget: HTMLElement | null = null;
+// Selection-rewrite bubble: shown only while there is a non-empty text
+// selection inside an editable field, so a clean (no-error) section can
+// still be sent for an AI tone rewrite. Separate from the issue bubble.
+let selectionBubble: HTMLElement | null = null;
+let selectionTarget: HTMLElement | null = null;
+let selectionText = '';
+let selectionApproxOffset = 0;
 let currentSpellMenu: HTMLElement | null = null;
 // Cache LLM whole-text corrections by (quote-stripped) source text so
 // reopening / navigating the review panel doesn't refetch.
@@ -34,6 +41,21 @@ function positionAssistantBubble() {
   const inset = 6;
   assistantBubble.style.left = `${Math.round(r.right - BUBBLE_SIZE - inset)}px`;
   assistantBubble.style.top = `${Math.round(r.bottom - BUBBLE_SIZE - inset)}px`;
+}
+
+/** Anchor the selection bubble just above the issue-bubble corner so the
+ *  two never overlap. */
+function positionSelectionBubble() {
+  if (!selectionBubble || !selectionTarget || !selectionTarget.isConnected) return;
+  const r = selectionTarget.getBoundingClientRect();
+  if (r.height < MIN_FIELD_HEIGHT || r.width === 0) {
+    selectionBubble.style.display = 'none';
+    return;
+  }
+  selectionBubble.style.display = 'inline-flex';
+  const inset = 6;
+  selectionBubble.style.left = `${Math.round(r.right - BUBBLE_SIZE - inset)}px`;
+  selectionBubble.style.top = `${Math.round(r.bottom - BUBBLE_SIZE * 2 - inset - 8)}px`;
 }
 let inputMirrorOverlay: HTMLElement | null = null;
 let inputMirrorContent: HTMLElement | null = null;
@@ -344,6 +366,9 @@ export function clearHighlights() {
   destroyInputMirror();
   assistantBubble?.remove(); assistantBubble = null;
   assistantTarget = null;
+  selectionBubble?.remove(); selectionBubble = null;
+  selectionTarget = null; selectionText = '';
+  document.querySelector('.og-selection-menu')?.remove();
   currentSpellMenu?.remove(); currentSpellMenu = null;
   currentTooltip?.remove(); currentTooltip = null;
   currentRephrasePanel?.remove(); currentRephrasePanel = null;
@@ -352,6 +377,7 @@ export function clearHighlights() {
 
 export function refreshFloatingDecorations() {
   positionAssistantBubble();
+  positionSelectionBubble();
   // Re-measure underlines (rects are viewport-relative) for whichever field
   // type is active. One unified overlay path.
   if (overlayTarget && overlayIssues.length && overlayTarget.isConnected) {
@@ -583,6 +609,176 @@ function showAssistantBubble(element: HTMLElement, issues: Issue[]) {
   assistantBubble = bubble;
   assistantTarget = element;
   positionAssistantBubble();
+}
+
+/**
+ * Show/hide the selection-rewrite bubble. Called by the content script
+ * whenever the text selection inside an editable field changes. With a
+ * non-empty selection it shows a bubble; clicking it offers tone rewrites
+ * of just that selection (REWRITE_TEXT), applied via the same validated
+ * replaceSentence primitive as everything else. Empty/no selection removes
+ * it. Independent of grammar issues — works on clean text too.
+ */
+export function updateSelectionBubble(
+  element: HTMLElement | null,
+  text: string,
+  approxOffset: number,
+) {
+  if (!element || !text || text.trim().length < 2) {
+    selectionBubble?.remove();
+    selectionBubble = null;
+    selectionTarget = null;
+    selectionText = '';
+    document.querySelector('.og-selection-menu')?.remove();
+    return;
+  }
+  selectionTarget = element;
+  selectionText = text;
+  selectionApproxOffset = approxOffset;
+
+  if (selectionBubble) {
+    positionSelectionBubble();
+    return;
+  }
+
+  const bubble = document.createElement('button');
+  bubble.className = 'opengrammar-selection';
+  bubble.type = 'button';
+  bubble.setAttribute('aria-label', 'OGrammer: rewrite selected text');
+  bubble.title = 'Rewrite the selected text';
+  bubble.style.cssText = `
+    position: fixed; left: 0; top: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: ${BUBBLE_SIZE}px; height: ${BUBBLE_SIZE}px; padding: 0;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7C3AED 0%, #DB2777 100%);
+    box-shadow: 0 1px 6px rgba(124,58,237,0.45), 0 1px 3px rgba(0,0,0,0.18);
+    z-index: 2147483646; cursor: pointer; pointer-events: auto;
+    border: none; outline: none; transition: transform 0.12s ease;
+  `;
+  bubble.innerHTML = `
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5"/>
+      <path d="M2 2l7.586 7.586"/>
+    </svg>
+  `;
+  bubble.addEventListener('mouseenter', () => { bubble.style.transform = 'scale(1.12)'; });
+  bubble.addEventListener('mouseleave', () => { bubble.style.transform = 'scale(1)'; });
+  bubble.addEventListener('mousedown', (e) => e.preventDefault());
+  bubble.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openSelectionMenu(bubble);
+  });
+  document.body.appendChild(bubble);
+  selectionBubble = bubble;
+  positionSelectionBubble();
+}
+
+function openSelectionMenu(anchor: HTMLElement) {
+  document.querySelector('.og-selection-menu')?.remove();
+  const el = selectionTarget;
+  const sel = selectionText;
+  if (!el || !sel) return;
+
+  const menu = document.createElement('div');
+  menu.className = 'og-selection-menu';
+  menu.style.cssText = `
+    position: fixed; z-index: 2147483647;
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.18);
+    padding: 10px; width: 264px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  `;
+  menu.innerHTML = `
+    <div style="font-size:12px;font-weight:700;color:#111827;margin-bottom:8px;">
+      Rewrite selection
+    </div>
+    <div class="og-sel-chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+    <div class="og-sel-status" style="display:none;margin-top:8px;font-size:12px;color:#6b7280;"></div>
+  `;
+  const chips = menu.querySelector('.og-sel-chips') as HTMLElement;
+  const status = menu.querySelector('.og-sel-status') as HTMLElement;
+  const TONES: [string, string][] = [
+    ['polish', 'Polish'], ['formal', 'Formal'], ['professional', 'Professional'],
+    ['concise', 'Concise'], ['detailed', 'Detailed'], ['friendly', 'Friendly'],
+    ['casual', 'Casual'], ['persuasive', 'Persuasive'], ['neutral', 'Neutral'],
+  ];
+  for (const [tone, label] of TONES) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.dataset.tone = tone;
+    chip.textContent = label;
+    chip.style.cssText = `
+      flex:1 1 auto; min-width:70px; padding:6px 8px;
+      background:#F5F3FF; color:#6D28D9; border:1px solid #DDD6FE;
+      border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;
+      font-family:inherit; transition:background 0.12s;
+    `;
+    chip.addEventListener('mouseenter', () => { chip.style.background = '#E0E7FF'; });
+    chip.addEventListener('mouseleave', () => { chip.style.background = '#F5F3FF'; });
+    chips.appendChild(chip);
+  }
+
+  let busy = false;
+  chips.addEventListener('click', (e) => {
+    const chip = (e.target as HTMLElement).closest('[data-tone]') as HTMLElement | null;
+    if (!chip || busy) return;
+    busy = true;
+    chips.style.opacity = '0.5';
+    chips.style.pointerEvents = 'none';
+    status.style.display = 'block';
+    status.textContent = `Rewriting (${chip.textContent})…`;
+    chrome.runtime.sendMessage(
+      { type: 'REWRITE_TEXT', text: sel, tone: chip.dataset.tone },
+      (resp) => {
+        const rewritten = resp && resp.rewritten ? String(resp.rewritten).trim() : '';
+        if (!rewritten || rewritten === sel) {
+          busy = false;
+          chips.style.opacity = '';
+          chips.style.pointerEvents = '';
+          status.textContent =
+            resp && resp.error ? 'Rewrite failed — check provider/API key.' : 'No change suggested.';
+          return;
+        }
+        const ok = replaceSentence(el, sel, selectionApproxOffset, rewritten);
+        status.textContent = ok ? 'Applied.' : 'Could not apply here.';
+        if (ok) {
+          setTimeout(() => {
+            menu.remove();
+            updateSelectionBubble(null, '', 0);
+          }, 300);
+        } else {
+          busy = false;
+          chips.style.opacity = '';
+          chips.style.pointerEvents = '';
+        }
+      },
+    );
+  });
+
+  // Keep the editable focused so applyFix can write back.
+  menu.addEventListener('mousedown', (e) => e.preventDefault());
+  document.body.appendChild(menu);
+
+  const r = anchor.getBoundingClientRect();
+  const mw = menu.getBoundingClientRect().width;
+  const mh = menu.getBoundingClientRect().height;
+  let left = r.left;
+  if (left + mw > window.innerWidth - 8) left = window.innerWidth - mw - 8;
+  let top = r.top - mh - 8;
+  if (top < 8) top = r.bottom + 8;
+  menu.style.left = `${Math.round(Math.max(8, left))}px`;
+  menu.style.top = `${Math.round(top)}px`;
+
+  const onDoc = (ev: MouseEvent) => {
+    if (!menu.contains(ev.target as Node) && ev.target !== anchor) {
+      menu.remove();
+      document.removeEventListener('mousedown', onDoc, true);
+    }
+  };
+  setTimeout(() => document.addEventListener('mousedown', onDoc, true), 0);
 }
 
 /* ────────────────────────────────────────────────────────────
