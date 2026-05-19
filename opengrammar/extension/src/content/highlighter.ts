@@ -701,9 +701,7 @@ function openSelectionMenu(anchor: HTMLElement) {
   const chips = menu.querySelector('.og-sel-chips') as HTMLElement;
   const status = menu.querySelector('.og-sel-status') as HTMLElement;
   const TONES: [string, string][] = [
-    ['polish', 'Polish'], ['formal', 'Formal'], ['professional', 'Professional'],
-    ['concise', 'Concise'], ['detailed', 'Detailed'], ['friendly', 'Friendly'],
-    ['casual', 'Casual'], ['persuasive', 'Persuasive'], ['neutral', 'Neutral'],
+    ['polish', 'Polish'], ['formal', 'Formal'], ['casual', 'Casual'],
   ];
   for (const [tone, label] of TONES) {
     const chip = document.createElement('button');
@@ -722,6 +720,46 @@ function openSelectionMenu(anchor: HTMLElement) {
   }
 
   let busy = false;
+  let pending: { text: string; label: string } | null = null;
+
+  // Preview + explicit Apply — nothing changes until the user confirms.
+  // Picking another tone re-previews.
+  const renderPreview = (label: string, proposed: string) => {
+    status.style.display = 'block';
+    status.innerHTML = `
+      <div style="font-size:10px;color:#8e8e93;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">
+        Preview · ${escapeHtml(label)}
+      </div>
+      <div style="font-size:12px;color:#1c1c1e;line-height:1.45;background:#F5F3FF;
+        border:1px solid #DDD6FE;border-radius:6px;padding:7px 9px;white-space:pre-wrap;
+        max-height:140px;overflow:auto;">${escapeHtml(proposed)}</div>
+      <div style="display:flex;gap:6px;margin-top:7px;">
+        <button class="og-sel-apply" type="button" style="flex:1;padding:6px 8px;background:#6D28D9;
+          color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Apply</button>
+        <button class="og-sel-cancel" type="button" style="flex:1;padding:6px 8px;background:#fff;
+          color:#6b7280;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Cancel</button>
+      </div>
+      <div style="font-size:10px;color:#8e8e93;margin-top:5px;text-align:center;">Pick another tone above to re-preview.</div>
+    `;
+    (status.querySelector('.og-sel-apply') as HTMLButtonElement)?.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      if (!pending) return;
+      const ok = replaceSentence(el, sel, selectionApproxOffset, pending.text);
+      if (ok) {
+        menu.remove();
+        updateSelectionBubble(null, '', 0);
+      } else {
+        status.innerHTML = '';
+        status.textContent = 'Could not apply here.';
+      }
+    });
+    (status.querySelector('.og-sel-cancel') as HTMLButtonElement)?.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      menu.remove();
+      updateSelectionBubble(null, '', 0);
+    });
+  };
+
   chips.addEventListener('click', (e) => {
     const chip = (e.target as HTMLElement).closest('[data-tone]') as HTMLElement | null;
     if (!chip || busy) return;
@@ -733,27 +771,18 @@ function openSelectionMenu(anchor: HTMLElement) {
     chrome.runtime.sendMessage(
       { type: 'REWRITE_TEXT', text: sel, tone: chip.dataset.tone },
       (resp) => {
+        busy = false;
+        chips.style.opacity = '';
+        chips.style.pointerEvents = '';
         const rewritten = resp && resp.rewritten ? String(resp.rewritten).trim() : '';
         if (!rewritten || rewritten === sel) {
-          busy = false;
-          chips.style.opacity = '';
-          chips.style.pointerEvents = '';
+          pending = null;
           status.textContent =
             resp && resp.error ? 'Rewrite failed — check provider/API key.' : 'No change suggested.';
           return;
         }
-        const ok = replaceSentence(el, sel, selectionApproxOffset, rewritten);
-        status.textContent = ok ? 'Applied.' : 'Could not apply here.';
-        if (ok) {
-          setTimeout(() => {
-            menu.remove();
-            updateSelectionBubble(null, '', 0);
-          }, 300);
-        } else {
-          busy = false;
-          chips.style.opacity = '';
-          chips.style.pointerEvents = '';
-        }
+        pending = { text: rewritten, label: chip.textContent || 'tone' };
+        renderPreview(pending.label, rewritten);
       },
     );
   });
@@ -1755,13 +1784,7 @@ function showSentenceReview(
     const TONES: [string, string][] = [
       ['polish', 'Polish'],
       ['formal', 'Formal'],
-      ['professional', 'Professional'],
-      ['concise', 'Concise'],
-      ['detailed', 'Detailed'],
-      ['friendly', 'Friendly'],
       ['casual', 'Casual'],
-      ['persuasive', 'Persuasive'],
-      ['neutral', 'Neutral'],
     ];
     for (const [tone, label] of TONES) {
       const chip = document.createElement('button');
@@ -1779,47 +1802,85 @@ function showSentenceReview(
       improveMenu.appendChild(chip);
     }
 
-    let improving = false;
+    let busy = false;
+    let pending: { text: string; label: string } | null = null;
+
+    const resetStatus = () => {
+      pending = null;
+      improveStatus.style.display = 'none';
+      improveStatus.textContent = '';
+    };
+
     improveToggle.addEventListener('click', (e) => {
       e.stopPropagation();
       const open = improveMenu.style.display !== 'none';
       improveMenu.style.display = open ? 'none' : 'flex';
       improveToggle.textContent = open ? '✦ Improve sentence ▾' : '✦ Improve sentence ▴';
+      if (open) resetStatus();
     });
     improveToggle.addEventListener('mouseenter', () => { improveToggle.style.background = '#f5f3ff'; });
     improveToggle.addEventListener('mouseleave', () => { improveToggle.style.background = '#fff'; });
 
+    // Show the proposed rewrite and require explicit Apply — nothing changes
+    // until the user confirms. Picking another tone re-previews.
+    const renderPreview = (label: string, proposed: string) => {
+      improveStatus.style.display = 'block';
+      improveStatus.style.textAlign = 'left';
+      improveStatus.innerHTML = `
+        <div style="font-size:10px;color:#8e8e93;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">
+          Preview · ${escapeHtml(label)}
+        </div>
+        <div style="font-size:12px;color:#1c1c1e;line-height:1.45;background:#F5F3FF;
+          border:1px solid #DDD6FE;border-radius:6px;padding:7px 9px;white-space:pre-wrap;">${escapeHtml(proposed)}</div>
+        <div style="display:flex;gap:6px;margin-top:7px;">
+          <button class="og-imp-apply" type="button" style="flex:1;padding:6px 8px;background:#4F46E5;
+            color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Apply</button>
+          <button class="og-imp-cancel" type="button" style="flex:1;padding:6px 8px;background:#fff;
+            color:#6b7280;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Cancel</button>
+        </div>
+        <div style="font-size:10px;color:#8e8e93;margin-top:5px;text-align:center;">Pick another tone above to re-preview.</div>
+      `;
+      (improveStatus.querySelector('.og-imp-apply') as HTMLButtonElement)?.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (!pending) return;
+        const ok = replaceSentence(element, origText, group.start, pending.text);
+        improveStatus.innerHTML = '';
+        improveStatus.textContent = ok ? 'Applied.' : 'Could not apply here.';
+        if (ok) setTimeout(() => hideTooltip(), 250);
+      });
+      (improveStatus.querySelector('.og-imp-cancel') as HTMLButtonElement)?.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        resetStatus();
+      });
+    };
+
     improveMenu.addEventListener('click', (e) => {
       e.stopPropagation();
       const chip = (e.target as HTMLElement).closest('[data-tone]') as HTMLElement | null;
-      if (!chip || improving) return;
+      if (!chip || busy) return;
       const tone = chip.dataset.tone!;
       const label = chip.textContent || tone;
-      improving = true;
+      busy = true;
       improveMenu.style.pointerEvents = 'none';
       improveMenu.style.opacity = '0.5';
       improveStatus.style.display = 'block';
+      improveStatus.style.textAlign = 'center';
       improveStatus.textContent = `Rewriting (${label})…`;
       chrome.runtime.sendMessage(
         { type: 'REWRITE_TEXT', text: origText, tone },
         (resp) => {
+          busy = false;
+          improveMenu.style.pointerEvents = '';
+          improveMenu.style.opacity = '';
           const rewritten = resp && resp.rewritten ? String(resp.rewritten).trim() : '';
           if (!rewritten || rewritten === origText) {
-            improving = false;
-            improveMenu.style.pointerEvents = '';
-            improveMenu.style.opacity = '';
+            pending = null;
             improveStatus.textContent =
               resp && resp.error ? 'Rewrite failed — check provider/API key.' : 'No change suggested.';
             return;
           }
-          const ok = replaceSentence(element, origText, group.start, rewritten);
-          improveStatus.textContent = ok ? 'Applied.' : 'Could not apply here.';
-          if (ok) setTimeout(() => hideTooltip(), 250);
-          else {
-            improving = false;
-            improveMenu.style.pointerEvents = '';
-            improveMenu.style.opacity = '';
-          }
+          pending = { text: rewritten, label };
+          renderPreview(label, rewritten);
         },
       );
     });
