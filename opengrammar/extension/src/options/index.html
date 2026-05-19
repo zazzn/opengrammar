@@ -197,6 +197,36 @@
         </div>
       </section>
 
+      <!-- Debug & Tuning -->
+      <section class="settings-section">
+        <h2>Debug &amp; Tuning</h2>
+        <p class="section-description">
+          Capture what OGrammer produces (inline fixes, corrections, tone
+          rewrites, autocomplete) so you can share a compact log for tuning.
+          Off by default; no overhead when off. Nothing is sent anywhere —
+          the log stays on this device until you copy it.
+        </p>
+
+        <div class="setting-group">
+          <label class="toggle-setting">
+            <div class="toggle-info">
+              <span class="setting-label">Debug logging</span>
+              <span class="setting-description">Record recent events (last 200) locally</span>
+            </div>
+            <input type="checkbox" id="debugLogging" class="toggle-input">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-group">
+          <div class="data-actions">
+            <button id="copyDebugLog" class="btn-secondary">Copy compact log</button>
+            <button id="clearDebugLog" class="btn-danger">Clear log</button>
+          </div>
+          <span id="debugLogStatus" class="setting-description" style="margin-left: 10px;"></span>
+        </div>
+      </section>
+
       <!-- About -->
       <section class="settings-section about-section">
         <h2>About OGrammer</h2>
