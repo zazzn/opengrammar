@@ -2,9 +2,6 @@ import type { AnalyticsSummary, IgnoredIssue } from '../types';
 import { clearAllApiKeys } from '../shared/apiKeyStore';
 
 interface Settings {
-  enabled: boolean;
-  checkAsYouType: boolean;
-  showNotifications: boolean;
   autocompleteEnabled: boolean;
   debugLogging: boolean;
   disabledDomains: string[];
@@ -14,9 +11,6 @@ interface Settings {
 
 // DOM Elements
 const elements = {
-  enabled: document.getElementById('enabled') as HTMLInputElement,
-  checkAsYouType: document.getElementById('checkAsYouType') as HTMLInputElement,
-  showNotifications: document.getElementById('showNotifications') as HTMLInputElement,
   autocompleteEnabled: document.getElementById('autocompleteEnabled') as HTMLInputElement,
   debugLogging: document.getElementById('debugLogging') as HTMLInputElement,
   copyDebugLog: document.getElementById('copyDebugLog') as HTMLButtonElement,
@@ -48,9 +42,6 @@ const elements = {
 };
 
 let settings: Settings = {
-  enabled: true,
-  checkAsYouType: true,
-  showNotifications: true,
   autocompleteEnabled: true,
   debugLogging: false,
   disabledDomains: [],
@@ -82,21 +73,9 @@ async function initialize() {
 async function loadSettings() {
   return new Promise<void>((resolve) => {
     chrome.storage.sync.get(
-      [
-        'enabled',
-        'checkAsYouType',
-        'showNotifications',
-        'autocompleteEnabled',
-        'debugLogging',
-        'disabledDomains',
-        'dictionary',
-        'ignoredIssues',
-      ],
+      ['autocompleteEnabled', 'debugLogging', 'disabledDomains', 'dictionary', 'ignoredIssues'],
       (result) => {
         settings = {
-          enabled: result.enabled !== false,
-          checkAsYouType: result.checkAsYouType !== false,
-          showNotifications: result.showNotifications !== false,
           autocompleteEnabled: result.autocompleteEnabled !== false,
           debugLogging: result.debugLogging === true,
           disabledDomains: result.disabledDomains || [],
@@ -105,9 +84,6 @@ async function loadSettings() {
         };
 
         // Update UI
-        elements.enabled.checked = settings.enabled;
-        elements.checkAsYouType.checked = settings.checkAsYouType;
-        elements.showNotifications.checked = settings.showNotifications;
         elements.autocompleteEnabled.checked = settings.autocompleteEnabled;
         elements.debugLogging.checked = settings.debugLogging;
 
@@ -158,9 +134,6 @@ async function saveSettings() {
   return new Promise<void>((resolve) => {
     chrome.storage.sync.set(
       {
-        enabled: settings.enabled,
-        checkAsYouType: settings.checkAsYouType,
-        showNotifications: settings.showNotifications,
         autocompleteEnabled: settings.autocompleteEnabled,
         debugLogging: settings.debugLogging,
         disabledDomains: settings.disabledDomains,
@@ -180,21 +153,6 @@ async function saveSettings() {
  */
 function setupEventListeners() {
   // Toggle settings
-  elements.enabled.addEventListener('change', () => {
-    settings.enabled = elements.enabled.checked;
-    saveSettings();
-  });
-
-  elements.checkAsYouType.addEventListener('change', () => {
-    settings.checkAsYouType = elements.checkAsYouType.checked;
-    saveSettings();
-  });
-
-  elements.showNotifications.addEventListener('change', () => {
-    settings.showNotifications = elements.showNotifications.checked;
-    saveSettings();
-  });
-
   elements.autocompleteEnabled.addEventListener('change', () => {
     settings.autocompleteEnabled = elements.autocompleteEnabled.checked;
     saveSettings();

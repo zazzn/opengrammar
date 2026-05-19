@@ -35,8 +35,6 @@ let lastInputSelection: {
 
 // Track which domains are disabled
 let disabledDomains: string[] = [];
-let checkAsYouTypeEnabled = true;
-let showNotificationsEnabled = true;
 let autocompleteEnabled = false; // opt-in; see loadUserSettings()
 
 let isContextInvalidated = false;
@@ -163,15 +161,8 @@ async function loadUserSettings() {
   if (!checkContext()) return;
 
   try {
-    const result = await chrome.storage.sync.get([
-      'disabledDomains',
-      'checkAsYouType',
-      'showNotifications',
-      'autocompleteEnabled',
-    ]);
+    const result = await chrome.storage.sync.get(['disabledDomains', 'autocompleteEnabled']);
     disabledDomains = result.disabledDomains || [];
-    checkAsYouTypeEnabled = result.checkAsYouType !== false;
-    showNotificationsEnabled = result.showNotifications !== false;
     // Tab/ghost autocomplete is OPT-IN (default off). This is a proofreading
     // tool, not a predictive-text tool; the unwanted Tab suggestions were a
     // top complaint. Only on if the user explicitly enabled it.
@@ -377,9 +368,7 @@ function activateElement(element: HTMLElement) {
     editableElement.lastText.substring(0, 50),
   );
   void syncActiveContext(editableElement.lastText, editableElement.lastIssues || []);
-  if (checkAsYouTypeEnabled) {
-    debouncedCheck(element);
-  }
+  debouncedCheck(element);
 }
 
 /**
@@ -427,9 +416,7 @@ function handleInput(event: Event) {
     const editableElement = activeElements.get(target)!;
     editableElement.lastText = extractText(target);
     void syncActiveContext(editableElement.lastText, editableElement.lastIssues || []);
-    if (checkAsYouTypeEnabled) {
-      debouncedCheck(target);
-    }
+    debouncedCheck(target);
     if (autocompleteEnabled) {
       debouncedAutocomplete(target);
     }
@@ -624,41 +611,11 @@ function isEditable(el: HTMLElement): boolean {
 /**
  * Show a notification to the user
  */
-function showNotification(message: string, type: 'error' | 'warning' | 'info') {
-  if (!showNotificationsEnabled) return;
-
-  // Remove existing notifications
-  const existing = document.getElementById('opengrammar-notification');
-  if (existing) existing.remove();
-
-  const notification = document.createElement('div');
-  notification.id = 'opengrammar-notification';
-  notification.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    max-width: 400px;
-    padding: 14px 18px;
-    background: ${type === 'error' ? '#dc2626' : type === 'warning' ? '#f59e0b' : '#2563eb'};
-    color: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-    z-index: 2147483647;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 14px;
-    line-height: 1.5;
-    animation: opengrammar-slide-in 0.3s ease-out;
-  `;
-
-  notification.textContent = message;
-  document.body.appendChild(notification);
-
-  // Auto-remove after 5 seconds
-  setTimeout(() => {
-    notification.style.opacity = '0';
-    notification.style.transition = 'opacity 0.3s';
-    setTimeout(() => notification.remove(), 300);
-  }, 5000);
+// Toast notifications were removed (the "Show notifications" setting was
+// dropped). Kept as a no-op so the scattered call sites stay simple;
+// failures still go to console.error where it matters.
+function showNotification(_message: string, _type: 'error' | 'warning' | 'info') {
+  /* intentionally no-op */
 }
 
 async function syncActiveContext(text: string, issues: Issue[]) {
@@ -715,7 +672,25 @@ function buildAnalysisContext(element: HTMLElement, text: string): AnalysisConte
     previousText,
     nextText,
     fullTextExcerpt: text.slice(0, 1500),
+    pageContext: getPageContext(),
   };
+}
+
+/**
+ * Title + URL + the page's main visible text (capped), so autocomplete
+ * can ground a continuation in what the user is actually reading. This
+ * sends page content to the configured LLM provider — it only travels on
+ * the autocomplete path, which is opt-in (off by default).
+ */
+function getPageContext(): string {
+  try {
+    const main = (document.querySelector('main, article, [role="main"]') ||
+      document.body) as HTMLElement | null;
+    const body = (main?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 1500);
+    return `Title: ${document.title}\nURL: ${location.href}\nPage: ${body}`;
+  } catch {
+    return '';
+  }
 }
 
 function getEditorType(element: HTMLElement): string {
@@ -878,12 +853,6 @@ chrome.storage?.onChanged?.addListener((changes) => {
   if (changes.disabledDomains) {
     disabledDomains = changes.disabledDomains.newValue || [];
     console.log('[OpenGrammar] Disabled domains updated:', disabledDomains);
-  }
-  if (changes.checkAsYouType) {
-    checkAsYouTypeEnabled = changes.checkAsYouType.newValue !== false;
-  }
-  if (changes.showNotifications) {
-    showNotificationsEnabled = changes.showNotifications.newValue !== false;
   }
   if (changes.autocompleteEnabled) {
     autocompleteEnabled = changes.autocompleteEnabled.newValue === true;

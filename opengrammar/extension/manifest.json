@@ -25,22 +25,6 @@
     "page": "src/options/index.html",
     "open_in_tab": true
   },
-  "commands": {
-    "rewrite-text": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+R",
-        "mac": "Command+Shift+R"
-      },
-      "description": "Open rewrite tool"
-    },
-    "open-stats": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+S",
-        "mac": "Command+Shift+S"
-      },
-      "description": "Open writing statistics"
-    }
-  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -58,7 +42,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["assets/*", "wasm/harper_wasm_bg.wasm", "ngram/model.bin", "src/rewrite/index.html", "src/stats/index.html"],
+      "resources": ["assets/*", "wasm/harper_wasm_bg.wasm", "ngram/model.bin"],
       "matches": ["<all_urls>"]
     }
   ],

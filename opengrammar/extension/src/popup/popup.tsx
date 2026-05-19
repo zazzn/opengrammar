@@ -75,18 +75,6 @@ function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
 }
 
 /* ─── Icon components ─── */
-const RewriteIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2 8a6 6 0 1 1 1.5 4M2 12V8h4" />
-  </svg>
-);
-const StatsIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-    <rect x="2" y="10" width="3" height="4" rx="0.5" fill="currentColor" stroke="none"/>
-    <rect x="6.5" y="6" width="3" height="8" rx="0.5" fill="currentColor" stroke="none"/>
-    <rect x="11" y="2" width="3" height="12" rx="0.5" fill="currentColor" stroke="none"/>
-  </svg>
-);
 const EyeIcon = ({ show }: { show: boolean }) => (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -561,19 +549,27 @@ const Popup = () => {
       <header className="popup-header">
         <div className="brand">
           <div className="brand-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M20 4C15 4 10 7 8 12L4 20l8-4c5-2 8-7 8-12z" fill="white" fillOpacity="0.92"/><path d="M8 12 L4 20" stroke="rgba(255,255,255,0.6)" strokeWidth="1.3" strokeLinecap="round"/><path d="M5 18l2 2 4-5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg></div>
-          <span className="brand-name">O<span>Grammer</span></span>
+          <span className="brand-name">O<span>Grammar</span></span>
         </div>
         <button className={`status-pill ${settings.enabled ? 'active' : 'paused'}`} onClick={() => saveSettings({ enabled: !settings.enabled })} title={settings.enabled ? 'Click to pause' : 'Click to enable'}>
           <span className="dot" />{settings.enabled ? 'Active' : 'Paused'}
         </button>
       </header>
 
+      <div className="enable-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', borderBottom: '1px solid #f0f0f0' }}>
+        <strong style={{ fontSize: 13 }}>Enable OGrammar</strong>
+        <button
+          type="button"
+          className={`status-pill ${settings.enabled ? 'active' : 'paused'}`}
+          onClick={() => saveSettings({ enabled: !settings.enabled })}
+          title={settings.enabled ? 'Click to turn off' : 'Click to turn on'}
+        >
+          <span className="dot" />{settings.enabled ? 'On' : 'Off'}
+        </button>
+      </div>
+
       <ScoreSection issueStats={issueStats} writingScore={writingScore} />
 
-      <div className="quick-actions">
-        <button className="action-btn" onClick={() => chrome.runtime.sendMessage({ type: 'OPEN_REWRITE_PAGE' })}><RewriteIcon />Rephrase</button>
-        <button className="action-btn" onClick={() => chrome.runtime.sendMessage({ type: 'OPEN_STATS_PAGE' })}><StatsIcon />Stats</button>
-      </div>
 
       <div className="ai-card">
         <div className="ai-card-left"><strong>AI Engine</strong><span>{selectedProvider?.name || 'OpenAI'} · {settings.model}</span></div>
