@@ -1572,7 +1572,9 @@ function showSentenceReview(
     z-index: 2147483647;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px;
-    overflow: hidden;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     border: 1px solid rgba(0,0,0,0.07);
     animation: og-fade-in 0.12s ease;
   `;
@@ -1661,8 +1663,8 @@ function showSentenceReview(
       <div class="og-sr-improve-status" style="display:none; font-size:11px; color:#8e8e93; margin-top:7px; text-align:center;"></div>
     </div>
 
-    <!-- Action buttons -->
-    <div style="display:flex; border-top:1px solid #f0f0f0;">
+    <!-- Action buttons (sticky so they stay reachable when the card scrolls) -->
+    <div style="display:flex; border-top:1px solid #f0f0f0; position:sticky; bottom:0; background:#ffffff; z-index:1;">
       ${total > 1 ? `
       <button class="og-sr-fix-all" style="
         flex:1; padding:10px 8px;
@@ -1817,6 +1819,11 @@ function showSentenceReview(
       improveMenu.style.display = open ? 'none' : 'flex';
       improveToggle.textContent = open ? '✦ Improve sentence ▾' : '✦ Improve sentence ▴';
       if (open) resetStatus();
+      // Reveal the newly opened tone buttons even if the card was already
+      // at its max viewport height before this click.
+      if (!open) {
+        requestAnimationFrame(() => improveMenu.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+      }
     });
     improveToggle.addEventListener('mouseenter', () => { improveToggle.style.background = '#f5f3ff'; });
     improveToggle.addEventListener('mouseleave', () => { improveToggle.style.background = '#fff'; });
@@ -1852,6 +1859,10 @@ function showSentenceReview(
         ev.stopPropagation();
         resetStatus();
       });
+      // Scroll the Apply/Cancel row into view — without this the preview
+      // can render below the visible portion of a card that was already
+      // pinned to its max height.
+      requestAnimationFrame(() => improveStatus.scrollIntoView({ block: 'end', behavior: 'smooth' }));
     };
 
     improveMenu.addEventListener('click', (e) => {
