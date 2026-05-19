@@ -78,9 +78,13 @@ export const PROVIDERS: ProviderConfig[] = [
   },
   {
     id: 'ollama',
+    // Models are read live from the server's native /api/tags (real
+    // installed tags). No static list: bare names like "qwen2.5" 404
+    // when only "qwen2.5:7b" is pulled, and a fake list when the server
+    // is unreachable is worse than an honest empty one.
     name: 'Ollama (Local)',
     baseUrl: 'http://localhost:11434/v1',
-    models: ['qwen3', 'qwen2.5', 'llama3.1', 'gemma2', 'mistral'],
+    models: [],
     requiresApiKey: false,
     description: 'Run models locally on your machine',
   },
