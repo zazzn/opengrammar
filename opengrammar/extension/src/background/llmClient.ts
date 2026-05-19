@@ -102,7 +102,25 @@ export async function chatCompletion(opts: {
     throw new Error(`LLM HTTP ${response.status}: ${detail.slice(0, 200)}`);
   }
   const data = await response.json();
-  return data?.choices?.[0]?.message?.content ?? '';
+  return stripReasoning(data?.choices?.[0]?.message?.content ?? '');
+}
+
+/**
+ * Remove `<think>…</think>` reasoning blocks emitted by Qwen3, DeepSeek-R1,
+ * and similar "thinking" models. Without this, the chain-of-thought leaks
+ * into the user-visible corrected text (or the browser strips the angle
+ * brackets and leaves a dangling "/think"). Also handles stray orphan
+ * opener/closer tags and `/think` / `/no_think` Qwen control directives
+ * if the model echoes them back.
+ */
+export function stripReasoning(s: string): string {
+  if (!s) return s;
+  return s
+    .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, '')
+    .replace(/<\/?think\b[^>]*>/gi, '')
+    .replace(/\/(?:no_)?think\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 /**
