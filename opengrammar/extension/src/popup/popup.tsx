@@ -165,7 +165,7 @@ const SettingsPanel = ({
     <div className="field-group">
       <label className="toggle-label">
         <div className="toggle-text">
-          <strong>Enable OGrammer</strong>
+          <strong>Enable OGrammar</strong>
           <span>Check grammar on every page</span>
         </div>
         <input

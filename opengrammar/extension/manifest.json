@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "OGrammer",
+  "name": "OGrammar",
   "version": "0.9",
   "description": "Your privacy-first, open-source writing assistant. Check grammar, spelling, and style everywhere on the web.",
   "permissions": ["storage", "activeTab", "scripting"],

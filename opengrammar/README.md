@@ -1,4 +1,4 @@
-# OGrammer
+# OGrammar
 
 **Version 0.9** — a privacy-first, open-source writing assistant browser
 extension. A fork of [OpenGrammar](https://github.com/swadhinbiswas/opengrammar).
@@ -77,7 +77,7 @@ provider + API key (or Ollama). No backend URL is needed.
 
 ## Attribution
 
-OGrammer is a derivative work of OpenGrammar by Swadhin Biswas, used
+OGrammar is a derivative work of OpenGrammar by Swadhin Biswas, used
 under the Apache License 2.0. It bundles the Automattic Harper engine
 (Apache-2.0). Significant changes from upstream are summarized in
 [`NOTICE`](NOTICE). You must retain `LICENSE` and `NOTICE` when

@@ -644,7 +644,7 @@ export function updateSelectionBubble(
   const bubble = document.createElement('button');
   bubble.className = 'opengrammar-selection';
   bubble.type = 'button';
-  bubble.setAttribute('aria-label', 'OGrammer: rewrite selected text');
+  bubble.setAttribute('aria-label', 'OGrammar: rewrite selected text');
   bubble.title = 'Rewrite the selected text';
   bubble.style.cssText = `
     position: fixed; left: 0; top: 0;
