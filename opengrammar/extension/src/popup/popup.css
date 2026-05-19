@@ -313,9 +313,6 @@ body {
   display: flex; flex-direction: column; gap: 10px;
 }
 
-.backend-status-row {
-  display: flex; align-items: center; gap: 6px; margin-top: 5px;
-}
 .status-text { font-size: 11px; color: var(--og-text-2); }
 
 /* ─── Footer ─── */
