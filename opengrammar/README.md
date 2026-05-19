@@ -1,60 +1,61 @@
 # OGrammar
 
-**Version 0.9** — a privacy-first, open-source writing assistant browser
+**Version 0.9** — a privacy-first, open-source writing-assistant browser
 extension. A fork of [OpenGrammar](https://github.com/swadhinbiswas/opengrammar).
 
-- Fork: <https://github.com/zazzn/opengrammar>
+- Repo: <https://github.com/zazzn/opengrammar>
 - License: Apache-2.0 (see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE))
 
-## What it does
+There is no hosted service, account, or documentation site — everything
+runs in the extension and talks directly to the LLM provider you choose.
 
-Two strictly separated tiers:
+## How it works — two strictly separated tiers
 
 1. **Inline (mechanical only) — fully offline, no network.**
    Spelling, capitalization and punctuation are checked on-device by the
-   [Harper](https://github.com/Automattic/harper) engine (Rust → WebAssembly,
-   Apache-2.0) running inside the extension's service worker. Instant,
-   private, works with no API key and no internet. A local n-gram
-   re-ranker improves spelling-candidate ordering.
+   [Harper](https://github.com/Automattic/harper) engine (Rust →
+   WebAssembly, Apache-2.0) in the extension's service worker. Instant,
+   private, no API key, no internet. A local n-gram re-ranker improves
+   spelling-candidate ordering. This tier is always on.
 
-2. **Grammar & Tone — an explicit button.**
-   Whole-text correction and tone rewriting use an LLM. **As of v0.9 the
-   extension calls your chosen LLM provider directly — there is no backend
-   service.** Your API key is stored encrypted on your device
-   (AES-GCM, never synced) and sent only to the provider you select.
+2. **Grammar & Tone — explicit, never automatic.**
+   Whole-text/sentence correction and tone rewriting use an LLM. The
+   extension calls **your chosen provider directly — there is no backend.**
+   Your API key is stored encrypted on-device (AES-GCM, never synced) and
+   sent only to the provider you pick.
 
-Inline checking never calls the network. The LLM is only used when you
-press the Grammar/Tone button (or the floating-bubble alternatives).
+Inline checking never hits the network. The LLM is only used when you
+explicitly ask for it (the review card's “Improve”, or the selection
+bubble below).
 
-## No backend required
+## Features
 
-Earlier versions proxied LLM calls through a self-hosted backend. That
-dependency has been removed: the background service worker calls the
-provider's OpenAI-compatible `/v1/chat/completions` endpoint itself.
+- **Selection rewrite bubble** — highlight any text in an editable field
+  (errors or not) and a bubble appears; pick **Polish / Formal / Casual**
+  and it shows a **preview you must Apply or Cancel** (nothing changes
+  until you confirm; pick another tone to re-preview).
+- **Sentence review card** — click an inline issue for the corrected
+  version with the same Improve preview/confirm flow.
+- **Direct multi-provider LLM** — OpenAI · OpenRouter · Groq · Together AI ·
+  Abacus RouteLLM · Ollama (local) · any custom OpenAI-compatible endpoint.
+  Provider, model and key are set in the popup.
+- **Ollama support** — model list is read live from the server
+  (`/api/tags`); switching models unloads the old one and shows
+  load progress; idle keep-alive control and a manual **Unload now**
+  button to free VRAM (e.g. before gaming). An in-app **GPU guide**
+  (Options) recommends a model for your card, GTX-10 → RTX-50 series.
+- **Page-aware autocomplete (opt-in, off by default)** — when enabled,
+  next-phrase completions are grounded in the page you're viewing
+  (title + URL + main visible text is sent to your provider).
+- **Debug & Tuning (Options, off by default)** — capture recent
+  corrections/rewrites locally and copy a compact log to share for
+  tuning. Nothing leaves the device unless you copy it.
+- **Enable toggle** lives in the popup (the main extension click).
 
-The `backend/` directory and its Docker image are **retained but
-optional** — only useful if you specifically want a self-hosted proxy
-(e.g. to keep API keys off client machines). The extension does not need
-it and has no "Backend URL" setting.
-
-## Supported providers
-
-OpenAI · OpenRouter · Groq · Together AI · Abacus RouteLLM · Ollama
-(local) · any custom OpenAI-compatible endpoint. Choose the provider,
-model and key in the extension popup.
-
-### Local Ollama note
-
-Browsers block plain-HTTP requests from an extension to a private LAN IP.
-To use an Ollama box on your network, expose it at `http://localhost:11434`
-on the machine running Chrome — e.g. an SSH local forward:
-
-```bash
-ssh -L 11434:localhost:11434 your-ollama-host
-```
-
-Then set the Ollama URL to `http://localhost:11434`. Cloud providers need
-none of this (they are public HTTPS).
+Removed in 0.9: the self-hosted backend dependency, the right-click
+context menu, the separate Rephrase and Stats pages/shortcuts, and the
+"Check as you type" / "Show notifications" toggles (inline is always on;
+toasts are gone). Usage analytics are still viewable in Options.
 
 ## Install (unpacked)
 
@@ -64,21 +65,40 @@ npm install
 npm run build
 ```
 
-Then in Chrome: `chrome://extensions` → enable **Developer mode** →
-**Load unpacked** → select `extension/dist`. Open the popup and set your
-provider + API key (or Ollama). No backend URL is needed.
+Chrome → `chrome://extensions` → enable **Developer mode** → **Load
+unpacked** → select `extension/dist`. Open the popup, set your provider +
+API key (or Ollama). No backend URL — there isn't one.
+
+### Local Ollama note
+
+Browsers block plain-HTTP requests from an extension to a private LAN IP.
+Run Ollama on the same machine, or expose it at `http://localhost:11434`
+via an SSH local forward, then set that as the Ollama URL:
+
+```bash
+ssh -L 11434:localhost:11434 your-ollama-host
+```
+
+Cloud providers need none of this (they're public HTTPS).
+
+## Optional self-hosted proxy
+
+The `backend/` directory and its Docker image are **retained but
+unused by the extension** — only useful if you want a self-hosted
+OpenAI-compatible proxy (e.g. to keep API keys off client machines).
+See [`backend/DOCKER.md`](backend/DOCKER.md). Not required.
 
 ## Privacy
 
 - Inline mechanical checks are 100% local — text never leaves the device.
-- The Grammar/Tone button sends text only to the LLM provider you choose.
-- API keys are encrypted at rest on the device and never synced.
+- Grammar/Tone and (opt-in) autocomplete send text — and, for
+  autocomplete, page context — only to the LLM provider you chose.
+- API keys are encrypted at rest and never synced.
 - Google Docs is intentionally out of scope (canvas-rendered).
 
 ## Attribution
 
 OGrammar is a derivative work of OpenGrammar by Swadhin Biswas, used
-under the Apache License 2.0. It bundles the Automattic Harper engine
-(Apache-2.0). Significant changes from upstream are summarized in
-[`NOTICE`](NOTICE). You must retain `LICENSE` and `NOTICE` when
-redistributing.
+under the Apache License 2.0, and bundles the Automattic Harper engine
+(Apache-2.0). Significant changes are summarized in [`NOTICE`](NOTICE).
+Retain `LICENSE` and `NOTICE` when redistributing.
