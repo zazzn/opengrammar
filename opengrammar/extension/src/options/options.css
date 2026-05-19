@@ -253,29 +253,6 @@ header {
   background: var(--border);
 }
 
-/* Backend Status */
-.backend-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 13px;
-}
-
-.status-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--text-tertiary);
-}
-
-.status-indicator.healthy {
-  background: var(--success);
-}
-
-.status-indicator.unhealthy {
-  background: var(--danger);
-}
 
 .status-text {
   color: var(--text-secondary);

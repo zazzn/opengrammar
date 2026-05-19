@@ -9,7 +9,6 @@ interface Settings {
   disabledDomains: string[];
   dictionary: string[];
   ignoredIssues: IgnoredIssue[];
-  disabledModules: string[];
 }
 
 // DOM Elements
@@ -18,11 +17,6 @@ const elements = {
   checkAsYouType: document.getElementById('checkAsYouType') as HTMLInputElement,
   showNotifications: document.getElementById('showNotifications') as HTMLInputElement,
   autocompleteEnabled: document.getElementById('autocompleteEnabled') as HTMLInputElement,
-  checkGrammar: document.getElementById('checkGrammar') as HTMLInputElement,
-  checkSpelling: document.getElementById('checkSpelling') as HTMLInputElement,
-  checkPunctuation: document.getElementById('checkPunctuation') as HTMLInputElement,
-  checkStyle: document.getElementById('checkStyle') as HTMLInputElement,
-  checkClarity: document.getElementById('checkClarity') as HTMLInputElement,
   removeApiKeys: document.getElementById('removeApiKeys') as HTMLButtonElement,
   removeApiKeysStatus: document.getElementById('removeApiKeysStatus') as HTMLElement,
   newDomain: document.getElementById('newDomain') as HTMLInputElement,
@@ -56,7 +50,6 @@ let settings: Settings = {
   disabledDomains: [],
   dictionary: [],
   ignoredIssues: [],
-  disabledModules: [],
 };
 
 let analyticsSummary: AnalyticsSummary | null = null;
@@ -71,6 +64,8 @@ async function initialize() {
   renderDictionary();
   renderIgnoredIssues();
   await loadAnalytics();
+
+  if (elements.version) elements.version.textContent = chrome.runtime.getManifest().version;
 
   console.log('OpenGrammar options page initialized');
 }
@@ -99,7 +94,6 @@ async function loadSettings() {
           disabledDomains: result.disabledDomains || [],
           dictionary: result.dictionary || [],
           ignoredIssues: normalizeIgnoredIssues(result.ignoredIssues),
-          disabledModules: result.disabledModules || [],
         };
 
         // Update UI
@@ -107,11 +101,6 @@ async function loadSettings() {
         elements.checkAsYouType.checked = settings.checkAsYouType;
         elements.showNotifications.checked = settings.showNotifications;
         elements.autocompleteEnabled.checked = settings.autocompleteEnabled;
-        elements.checkGrammar.checked = !settings.disabledModules.includes('grammar');
-        elements.checkSpelling.checked = !settings.disabledModules.includes('spelling');
-        elements.checkPunctuation.checked = !settings.disabledModules.includes('punctuation');
-        elements.checkStyle.checked = !settings.disabledModules.includes('style');
-        elements.checkClarity.checked = !settings.disabledModules.includes('clarity');
 
         resolve();
       },
@@ -167,7 +156,6 @@ async function saveSettings() {
         disabledDomains: settings.disabledDomains,
         dictionary: settings.dictionary,
         ignoredIssues: settings.ignoredIssues,
-        disabledModules: settings.disabledModules,
       },
       () => {
         console.log('Settings saved');
@@ -202,23 +190,6 @@ function setupEventListeners() {
     saveSettings();
   });
 
-  // Rule Category Toggles
-  const updateDisabledModules = () => {
-    const disabled: string[] = [];
-    if (!elements.checkGrammar.checked) disabled.push('grammar');
-    if (!elements.checkSpelling.checked) disabled.push('spelling');
-    if (!elements.checkPunctuation.checked) disabled.push('punctuation');
-    if (!elements.checkStyle.checked) disabled.push('style');
-    if (!elements.checkClarity.checked) disabled.push('clarity');
-    settings.disabledModules = disabled;
-    saveSettings();
-  };
-
-  elements.checkGrammar.addEventListener('change', updateDisabledModules);
-  elements.checkSpelling.addEventListener('change', updateDisabledModules);
-  elements.checkPunctuation.addEventListener('change', updateDisabledModules);
-  elements.checkStyle.addEventListener('change', updateDisabledModules);
-  elements.checkClarity.addEventListener('change', updateDisabledModules);
 
   // Remove all API keys (encrypted store lives in chrome.storage.local;
   // provider/model/key are configured in the popup, not here).
