@@ -73,7 +73,7 @@ async function initialize() {
 
   if (elements.version) elements.version.textContent = chrome.runtime.getManifest().version;
 
-  console.log('OGrammer options page initialized');
+  console.log('OGrammar options page initialized');
 }
 
 /**

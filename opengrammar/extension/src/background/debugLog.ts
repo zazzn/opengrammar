@@ -83,7 +83,7 @@ export async function formatCompact(): Promise<{ text: string; count: number }> 
   const entries = await getEntries();
   const v = chrome.runtime.getManifest().version;
   const lines: string[] = [
-    `# OGrammer debug log v${v} — ${entries.length} event(s)`,
+    `# OGrammar debug log v${v} — ${entries.length} event(s)`,
     `# generated ${new Date().toISOString()}`,
     '',
   ];
