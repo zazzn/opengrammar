@@ -70,13 +70,17 @@ export function isUIActive(): boolean {
 /* ────────────────────────────────────────────────────────────
    GRAMMARLY COLOR SYSTEM — exact hex values from Grammarly
 ──────────────────────────────────────────────────────────── */
-// Red is reserved for spelling. Grammar = amber/yellow. Clarity = blue,
-// style = purple — so the four categories are visually distinct.
+// Three visual tiers, matching the Grammarly convention:
+//   - Red (spelling)  = must fix, mechanical
+//   - Amber (grammar) = should fix, mechanical
+//   - Grey (clarity/style) = consider rewriting, suggestion only
+// Clarity and style share the grey "rewrite" tier so the eye learns one
+// pattern for "this is fine, but here's a tighter version".
 const COLORS = {
   spelling: { line: '#e53935', bg: 'rgba(229,57,53,0.10)',  hover: 'rgba(229,57,53,0.20)',  dot: '#e53935' },
   grammar:  { line: '#f5a623', bg: 'rgba(245,166,35,0.12)', hover: 'rgba(245,166,35,0.24)', dot: '#f5a623' },
-  clarity:  { line: '#1565c0', bg: 'rgba(21,101,192,0.09)', hover: 'rgba(21,101,192,0.18)', dot: '#1565c0' },
-  style:    { line: '#7c3aed', bg: 'rgba(124,58,237,0.10)', hover: 'rgba(124,58,237,0.20)', dot: '#7c3aed' },
+  clarity:  { line: '#8e8e93', bg: 'rgba(142,142,147,0.10)', hover: 'rgba(142,142,147,0.22)', dot: '#8e8e93' },
+  style:    { line: '#8e8e93', bg: 'rgba(142,142,147,0.10)', hover: 'rgba(142,142,147,0.22)', dot: '#8e8e93' },
 };
 
 function getC(type: string) {
@@ -130,7 +134,15 @@ function initHighlightContainer() {
 function isMechanical(i: Issue): boolean {
   if (i.ignored) return false;
   if (i.type === 'spelling') return true;
-  if (i.type === 'clarity' || i.type === 'style') return false;
+  // Rewrite-tier (Grammarly-grey): clarity + style suggestions from local
+  // Harper lints (PhraseSetCorrections, BoringWords, FillerWords, …). Allow
+  // any phrase-bounded suggestion through; the length cap keeps a runaway
+  // whole-clause lint from painting half a line grey.
+  if (i.type === 'clarity' || i.type === 'style') {
+    const o = (i.original || '').trim();
+    const s = (i.suggestion || '').trim();
+    return !!s && o !== s && o.length <= 80;
+  }
   const o = (i.original || '').trim();
   const s = (i.suggestion || '').trim();
   if (!s || o === s) return false;

@@ -20,6 +20,20 @@ import { rankByContext, warmContextModel } from './contextRanker';
 
 let linterPromise: Promise<LocalLinter> | null = null;
 
+// Harper ships many style/conciseness lints as OPT-IN. Turning them on here
+// gives us the Grammarly-style "consider rewriting" grey-underline tier for
+// free, fully on-device: wordy-phrase compression, filler-word removal,
+// boring-word callouts, repeated words, long-sentence flags. The lint names
+// match the Rust source under harper-core/src/linting; if any name drifts
+// in a future Harper release Harper silently ignores unknown keys.
+const STYLE_LINTS_TO_ENABLE: Record<string, boolean> = {
+  BoringWords: true,
+  FillerWords: true,
+  LongSentences: true,
+  RepeatedWords: true,
+  DiscourseMarkers: true,
+};
+
 function getLinter(): Promise<LocalLinter> {
   if (!linterPromise) {
     linterPromise = (async () => {
@@ -27,6 +41,15 @@ function getLinter(): Promise<LocalLinter> {
       const binary = createBinaryModuleFromUrl(wasmUrl);
       const linter = new LocalLinter({ binary, dialect: Dialect.American });
       await linter.setup();
+      // Merge our opt-ins on top of the defaults rather than replacing the
+      // whole config, so future Harper releases that flip more lints on by
+      // default still benefit us.
+      try {
+        const current = await linter.getLintConfig();
+        await linter.setLintConfig({ ...current, ...STYLE_LINTS_TO_ENABLE });
+      } catch (e) {
+        console.warn('[harper] could not enable style lints:', e);
+      }
       return linter;
     })();
     // If setup throws, drop the cached promise so a later call can retry.
