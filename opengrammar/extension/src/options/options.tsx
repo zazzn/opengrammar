@@ -3,7 +3,6 @@ import { clearAllApiKeys } from '../shared/apiKeyStore';
 
 interface Settings {
   enabled: boolean;
-  backendUrl: string;
   checkAsYouType: boolean;
   showNotifications: boolean;
   autocompleteEnabled: boolean;
@@ -24,10 +23,8 @@ const elements = {
   checkPunctuation: document.getElementById('checkPunctuation') as HTMLInputElement,
   checkStyle: document.getElementById('checkStyle') as HTMLInputElement,
   checkClarity: document.getElementById('checkClarity') as HTMLInputElement,
-  backendUrl: document.getElementById('backendUrl') as HTMLInputElement,
   removeApiKeys: document.getElementById('removeApiKeys') as HTMLButtonElement,
   removeApiKeysStatus: document.getElementById('removeApiKeysStatus') as HTMLElement,
-  backendStatus: document.getElementById('backendStatus') as HTMLElement,
   newDomain: document.getElementById('newDomain') as HTMLInputElement,
   addDomain: document.getElementById('addDomain') as HTMLButtonElement,
   domainList: document.getElementById('domainList') as HTMLElement,
@@ -53,7 +50,6 @@ const elements = {
 
 let settings: Settings = {
   enabled: true,
-  backendUrl: '',
   checkAsYouType: true,
   showNotifications: true,
   autocompleteEnabled: true,
@@ -74,7 +70,6 @@ async function initialize() {
   renderDomainList();
   renderDictionary();
   renderIgnoredIssues();
-  checkBackendHealth();
   await loadAnalytics();
 
   console.log('OpenGrammar options page initialized');
@@ -88,7 +83,6 @@ async function loadSettings() {
     chrome.storage.sync.get(
       [
         'enabled',
-        'backendUrl',
         'checkAsYouType',
         'showNotifications',
         'autocompleteEnabled',
@@ -99,7 +93,6 @@ async function loadSettings() {
       (result) => {
         settings = {
           enabled: result.enabled !== false,
-          backendUrl: result.backendUrl || '',
           checkAsYouType: result.checkAsYouType !== false,
           showNotifications: result.showNotifications !== false,
           autocompleteEnabled: result.autocompleteEnabled !== false,
@@ -119,7 +112,6 @@ async function loadSettings() {
         elements.checkPunctuation.checked = !settings.disabledModules.includes('punctuation');
         elements.checkStyle.checked = !settings.disabledModules.includes('style');
         elements.checkClarity.checked = !settings.disabledModules.includes('clarity');
-        elements.backendUrl.value = settings.backendUrl;
 
         resolve();
       },
@@ -169,7 +161,6 @@ async function saveSettings() {
     chrome.storage.sync.set(
       {
         enabled: settings.enabled,
-        backendUrl: settings.backendUrl,
         checkAsYouType: settings.checkAsYouType,
         showNotifications: settings.showNotifications,
         autocompleteEnabled: settings.autocompleteEnabled,
@@ -247,13 +238,6 @@ function setupEventListeners() {
     }
   });
 
-  // Backend URL
-  elements.backendUrl.addEventListener('input', () => {
-    settings.backendUrl = elements.backendUrl.value;
-    saveSettings();
-    checkBackendHealth();
-  });
-
   // Domain management
   elements.addDomain.addEventListener('click', addDomain);
   elements.newDomain.addEventListener('keypress', (e) => {
@@ -275,39 +259,6 @@ function setupEventListeners() {
   elements.importFile.addEventListener('change', importData);
   elements.resetSettings.addEventListener('click', resetSettings);
   elements.clearAnalytics.addEventListener('click', clearAnalytics);
-}
-
-/**
- * Check backend health
- */
-async function checkBackendHealth() {
-  const statusIndicator = elements.backendStatus.querySelector('.status-indicator') as HTMLElement;
-  const statusText = elements.backendStatus.querySelector('.status-text') as HTMLElement;
-
-  if (!statusIndicator || !statusText) return;
-
-  try {
-    // Must mirror the background's check (background/index.ts checkBackendHealth:
-    // `${backendUrl}/health`) so this dot and the popup never disagree. The old
-    // `.replace('/analyze','/health')` showed a false "Connected" when the user
-    // appended /analyze (replace hit /health while real calls 404'd on
-    // /analyze/correct). backendUrl is the bare origin; default matches the
-    // background's DEFAULT_BACKEND_URL.
-    const backendUrl = settings.backendUrl || 'http://localhost:8787';
-    const healthUrl = `${backendUrl}/health`;
-
-    const response = await fetch(healthUrl, { method: 'GET' });
-
-    if (response.ok) {
-      statusIndicator.className = 'status-indicator healthy';
-      statusText.textContent = 'Connected';
-    } else {
-      throw new Error('Health check failed');
-    }
-  } catch (error) {
-    statusIndicator.className = 'status-indicator unhealthy';
-    statusText.textContent = 'Not connected';
-  }
 }
 
 /**

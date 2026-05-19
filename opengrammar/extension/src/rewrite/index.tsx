@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import './rewrite.css';
-import { getApiKey } from '../shared/apiKeyStore';
 
 type Tone =
   | 'formal'
@@ -37,34 +36,18 @@ const RewritePopup = () => {
     setError('');
 
     try {
-      const { model, provider, customBaseUrl, backendUrl } = await chrome.storage.sync.get([
-        'model',
-        'provider',
-        'customBaseUrl',
-        'backendUrl',
-      ]);
-      const apiKey = await getApiKey();
-
-      const baseUrl = backendUrl || 'http://localhost:8787';
-
-      const response = await fetch(`${baseUrl}/rewrite`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: selectedText,
-          tone,
-          apiKey,
-          model,
-          provider,
-          baseUrl: customBaseUrl,
-        }),
+      // Route through the background SW so there is one LLM path (it holds
+      // the key, provider, model, Ollama keep-alive). No direct backend call.
+      const data = await chrome.runtime.sendMessage({
+        type: 'REWRITE_TEXT',
+        text: selectedText,
+        tone,
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to rewrite text');
+      if (!data || data.error) {
+        throw new Error(data?.error || data?.message || 'Failed to rewrite text');
       }
 
-      const data = await response.json();
       setRewrittenText(data.rewritten);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

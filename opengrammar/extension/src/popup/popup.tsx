@@ -13,12 +13,10 @@ interface Settings {
   enabled: boolean;
   apiKey: string;
   model: string;
-  backendUrl: string;
   provider: string;
   customBaseUrl: string;
   ollamaUrl: string;
   ollamaKeepAlive: string;
-  backendHealthy: boolean;
 }
 
 /** Normalize an Ollama server URL to its OpenAI-compatible /v1 base. */
@@ -320,15 +318,6 @@ const SettingsPanel = ({
             </div>
           </div>
         )}
-        <div className="field-group">
-          <label className="field-label">Backend URL</label>
-          <p className="field-hint" style={{ marginBottom: 5 }}>Default: http://localhost:8787</p>
-          <input type="url" value={settings.backendUrl} onChange={(e) => saveSettings({ backendUrl: e.target.value })} placeholder="http://localhost:8787" className="text-input" />
-          <div className="backend-status-row">
-            <span className={`backend-dot ${settings.backendHealthy ? 'ok' : 'err'}`} />
-            <span className="status-text">{settings.backendHealthy ? 'Connected' : 'Not connected'}</span>
-          </div>
-        </div>
       </div>
     )}
   </div>
@@ -337,8 +326,8 @@ const SettingsPanel = ({
 /* ─── Main Popup Component ─── */
 const Popup = () => {
   const [settings, setSettings] = useState<Settings>({
-    enabled: true, apiKey: '', model: 'gpt-4o-mini', backendUrl: 'http://localhost:8787',
-    provider: 'openai', customBaseUrl: '', ollamaUrl: 'http://localhost:11434', ollamaKeepAlive: '2m', backendHealthy: true,
+    enabled: true, apiKey: '', model: 'gpt-4o-mini',
+    provider: 'openai', customBaseUrl: '', ollamaUrl: 'http://localhost:11434', ollamaKeepAlive: '2m',
   });
   const [providerModelMemory, setProviderModelMemory] = useState<Record<string, string>>({});
   const [showApiKey, setShowApiKey]   = useState(false);
@@ -358,15 +347,14 @@ const Popup = () => {
   }, [settings.provider, settings.ollamaUrl, settings.model]);
 
   const loadSettings = () => {
-    chrome.storage.sync.get(['enabled', 'model', 'backendUrl', 'provider', 'customBaseUrl', 'ollamaUrl', 'ollamaKeepAlive', 'backendHealthy', 'providerModelMemory'], (result) => {
+    chrome.storage.sync.get(['enabled', 'model', 'provider', 'customBaseUrl', 'ollamaUrl', 'ollamaKeepAlive', 'providerModelMemory'], (result) => {
       const memory = (result.providerModelMemory || {}) as Record<string, string>;
       const selectedProvider = result.provider || 'openai';
       setSettings({
         enabled: result.enabled !== false, apiKey: '', model: memory[selectedProvider] || result.model || 'gpt-4o-mini',
-        backendUrl: result.backendUrl || 'http://localhost:8787', provider: selectedProvider, customBaseUrl: result.customBaseUrl || '',
+        provider: selectedProvider, customBaseUrl: result.customBaseUrl || '',
         ollamaUrl: result.ollamaUrl || 'http://localhost:11434',
         ollamaKeepAlive: result.ollamaKeepAlive || '2m',
-        backendHealthy: result.backendHealthy !== false,
       });
       setProviderModelMemory(memory);
       setLoading(false);
@@ -464,7 +452,6 @@ const Popup = () => {
 
       <div className="ai-card">
         <div className="ai-card-left"><strong>AI Engine</strong><span>{selectedProvider?.name || 'OpenAI'} · {settings.model}</span></div>
-        <span className={`backend-dot ${settings.backendHealthy ? 'ok' : 'err'}`} title={settings.backendHealthy ? 'Backend connected' : 'Backend offline'} />
       </div>
 
       <hr className="divider" />
