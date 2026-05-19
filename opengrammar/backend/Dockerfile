@@ -14,7 +14,10 @@ WORKDIR /app
 COPY package.json package-lock.json tsconfig.json ./
 RUN npm ci
 COPY src/ ./src/
-COPY server-node.ts ./
+# server.ts is the real Node entrypoint: it serves the full fork app
+# (src/index.ts: /correct, /rewrite, /rephrase, Ollama mgmt, Abacus).
+# NOT server-node.ts, which is a stripped stub missing the LLM routes.
+COPY server.ts ./
 # Blocking typecheck — a type error fails the build (source passes clean today).
 RUN npx tsc --noEmit
 
@@ -45,7 +48,7 @@ RUN apk add --no-cache dumb-init
 
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder   /app/src          ./src
-COPY --from=builder   /app/server-node.ts ./
+COPY --from=builder   /app/server.ts    ./
 COPY package.json tsconfig.json ./
 
 # Non-root user
@@ -59,4 +62,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8787/health || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "--import", "tsx/esm", "server-node.ts"]
+CMD ["node", "--import", "tsx/esm", "server.ts"]
