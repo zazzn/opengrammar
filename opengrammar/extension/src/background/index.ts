@@ -2,38 +2,27 @@ import type {
   AnalysisContext,
   AnalyticsEventType,
   AnalyticsSummary,
-  AnalyzeRequest,
   AnalyzeResponse,
   AutocompleteRequest,
   AutocompleteResponse,
   EditorContext,
   LLMProvider,
   RewriteContext,
-  RewriteRequest,
   RewriteResponse,
   Issue,
 } from '../types';
 import { harperLint, warmHarper } from './harperEngine';
 import { getApiKey } from '../shared/apiKeyStore';
+import { PROVIDERS } from '../types';
+import {
+  chatCompletion,
+  listModels,
+  ollamaKeepAliveParam,
+  ollamaStatus,
+  ollamaUnload as ollamaUnloadDirect,
+  resolveBaseUrl,
+} from './llmClient';
 
-// Default backend URL
-const DEFAULT_BACKEND_URL = 'http://localhost:8787';
-
-/** Normalize an Ollama server URL to its OpenAI-compatible /v1 base. */
-function ollamaV1(url?: string): string {
-  const b = (url || 'http://localhost:11434').trim().replace(/\/+$/, '');
-  return /\/v1$/.test(b) ? b : `${b}/v1`;
-}
-
-/** The base URL the LLM provider should use, given the selected provider. */
-function providerBaseUrl(
-  provider: string | undefined,
-  customBaseUrl?: string,
-  ollamaUrl?: string,
-): string | undefined {
-  if (provider === 'ollama') return ollamaV1(ollamaUrl);
-  return customBaseUrl;
-}
 const REWRITE_PAGE_PATH = 'src/rewrite/index.html';
 const STATS_PAGE_PATH = 'src/stats/index.html';
 const DEFAULT_PROVIDER = 'openai';
@@ -81,6 +70,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.type === 'REWRITE_TEXT') {
     handleRewrite(request.text, request.tone, sendResponse);
+    return true;
+  }
+
+  if (request.type === 'REPHRASE_TEXT') {
+    rephraseText(request.sentence, request.goal).then((r) => sendResponse(r));
     return true;
   }
 
@@ -168,8 +162,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.type === 'GET_PROVIDERS') {
-    getProviders().then((providers) => sendResponse({ providers }));
-    return true;
+    sendResponse({ providers: getProviders() });
+    return false;
   }
 
   if (request.type === 'GET_MODELS') {
@@ -188,18 +182,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     getOllamaStatus(request.baseUrl, request.model, request.probe).then((s) =>
       sendResponse(s),
     );
-    return true;
-  }
-
-  if (request.type === 'GET_BACKEND_URL') {
-    getBackendUrl().then((url) => sendResponse({ url }));
-    return true;
-  }
-
-  if (request.type === 'SET_BACKEND_URL') {
-    chrome.storage.sync.set({ backendUrl: request.url }, () => {
-      sendResponse({ success: true });
-    });
     return true;
   }
 
@@ -276,27 +258,10 @@ async function handleGrammarCheck(
   sendResponse: (response: any) => void,
 ) {
   try {
-    const apiKey = await getApiKey();
-    const {
-      model,
-      enabled,
-      ignoredIssues,
-      dictionary,
-      backendUrl,
-      provider,
-      customBaseUrl,
-      ollamaUrl,
-      disabledModules,
-    } = await chrome.storage.sync.get([
-      'model',
+    const { enabled, ignoredIssues, dictionary } = await chrome.storage.sync.get([
       'enabled',
       'ignoredIssues',
       'dictionary',
-      'backendUrl',
-      'provider',
-      'customBaseUrl',
-      'ollamaUrl',
-      'disabledModules',
     ]);
 
     if (enabled === false) {
@@ -307,10 +272,10 @@ async function handleGrammarCheck(
       return;
     }
 
-    // Inline tier: Harper local engine. Instant, on-device, mechanical.
-    // The grammar/tone button (CORRECT_TEXT → /correct) is a separate path and
-    // is unaffected. Only if Harper itself fails to init do we fall through to
-    // the legacy backend /analyze pipeline below.
+    // Inline tier: Harper local engine. Instant, on-device, mechanical, fully
+    // offline — no backend. The grammar/tone button (CORRECT_TEXT) is the only
+    // LLM path and is separate. If Harper itself fails to init we return no
+    // issues (the legacy rule-engine fallback was removed with the backend).
     try {
       const t0 = Date.now();
       const harperIssues = await harperLint(text);
@@ -340,61 +305,13 @@ async function handleGrammarCheck(
           provider: 'harper',
         },
       });
-      return;
     } catch (harperError) {
-      console.warn('[harper] lint failed, falling back to backend:', harperError);
-    }
-
-    const baseUrl = backendUrl || DEFAULT_BACKEND_URL;
-
-    const requestBody: AnalyzeRequest = {
-      text,
-      apiKey,
-      model,
-      provider: provider as LLMProvider,
-      baseUrl: providerBaseUrl(provider, customBaseUrl, ollamaUrl),
-      ignoredIssues: ignoredIssues || [],
-      dictionary: dictionary || [],
-      context,
-      disabledModules: disabledModules || [],
-    };
-
-    const response = await fetch(`${baseUrl}/analyze`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(`Backend error: ${errorData.error || response.statusText}`);
-    }
-
-    const data: AnalyzeResponse = await response.json();
-
-    data.issues = filterIssues(data.issues, ignoredIssues || [], dictionary || []);
-
-    await trackAnalyticsEvent('analysis_runs', {
-      count: 1,
-      domain: context?.domain,
-      provider: provider || 'rule-only',
-    });
-
-    if (data.issues.length > 0) {
-      await trackAnalyticsEvent('issues_found', {
-        count: data.issues.length,
-        domain: context?.domain,
-        provider: provider || 'rule-only',
+      console.warn('[harper] lint failed; returning no issues:', harperError);
+      sendResponse({
+        issues: [],
+        metadata: { textLength: text.length, issuesCount: 0, processingTimeMs: 0 },
       });
     }
-
-    // D1: Update badge count after analysis
-    const issueCount = data.issues?.length || 0;
-    void updateBadge(issueCount, undefined);
-
-    sendResponse(data);
   } catch (error) {
     console.error('Grammar check failed:', error);
     sendResponse({
@@ -411,10 +328,9 @@ async function handleAutocomplete(
 ) {
   try {
     const apiKey = await getApiKey();
-    const { model, backendUrl, provider, customBaseUrl, ollamaUrl, autocompleteEnabled } =
+    const { model, provider, customBaseUrl, ollamaUrl, autocompleteEnabled } =
       await chrome.storage.sync.get([
         'model',
-        'backendUrl',
         'provider',
         'customBaseUrl',
         'ollamaUrl',
@@ -432,24 +348,22 @@ async function handleAutocomplete(
       return;
     }
 
-    const baseUrl = backendUrl || DEFAULT_BACKEND_URL;
-    const requestBody: AutocompleteRequest = {
-      text: request.text,
-      cursor: request.cursor,
-      apiKey,
-      model,
-      provider: (provider || 'openai') as LLMProvider,
-      baseUrl: providerBaseUrl(provider, customBaseUrl, ollamaUrl),
-      context: request.context,
-    };
+    const text = request.text;
+    const cursor = Math.max(0, Math.min(request.cursor ?? text.length, text.length));
+    const providerId = (provider || 'openai') as LLMProvider;
 
-    const response = await fetch(`${baseUrl}/autocomplete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
-    });
-
-    const data: AutocompleteResponse = await response.json();
+    const data: AutocompleteResponse =
+      apiKey || providerId === 'ollama'
+        ? await getLlmAutocomplete(
+            text,
+            cursor,
+            apiKey,
+            model,
+            providerId,
+            resolveBaseUrl(providerId, customBaseUrl, ollamaUrl),
+            request.context,
+          )
+        : getHeuristicAutocomplete(text, cursor);
 
     if (data.suggestion) {
       await trackAnalyticsEvent('autocomplete_shown', {
@@ -472,45 +386,141 @@ async function handleAutocomplete(
   }
 }
 
+// Ported verbatim from backend/src/index.ts (getLlmAutocomplete) so the
+// next-word suggestion behaviour is unchanged now the call is client-side.
+async function getLlmAutocomplete(
+  text: string,
+  cursor: number,
+  apiKey: string,
+  model: string | undefined,
+  provider: LLMProvider,
+  baseURL: string,
+  context?: AnalysisContext,
+): Promise<AutocompleteResponse> {
+  const prefix = text.slice(0, cursor);
+  const suffix = text.slice(cursor);
+
+  const content = await chatCompletion({
+    apiKey,
+    baseURL,
+    model: model || 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content:
+          'You are a writing assistant. Predict the next short continuation for the user. Return ONLY JSON with keys suggestion and confidence. Keep suggestion under 12 words and do not repeat the existing text.',
+      },
+      {
+        role: 'user',
+        content: JSON.stringify({
+          prefix: prefix.slice(-400),
+          suffix: suffix.slice(0, 120),
+          context,
+        }),
+      },
+    ],
+    temperature: 0.5,
+    maxTokens: 80,
+    responseFormat: { type: 'json_object' },
+  });
+
+  const raw = content || '{"suggestion":"","confidence":0.5}';
+  const parsed = JSON.parse(raw.replace(/^```json\s*/, '').replace(/\s*```$/, ''));
+
+  return {
+    suggestion: typeof parsed.suggestion === 'string' ? parsed.suggestion.trim() : '',
+    confidence:
+      typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0.72,
+    replaceStart: cursor,
+    replaceEnd: cursor,
+    source: 'llm',
+  };
+}
+
+// Ported verbatim from backend/src/index.ts (getHeuristicAutocomplete).
+function getHeuristicAutocomplete(text: string, cursor: number): AutocompleteResponse {
+  const prefix = text.slice(0, cursor);
+  const trimmed = prefix.trimEnd();
+  const lower = trimmed.toLowerCase();
+
+  const patternSuggestions: Array<{ pattern: RegExp; suggestion: string }> = [
+    { pattern: /thank you for$/i, suggestion: ' your time.' },
+    { pattern: /i look forward to$/i, suggestion: ' hearing from you.' },
+    { pattern: /please let me know if$/i, suggestion: ' you have any questions.' },
+    { pattern: /in conclusion[,]?$/i, suggestion: ' this approach provides a stronger outcome.' },
+    { pattern: /for example[,]?$/i, suggestion: ' this can improve clarity and consistency.' },
+    { pattern: /i hope you are$/i, suggestion: ' doing well.' },
+  ];
+
+  for (const entry of patternSuggestions) {
+    if (entry.pattern.test(lower)) {
+      return {
+        suggestion: entry.suggestion,
+        confidence: 0.66,
+        replaceStart: cursor,
+        replaceEnd: cursor,
+        source: 'heuristic',
+      };
+    }
+  }
+
+  const endsWithSentence = /[.!?]$/.test(trimmed);
+  return {
+    suggestion: endsWithSentence ? ' This helps keep the writing clear.' : '',
+    confidence: endsWithSentence ? 0.42 : 0,
+    replaceStart: cursor,
+    replaceEnd: cursor,
+    source: 'heuristic',
+  };
+}
+
 async function handleRewrite(text: string, tone: string, sendResponse: (response: any) => void) {
   try {
+    if (!text || !tone) {
+      sendResponse({ error: 'Text and tone are required' });
+      return;
+    }
     const apiKey = await getApiKey();
-    const { model, backendUrl, provider, customBaseUrl, ollamaUrl, ollamaKeepAlive } =
+    const { model, provider, customBaseUrl, ollamaUrl, ollamaKeepAlive } =
       await chrome.storage.sync.get([
         'model',
-        'backendUrl',
         'provider',
         'customBaseUrl',
         'ollamaUrl',
         'ollamaKeepAlive',
       ]);
 
-    const baseUrl = backendUrl || DEFAULT_BACKEND_URL;
-
-    const requestBody: RewriteRequest = {
-      text,
-      tone: tone as any,
-      apiKey,
-      model,
-      provider: provider as LLMProvider,
-      baseUrl: providerBaseUrl(provider, customBaseUrl, ollamaUrl),
-      keepAlive: ollamaKeepAlive,
+    // Tone instructions ported verbatim from backend/src/index.ts (/rewrite).
+    const toneInstructions: Record<string, string> = {
+      polish:
+        'Lightly polish the wording for clarity and flow. Do NOT change the meaning, facts, or overall tone, and keep the length similar',
+      formal: 'Make the text more formal and professional',
+      casual: 'Make the text more casual and conversational',
+      professional: 'Make the text more professional and business-appropriate',
+      friendly: 'Make the text friendlier and warmer',
+      concise: 'Make the text more concise and direct',
+      detailed: 'Make the text more detailed and elaborate',
+      persuasive: 'Make the text more persuasive and compelling',
+      neutral: 'Keep the text neutral and objective',
     };
 
-    const response = await fetch(`${baseUrl}/rewrite`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
+    const rewritten = await chatCompletion({
+      apiKey,
+      baseURL: resolveBaseUrl(provider, customBaseUrl, ollamaUrl),
+      model: model || 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a writing assistant. ${toneInstructions[tone] || 'Improve the writing'}. Return ONLY the rewritten text, no explanations.`,
+        },
+        { role: 'user', content: text },
+      ],
+      temperature: 0.7,
+      maxTokens: 1000,
+      extraBody: ollamaKeepAliveParam(provider, ollamaKeepAlive),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(`Backend error: ${errorData.error || response.statusText}`);
-    }
-
-    const data: RewriteResponse = await response.json();
+    const data: RewriteResponse = { original: text, rewritten: rewritten || text, tone };
     sendResponse(data);
   } catch (error) {
     console.error('Rewrite failed:', error);
@@ -521,106 +531,181 @@ async function handleRewrite(text: string, tone: string, sendResponse: (response
   }
 }
 
-async function getProviders() {
-  try {
-    const backendUrl = await getBackendUrl();
-    const response = await fetch(`${backendUrl}/providers`);
-    if (!response.ok) throw new Error('Failed to fetch providers');
-    const data = await response.json();
-    return data.providers || [];
-  } catch (error) {
-    console.error('Failed to fetch providers:', error);
-    return [];
-  }
-}
+// Multi-suggestion rephrase (the floating bubble's "alternatives" panel).
+// SYSTEM_PROMPT / goal descriptions ported verbatim from the former backend
+// Rephraser (backend/src/rephraser.ts). Returns the same shape the bubble
+// rendering expects: { suggestions:[{text,label}], explanation, bestMatch }.
+const REPHRASE_GOALS: Record<string, string> = {
+  clarity: 'clearer and easier to understand',
+  formal: 'more formal and professional',
+  concise: 'shorter and more concise (remove filler words)',
+  friendly: 'warmer, friendlier, and more approachable',
+};
+const REPHRASE_SYSTEM_PROMPT = `You are an expert writing assistant. Rewrite the given sentence in exactly 3 different ways.
 
-async function getModels(provider: string, apiKey?: string, baseUrl?: string) {
-  try {
-    const backendUrl = await getBackendUrl();
-    const response = await fetch(`${backendUrl}/models`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider, apiKey, baseUrl }),
-    });
-    if (!response.ok) throw new Error('Failed to fetch models');
-    const data = await response.json();
-    return data.models || [];
-  } catch (error) {
-    console.error('Failed to fetch models:', error);
-    return [];
-  }
-}
+Rules:
+1. Keep the core meaning intact
+2. Apply the requested goal (clarity/formal/concise/friendly)
+3. Each rewrite must be meaningfully different from the others
+4. Keep the same approximate length unless goal is "concise"
+5. Return ONLY a JSON object — no preamble, no markdown
 
-async function correctText(
-  text: string,
-): Promise<{ original: string; corrected: string; llm: boolean }> {
+Format:
+{
+  "suggestions": [
+    { "text": "First rewrite", "label": "Option 1" },
+    { "text": "Second rewrite", "label": "Option 2" },
+    { "text": "Third rewrite", "label": "Option 3" }
+  ],
+  "explanation": "One sentence explaining what was improved",
+  "bestMatch": 0
+}`;
+
+async function rephraseText(
+  sentence: string,
+  goal: string,
+): Promise<{
+  suggestions: { text: string; label: string }[];
+  explanation: string;
+  bestMatch: number;
+}> {
   try {
+    if (!sentence) return { suggestions: [], explanation: '', bestMatch: 0 };
     const apiKey = await getApiKey();
-    const { model, provider, customBaseUrl, ollamaUrl, backendUrl, ollamaKeepAlive } =
+    const { model, provider, customBaseUrl, ollamaUrl, ollamaKeepAlive } =
       await chrome.storage.sync.get([
         'model',
         'provider',
         'customBaseUrl',
         'ollamaUrl',
-        'backendUrl',
         'ollamaKeepAlive',
       ]);
-    const base = backendUrl || DEFAULT_BACKEND_URL;
-    const r = await fetch(`${base}/correct`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text,
-        apiKey,
-        model,
-        provider,
-        baseUrl: providerBaseUrl(provider, customBaseUrl, ollamaUrl),
-        keepAlive: ollamaKeepAlive,
-      }),
+    if (!apiKey && provider !== 'ollama') {
+      return {
+        suggestions: [],
+        explanation: 'Rephrase failed. Please check your API key and try again.',
+        bestMatch: 0,
+      };
+    }
+    const adjective = REPHRASE_GOALS[goal] || REPHRASE_GOALS.clarity;
+    const raw = await chatCompletion({
+      apiKey,
+      baseURL: resolveBaseUrl(provider, customBaseUrl, ollamaUrl),
+      model: model || 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: REPHRASE_SYSTEM_PROMPT },
+        {
+          role: 'user',
+          content: `Rewrite this sentence in 3 ways that are ${adjective}:\n\n"${sentence}"`,
+        },
+      ],
+      temperature: 0.7,
+      maxTokens: 512,
+      responseFormat: { type: 'json_object' },
+      extraBody: ollamaKeepAliveParam(provider, ollamaKeepAlive),
     });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return await r.json();
-  } catch {
+    const cleaned = (raw || '{}').replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    const parsed = JSON.parse(cleaned);
+    return {
+      suggestions: (parsed.suggestions || []).map((s: { text?: string; label?: string }) => ({
+        text: s.text || String(s),
+        label: s.label || 'Option',
+      })),
+      explanation: parsed.explanation || '',
+      bestMatch: typeof parsed.bestMatch === 'number' ? parsed.bestMatch : 0,
+    };
+  } catch (error) {
+    console.error('Rephrase error:', error);
+    return {
+      suggestions: [],
+      explanation: 'Rephrase failed. Please check your API key and try again.',
+      bestMatch: 0,
+    };
+  }
+}
+
+function getProviders() {
+  return PROVIDERS;
+}
+
+// Mirrors the former backend /models: start from the curated static list,
+// refine with the provider's live /models when a key (or Ollama) is present.
+async function getModels(provider: string, apiKey?: string, baseUrl?: string) {
+  const staticModels = PROVIDERS.find((p) => p.id === provider)?.models || [];
+  if ((apiKey && apiKey !== 'ollama') || provider === 'ollama') {
+    const live = await listModels(provider, apiKey, baseUrl);
+    if (live.length > 0) return live;
+  }
+  return staticModels;
+}
+
+// Whole-text correctness pass. Prompt/params ported verbatim from the former
+// backend /correct so output is identical. No key (and not Ollama) → signal
+// the content script to use its safe local fallback (llm:false); any error
+// returns the original unchanged so a card never garbles.
+async function correctText(
+  text: string,
+): Promise<{ original: string; corrected: string; llm: boolean }> {
+  try {
+    const apiKey = await getApiKey();
+    const { model, provider, customBaseUrl, ollamaUrl, ollamaKeepAlive } =
+      await chrome.storage.sync.get([
+        'model',
+        'provider',
+        'customBaseUrl',
+        'ollamaUrl',
+        'ollamaKeepAlive',
+      ]);
+
+    if (!apiKey && provider !== 'ollama') {
+      return { original: text, corrected: text, llm: false };
+    }
+
+    const corrected = await chatCompletion({
+      apiKey,
+      baseURL: resolveBaseUrl(provider, customBaseUrl, ollamaUrl),
+      model: model || 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a meticulous proofreader. Correct ONLY spelling, ' +
+            'grammar, punctuation, and capitalization errors. Do NOT rephrase, ' +
+            'reword, change tone/style, or add or remove information. Preserve ' +
+            'the original wording wherever it is already correct. Keep line ' +
+            'breaks. Leave URLs, email addresses, file paths, code, @mentions, ' +
+            'and #hashtags EXACTLY as written — never alter or "fix" them. ' +
+            'If a sentence is already correct, return it unchanged. ' +
+            'Return ONLY the corrected text, with no preamble, quotes, or notes.',
+        },
+        { role: 'user', content: text },
+      ],
+      temperature: 0.1,
+      maxTokens: Math.min(4000, Math.ceil(text.length / 2) + 600),
+      extraBody: ollamaKeepAliveParam(provider, ollamaKeepAlive),
+    });
+    return { original: text, corrected: corrected.trim() || text, llm: true };
+  } catch (error) {
+    console.error('Correct error:', error);
     return { original: text, corrected: text, llm: false };
   }
 }
 
 async function getOllamaStatus(baseUrl?: string, model?: string, probe?: boolean) {
-  try {
-    const backendUrl = await getBackendUrl();
-    const response = await fetch(`${backendUrl}/ollama-status`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ baseUrl, model, probe }),
-    });
-    if (!response.ok) throw new Error('status request failed');
-    return await response.json();
-  } catch (error) {
-    return { reachable: false, installed: [], running: [], modelReady: false };
-  }
-}
-
-async function getBackendUrl(): Promise<string> {
-  const result = await chrome.storage.sync.get('backendUrl');
-  return result.backendUrl || DEFAULT_BACKEND_URL;
+  return ollamaStatus(baseUrl, model, probe);
 }
 
 /**
- * Ask the backend to explicitly unload the Ollama model so memory/VRAM
- * returns to the system. Fired when the user switches away from Ollama or
- * disables the extension (the idle keep_alive handles the in-use case).
- * Best-effort; failures are silent (Ollama may not be running).
+ * Explicitly unload the Ollama model so memory/VRAM returns to the system.
+ * Fired when the user switches away from Ollama or disables the extension
+ * (the idle keep_alive handles the in-use case). Best-effort; silent on
+ * failure (Ollama may simply not be reachable).
  */
 async function unloadOllama(ollamaUrl?: string, model?: string): Promise<void> {
   try {
-    const base = await getBackendUrl();
-    await fetch(`${base}/ollama-unload`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ baseUrl: ollamaUrl, model }),
-    });
+    await ollamaUnloadDirect(ollamaUrl, model);
   } catch {
-    /* Ollama/backend not reachable — nothing to reclaim. */
+    /* Ollama not reachable — nothing to reclaim. */
   }
 }
 
@@ -647,20 +732,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 async function initializeStoredDefaults(): Promise<void> {
-  const existing = await chrome.storage.sync.get([
-    'enabled',
-    'provider',
-    'model',
-    'backendUrl',
-    'backendAutoDetected',
-  ]);
+  const existing = await chrome.storage.sync.get(['enabled', 'provider', 'model']);
 
   await chrome.storage.sync.set({
     enabled: existing.enabled !== false,
     provider: existing.provider || DEFAULT_PROVIDER,
     model: existing.model || DEFAULT_MODEL,
-    backendUrl: existing.backendUrl || DEFAULT_BACKEND_URL,
-    backendAutoDetected: existing.backendAutoDetected !== false,
   });
 }
 
@@ -831,32 +908,6 @@ function getDomainFromUrl(url?: string): string | undefined {
     return undefined;
   }
 }
-
-// Health check on extension load
-async function checkBackendHealth() {
-  try {
-    const backendUrl = await getBackendUrl();
-    const healthUrl = `${backendUrl}/health`;
-
-    const response = await fetch(healthUrl, { method: 'GET' });
-    if (response.ok) {
-      const health = await response.json();
-      console.log('OpenGrammar backend health:', health);
-      chrome.storage.sync.set({ backendHealthy: true });
-    } else {
-      throw new Error('Health check failed');
-    }
-  } catch (error) {
-    console.warn('Backend health check failed:', error);
-    chrome.storage.sync.set({ backendHealthy: false });
-  }
-}
-
-// Run health check on startup
-checkBackendHealth();
-
-// Periodic health check every 5 minutes
-setInterval(checkBackendHealth, 5 * 60 * 1000);
 
 // ─── D1: Badge ───────────────────────────────────────────────────────────────
 

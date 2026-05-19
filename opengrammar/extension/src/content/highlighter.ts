@@ -934,15 +934,10 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
 
     try {
       const stored = await new Promise<Record<string, string>>((res) =>
-        chrome.storage.sync.get(['provider', 'model', 'backendUrl', 'customBaseUrl', 'ollamaUrl'], (r) => res(r as Record<string, string>))
+        chrome.storage.sync.get(['provider'], (r) => res(r as Record<string, string>))
       );
-      const apiKey    = await getApiKey();
-      const provider  = stored.provider  || 'groq';
-      const model     = stored.model     || '';
-      const backendUrl = stored.backendUrl || 'http://localhost:8787';
-      const llmBaseUrl = provider === 'ollama'
-        ? ((stored.ollamaUrl || 'http://localhost:11434').trim().replace(/\/+$/, '').replace(/\/v1$/, '') + '/v1')
-        : stored.customBaseUrl || undefined;
+      const apiKey   = await getApiKey();
+      const provider = stored.provider || 'openai';
 
       if (!apiKey && provider !== 'ollama') {
         content.innerHTML = `
@@ -955,15 +950,13 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
         return;
       }
 
-      const res = await fetch(`${backendUrl}/rephrase`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sentence: issue.original, goal, apiKey, provider, model, baseUrl: llmBaseUrl }),
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: { suggestions?: { text: string; label: string }[]; explanation?: string } = await res.json();
-      const suggestions = data.suggestions || [];
+      const data: { suggestions?: { text: string; label: string }[]; explanation?: string } =
+        await chrome.runtime.sendMessage({
+          type: 'REPHRASE_TEXT',
+          sentence: issue.original,
+          goal,
+        });
+      const suggestions = data?.suggestions || [];
 
       if (suggestions.length === 0) {
         content.innerHTML = `

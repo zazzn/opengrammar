@@ -97,9 +97,9 @@ function initialize() {
   // Check for already focused elements on page load
   setTimeout(checkExistingFocusedElement, 500);
 
-  // Verify connection to background script
+  // Verify connection to background script (no backend — direct provider model)
   try {
-    chrome.runtime.sendMessage({ type: 'GET_BACKEND_URL' }, (response) => {
+    chrome.runtime.sendMessage({ type: 'GET_PROVIDERS' }, (response) => {
       if (chrome.runtime.lastError) {
         if (chrome.runtime.lastError.message?.includes('context invalidated')) {
           isContextInvalidated = true;
@@ -109,7 +109,10 @@ function initialize() {
           chrome.runtime.lastError.message,
         );
       } else {
-        console.log('✅ [OpenGrammar] Connected to background script. Backend URL:', response?.url);
+        console.log(
+          '✅ [OpenGrammar] Connected to background script.',
+          response?.providers?.length ? `${response.providers.length} providers` : '',
+        );
       }
     });
   } catch (e) {
@@ -520,7 +523,7 @@ const checkGrammar = async (element: HTMLElement) => {
 
     console.error('[OpenGrammar] Grammar check failed:', err);
     showNotification(
-      'Cannot connect to grammar service. Make sure the backend is running.',
+      'Grammar check failed. Try reloading the page.',
       'error',
     );
   }
