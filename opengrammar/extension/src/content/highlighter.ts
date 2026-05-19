@@ -1,6 +1,6 @@
 import type { IgnoredIssue, Issue } from '../types';
 import { buildTextMap, offsetToRange, resolveInString, resolveSpan } from './textMap';
-import { diffWords, renderInlineDiffHTML, summarizeChange } from './diff';
+import { diffWords, renderInlineDiffHTML, renderOriginalWithChangesHTML, summarizeChange } from './diff';
 import { applyFix } from './editorAdapter';
 import { stripQuotedBBCode } from './textExtractor';
 import { getApiKey } from '../shared/apiKeyStore';
@@ -1635,27 +1635,30 @@ function showSentenceReview(
       </div>` : ''}
     </div>
 
-    <!-- Original sentence with errors marked inline -->
+    <!-- Original sentence. In mechanical mode the words that will change
+         get a whole-word amber highlight so the user sees what's flagged
+         at a glance. In tone mode (a whole-sentence LLM rewrite) the
+         highlights are removed — token-level diff against a re-written
+         sentence is noise, not signal. -->
     <div style="padding: 11px 14px 9px;">
       <div style="font-size:10px; color:#8e8e93; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:5px;">Original sentence</div>
-      <div style="
+      <div class="og-sr-original-text" style="
         font-size:13px; color:#3c3c43; line-height:1.6; word-break:break-word;
         background:#fff7f7; border:1px solid #ffe0e0; border-radius:7px; padding:8px 10px;
-      ">${originalHtml}</div>
+      ">${renderOriginalWithChangesHTML(origText, correctedText)}</div>
     </div>
 
-    <!-- Corrected sentence — the single preview surface. Renders with an
-         inline diff (red-strike removed, blue-bold added) so the user sees
-         what changed without expanding anything. Picking a tone swaps
-         this content in place; the footer's Original button restores the
-         mechanical Harper correction. -->
+    <!-- Corrected sentence — the single preview surface. Always plain
+         text; the "what changed" signal lives on the Original box above
+         as whole-word highlights (mechanical) or is omitted entirely (a
+         tone rewrite is a new sentence recommendation, not a diff). -->
     <div class="og-sr-accept-box" style="padding: 0 14px 10px; cursor:pointer;">
       <div class="og-sr-corrected-label" style="font-size:10px; color:#8e8e93; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:5px;">Corrected sentence</div>
       <div class="og-sr-corrected-text" style="
         font-size:13px; color:#1c1c1e; line-height:1.6; word-break:break-word; font-weight:500;
         background:#EEF2FF; border:1px solid #C7D2FE; border-radius:7px; padding:8px 10px;
         transition:background 0.12s;
-      ">${renderInlineDiffHTML(origText, correctedText)}</div>
+      ">${escapeHtml(correctedText)}</div>
     </div>
 
     <!-- Per-change breakdown (diff vs original — also updates with tone) -->
@@ -1734,24 +1737,35 @@ function showSentenceReview(
   let currentText = corrText;
   let currentLabel: string | null = null;
 
-  const labelEl   = card.querySelector('.og-sr-corrected-label') as HTMLElement | null;
-  const textEl    = card.querySelector('.og-sr-corrected-text') as HTMLElement | null;
-  const changesEl = card.querySelector('.og-sr-changes') as HTMLElement | null;
+  const labelEl    = card.querySelector('.og-sr-corrected-label') as HTMLElement | null;
+  const textEl     = card.querySelector('.og-sr-corrected-text') as HTMLElement | null;
+  const originalEl = card.querySelector('.og-sr-original-text') as HTMLElement | null;
+  const changesEl  = card.querySelector('.og-sr-changes') as HTMLElement | null;
 
   const setBusy = (busy: boolean) => {
     if (textEl) textEl.style.opacity = busy ? '0.55' : '1';
   };
 
   const refreshCorrectedBox = () => {
+    const inToneMode = currentLabel !== null;
     if (labelEl) {
-      labelEl.textContent = currentLabel
+      labelEl.textContent = inToneMode
         ? `Corrected sentence · ${currentLabel}`
         : 'Corrected sentence';
     }
-    // Inline diff renders straight onto the Corrected sentence so the
-    // changes are obvious at a glance — no need to expand "View the
-    // changes" just to see what shifted.
-    if (textEl) textEl.innerHTML = renderInlineDiffHTML(origText, currentText);
+    // Corrected box is ALWAYS plain text. The "what changed" signal lives
+    // on the Original box (whole-word highlights) in mechanical mode, and
+    // is suppressed entirely in tone mode — a tone rewrite restructures
+    // the sentence, so token-level highlights would be noise.
+    if (textEl) textEl.textContent = currentText;
+    if (originalEl) {
+      originalEl.innerHTML = inToneMode
+        ? escapeHtml(origText)
+        : renderOriginalWithChangesHTML(origText, currentText);
+    }
+    // View-the-changes panel keeps the detailed inline diff for users
+    // who want to inspect every shift; it's hidden behind a click so
+    // its noise stays out of the default view.
     if (changesEl) changesEl.innerHTML = renderInlineDiffHTML(origText, currentText);
     const originalBtn = card.querySelector('.og-sr-original') as HTMLButtonElement | null;
     if (originalBtn) {

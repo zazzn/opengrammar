@@ -144,6 +144,39 @@ export function renderInlineDiffHTML(original: string, suggestion: string): stri
 }
 
 /**
+ * Render the ORIGINAL sentence with WHOLE-WORD highlights on every token
+ * that will be removed or replaced in the suggestion. Used by the sentence
+ * review card to flag what's about to change without the noisy character-
+ * level interleaving that `renderInlineDiffHTML` produces against very
+ * different rewrites. No char-level refinement, no context truncation —
+ * the original text is preserved verbatim so the user can read it as-is.
+ *
+ * Insertions (text in the suggestion that has no counterpart in the
+ * original) are intentionally omitted: this view answers "which parts of
+ * MY sentence are flagged?", not "what would the new sentence look like?"
+ */
+export function renderOriginalWithChangesHTML(original: string, suggestion: string): string {
+  const ops = lcsDiff(tokenize(original), tokenize(suggestion));
+  let html = '';
+  for (const op of ops) {
+    if (op.kind === 'ins') continue;
+    if (op.kind === 'eq') {
+      html += esc(op.text);
+    } else {
+      // del — highlight whole tokens (words and punctuation) that change.
+      const isWhitespace = /^\s+$/.test(op.text);
+      if (isWhitespace) {
+        // Don't paint background on bare whitespace; would look like a gap.
+        html += esc(op.text);
+      } else {
+        html += `<span style="background:#fef3c7;border-radius:3px;padding:0 2px;color:#92400e;border-bottom:1.5px solid #f59e0b;">${esc(op.text)}</span>`;
+      }
+    }
+  }
+  return html;
+}
+
+/**
  * A concise, imperative "what's wrong" headline derived from the diff,
  * so the card leads with the specific fix instead of a grammar lecture.
  * Returns null if no good summary (caller falls back to the rule reason).
