@@ -1833,12 +1833,16 @@ function showSentenceReview(
     const renderPreview = (label: string, proposed: string) => {
       improveStatus.style.display = 'block';
       improveStatus.style.textAlign = 'left';
+      // Inline diff: red-strike for removed text, blue-bold for added,
+      // unchanged tokens are kept neutral — same convention as the small
+      // correction card so the eye learns one pattern.
+      const diffHtml = renderInlineDiffHTML(origText, proposed);
       improveStatus.innerHTML = `
         <div style="font-size:10px;color:#8e8e93;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">
           Preview · ${escapeHtml(label)}
         </div>
-        <div style="font-size:12px;color:#1c1c1e;line-height:1.45;background:#F5F3FF;
-          border:1px solid #DDD6FE;border-radius:6px;padding:7px 9px;white-space:pre-wrap;">${escapeHtml(proposed)}</div>
+        <div style="font-size:12px;color:#1c1c1e;line-height:1.5;background:#F5F3FF;
+          border:1px solid #DDD6FE;border-radius:6px;padding:7px 9px;word-break:break-word;">${diffHtml}</div>
         <div style="display:flex;gap:6px;margin-top:7px;">
           <button class="og-imp-apply" type="button" style="flex:1;padding:6px 8px;background:#4F46E5;
             color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Apply</button>
