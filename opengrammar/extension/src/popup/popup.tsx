@@ -157,6 +157,7 @@ const SettingsPanel = ({
   scannedCount,
   ollamaStatus,
   testOllama,
+  ollamaSwitch,
 }: any) => (
   <div className={`settings-area ${!settings.enabled ? 'muted' : ''}`}>
     <div className="field-group">
@@ -267,7 +268,34 @@ const SettingsPanel = ({
                   ? `${scannedCount} model${scannedCount !== 1 ? 's' : ''} found`
                   : 'No models found — is Ollama running at this URL?'}
             </p>
-            {(() => {
+            {ollamaSwitch?.active ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                {ollamaSwitch.phase === 'error' ? (
+                  <>
+                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#e53935', flexShrink: 0 }} />
+                    <span className="status-text" style={{ flex: 1, color: '#e53935' }}>
+                      {ollamaSwitch.error || 'Switch failed'}
+                    </span>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      style={{ width: 'auto', padding: '3px 9px', fontSize: 12 }}
+                      title="Retry loading the selected model"
+                      onClick={() => testOllama && testOllama()}
+                    >Retry</button>
+                  </>
+                ) : (
+                  <>
+                    <span className="spinner" style={{ width: 13, height: 13, borderWidth: 2, flexShrink: 0 }} />
+                    <span className="status-text" style={{ flex: 1 }}>
+                      {ollamaSwitch.phase === 'unloading'
+                        ? 'Unloading previous model…'
+                        : `Loading ${ollamaSwitch.model}… (${ollamaSwitch.elapsed}s)`}
+                    </span>
+                  </>
+                )}
+              </div>
+            ) : (() => {
               const st = ollamaStatus || {};
               const color = st.testing
                 ? '#f59e0b'
@@ -338,13 +366,71 @@ const Popup = () => {
   const [showAdvanced, setAdvanced]   = useState(false);
   const [issueStats, setIssueStats]   = useState({ grammar: 0, style: 0, clarity: 0, total: 0 });
   const [ollamaStatus, setOllamaStatus] = useState<{ reachable: boolean; running: string[]; modelReady: boolean; testing: boolean }>({ reachable: false, running: [], modelReady: false, testing: false });
+  const [ollamaSwitch, setOllamaSwitch] = useState<{ active: boolean; phase: 'unloading' | 'loading' | 'error'; model: string; elapsed: number; error?: string }>({ active: false, phase: 'loading', model: '', elapsed: 0 });
+  const lastOllamaModel = useRef<string | null>(null);
+  const switchTimer = useRef<number | null>(null);
   const advancedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { loadSettings(); loadProviders(); loadIssueStats(); }, []);
   useEffect(() => { if (settings.provider) loadModels(); }, [settings.provider]);
   useEffect(() => {
-    if (settings.provider === 'ollama' && settings.ollamaUrl) checkOllama(false);
+    if (settings.provider !== 'ollama') {
+      lastOllamaModel.current = null;
+      if (switchTimer.current) { clearInterval(switchTimer.current); switchTimer.current = null; }
+      setOllamaSwitch((s) => (s.active ? { ...s, active: false } : s));
+      return;
+    }
+    if (!settings.ollamaUrl) return;
+    const prev = lastOllamaModel.current;
+    lastOllamaModel.current = settings.model;
+    if (prev && prev !== settings.model) void applyOllamaSwitch(prev, settings.model);
+    else void checkOllama(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.provider, settings.ollamaUrl, settings.model]);
+
+  // Switching Ollama models: evict the old (return VRAM) then force-load
+  // the new, with honest phase + elapsed feedback (Ollama gives no load %).
+  const applyOllamaSwitch = async (oldModel: string, newModel: string) => {
+    if (switchTimer.current) { clearInterval(switchTimer.current); switchTimer.current = null; }
+    const startedAt = Date.now();
+    setOllamaSwitch({ active: true, phase: 'unloading', model: newModel, elapsed: 0 });
+    switchTimer.current = setInterval(() => {
+      setOllamaSwitch((s) =>
+        s.active ? { ...s, elapsed: Math.round((Date.now() - startedAt) / 1000) } : s,
+      );
+    }, 1000) as unknown as number;
+    const baseUrl = ollamaV1(settings.ollamaUrl);
+    const stop = () => {
+      if (switchTimer.current) { clearInterval(switchTimer.current); switchTimer.current = null; }
+    };
+    try {
+      await chrome.runtime.sendMessage({ type: 'OLLAMA_UNLOAD', baseUrl, model: oldModel });
+      setOllamaSwitch((s) => ({ ...s, phase: 'loading' }));
+      const r = await chrome.runtime.sendMessage({
+        type: 'GET_OLLAMA_STATUS',
+        baseUrl,
+        model: newModel,
+        probe: true,
+      });
+      stop();
+      if (r?.modelReady) {
+        setOllamaSwitch({ active: false, phase: 'loading', model: newModel, elapsed: 0 });
+        setOllamaStatus({ reachable: !!r.reachable, running: r.running || [], modelReady: true, testing: false });
+      } else {
+        setOllamaSwitch({
+          active: true,
+          phase: 'error',
+          model: newModel,
+          elapsed: Math.round((Date.now() - startedAt) / 1000),
+          error: r?.error || (r?.reachable ? 'Model failed to load' : 'Ollama server offline'),
+        });
+        setOllamaStatus({ reachable: !!r?.reachable, running: r?.running || [], modelReady: false, testing: false });
+      }
+    } catch {
+      stop();
+      setOllamaSwitch({ active: true, phase: 'error', model: newModel, elapsed: 0, error: 'Switch failed' });
+    }
+  };
 
   const loadSettings = () => {
     chrome.storage.sync.get(['enabled', 'model', 'provider', 'customBaseUrl', 'ollamaUrl', 'ollamaKeepAlive', 'providerModelMemory'], (result) => {
@@ -436,7 +522,7 @@ const Popup = () => {
       <header className="popup-header">
         <div className="brand">
           <div className="brand-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M20 4C15 4 10 7 8 12L4 20l8-4c5-2 8-7 8-12z" fill="white" fillOpacity="0.92"/><path d="M8 12 L4 20" stroke="rgba(255,255,255,0.6)" strokeWidth="1.3" strokeLinecap="round"/><path d="M5 18l2 2 4-5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg></div>
-          <span className="brand-name">Open<span>Grammar</span></span>
+          <span className="brand-name">O<span>Grammer</span></span>
         </div>
         <button className={`status-pill ${settings.enabled ? 'active' : 'paused'}`} onClick={() => saveSettings({ enabled: !settings.enabled })} title={settings.enabled ? 'Click to pause' : 'Click to enable'}>
           <span className="dot" />{settings.enabled ? 'Active' : 'Paused'}
@@ -462,6 +548,7 @@ const Popup = () => {
         showAdvanced={showAdvanced} setAdvanced={setAdvanced} advancedRef={advancedRef}
         scanModels={loadModels} scannedCount={availableModels.length}
         ollamaStatus={ollamaStatus} testOllama={() => checkOllama(true)}
+        ollamaSwitch={ollamaSwitch}
       />
 
       {/* ── Footer ── */}

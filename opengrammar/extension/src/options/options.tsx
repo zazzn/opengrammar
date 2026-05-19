@@ -6,6 +6,7 @@ interface Settings {
   checkAsYouType: boolean;
   showNotifications: boolean;
   autocompleteEnabled: boolean;
+  debugLogging: boolean;
   disabledDomains: string[];
   dictionary: string[];
   ignoredIssues: IgnoredIssue[];
@@ -17,6 +18,10 @@ const elements = {
   checkAsYouType: document.getElementById('checkAsYouType') as HTMLInputElement,
   showNotifications: document.getElementById('showNotifications') as HTMLInputElement,
   autocompleteEnabled: document.getElementById('autocompleteEnabled') as HTMLInputElement,
+  debugLogging: document.getElementById('debugLogging') as HTMLInputElement,
+  copyDebugLog: document.getElementById('copyDebugLog') as HTMLButtonElement,
+  clearDebugLog: document.getElementById('clearDebugLog') as HTMLButtonElement,
+  debugLogStatus: document.getElementById('debugLogStatus') as HTMLElement,
   removeApiKeys: document.getElementById('removeApiKeys') as HTMLButtonElement,
   removeApiKeysStatus: document.getElementById('removeApiKeysStatus') as HTMLElement,
   newDomain: document.getElementById('newDomain') as HTMLInputElement,
@@ -47,6 +52,7 @@ let settings: Settings = {
   checkAsYouType: true,
   showNotifications: true,
   autocompleteEnabled: true,
+  debugLogging: false,
   disabledDomains: [],
   dictionary: [],
   ignoredIssues: [],
@@ -81,6 +87,7 @@ async function loadSettings() {
         'checkAsYouType',
         'showNotifications',
         'autocompleteEnabled',
+        'debugLogging',
         'disabledDomains',
         'dictionary',
         'ignoredIssues',
@@ -91,6 +98,7 @@ async function loadSettings() {
           checkAsYouType: result.checkAsYouType !== false,
           showNotifications: result.showNotifications !== false,
           autocompleteEnabled: result.autocompleteEnabled !== false,
+          debugLogging: result.debugLogging === true,
           disabledDomains: result.disabledDomains || [],
           dictionary: result.dictionary || [],
           ignoredIssues: normalizeIgnoredIssues(result.ignoredIssues),
@@ -101,6 +109,7 @@ async function loadSettings() {
         elements.checkAsYouType.checked = settings.checkAsYouType;
         elements.showNotifications.checked = settings.showNotifications;
         elements.autocompleteEnabled.checked = settings.autocompleteEnabled;
+        elements.debugLogging.checked = settings.debugLogging;
 
         resolve();
       },
@@ -153,6 +162,7 @@ async function saveSettings() {
         checkAsYouType: settings.checkAsYouType,
         showNotifications: settings.showNotifications,
         autocompleteEnabled: settings.autocompleteEnabled,
+        debugLogging: settings.debugLogging,
         disabledDomains: settings.disabledDomains,
         dictionary: settings.dictionary,
         ignoredIssues: settings.ignoredIssues,
@@ -190,6 +200,39 @@ function setupEventListeners() {
     saveSettings();
   });
 
+  // Debug & Tuning
+  elements.debugLogging.addEventListener('change', () => {
+    settings.debugLogging = elements.debugLogging.checked;
+    saveSettings();
+    elements.debugLogStatus.textContent = settings.debugLogging
+      ? 'Logging on — reproduce the issue, then Copy.'
+      : 'Logging off.';
+  });
+
+  elements.copyDebugLog.addEventListener('click', async () => {
+    try {
+      const r = await chrome.runtime.sendMessage({ type: 'GET_DEBUG_LOG' });
+      const text: string = r?.text || '';
+      const count: number = r?.count || 0;
+      if (!count) {
+        elements.debugLogStatus.textContent =
+          'No events captured yet. Enable logging, then use the extension.';
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      elements.debugLogStatus.textContent = `Copied ${count} event(s) to clipboard.`;
+    } catch {
+      elements.debugLogStatus.textContent = 'Copy failed — try again.';
+    }
+    setTimeout(() => { elements.debugLogStatus.textContent = ''; }, 6000);
+  });
+
+  elements.clearDebugLog.addEventListener('click', async () => {
+    if (!confirm('Clear the captured debug log?')) return;
+    await chrome.runtime.sendMessage({ type: 'CLEAR_DEBUG_LOG' });
+    elements.debugLogStatus.textContent = 'Log cleared.';
+    setTimeout(() => { elements.debugLogStatus.textContent = ''; }, 4000);
+  });
 
   // Remove all API keys (encrypted store lives in chrome.storage.local;
   // provider/model/key are configured in the popup, not here).

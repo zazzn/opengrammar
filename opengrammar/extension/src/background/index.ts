@@ -22,6 +22,7 @@ import {
   ollamaUnload as ollamaUnloadDirect,
   resolveBaseUrl,
 } from './llmClient';
+import { clearLog, formatCompact, logEvent } from './debugLog';
 
 const REWRITE_PAGE_PATH = 'src/rewrite/index.html';
 const STATS_PAGE_PATH = 'src/stats/index.html';
@@ -75,6 +76,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.type === 'REPHRASE_TEXT') {
     rephraseText(request.sentence, request.goal).then((r) => sendResponse(r));
+    return true;
+  }
+
+  if (request.type === 'GET_DEBUG_LOG') {
+    formatCompact().then((r) => sendResponse(r));
+    return true;
+  }
+
+  if (request.type === 'CLEAR_DEBUG_LOG') {
+    clearLog().then(() => sendResponse({ success: true }));
     return true;
   }
 
@@ -182,6 +193,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     getOllamaStatus(request.baseUrl, request.model, request.probe).then((s) =>
       sendResponse(s),
     );
+    return true;
+  }
+
+  if (request.type === 'OLLAMA_UNLOAD') {
+    unloadOllama(request.baseUrl, request.model).then(() => sendResponse({ success: true }));
     return true;
   }
 
@@ -296,6 +312,16 @@ async function handleGrammarCheck(
 
       void updateBadge(filtered.length, undefined);
 
+      logEvent({
+        kind: 'harper',
+        meta: `${filtered.length} issue(s) in ${Date.now() - t0}ms`,
+        in: text,
+        out: filtered
+          .slice(0, 12)
+          .map((i) => `${i.type}:"${i.original}"→"${i.suggestion}"`)
+          .join(' · '),
+      });
+
       sendResponse({
         issues: filtered,
         metadata: {
@@ -372,6 +398,15 @@ async function handleAutocomplete(
         provider: provider || 'heuristic',
       });
     }
+
+    logEvent({
+      kind: 'autocomplete',
+      provider,
+      model,
+      meta: data.source,
+      in: text.slice(Math.max(0, cursor - 120), cursor),
+      out: data.suggestion,
+    });
 
     sendResponse(data);
   } catch (error) {
@@ -521,6 +556,7 @@ async function handleRewrite(text: string, tone: string, sendResponse: (response
     });
 
     const data: RewriteResponse = { original: text, rewritten: rewritten || text, tone };
+    logEvent({ kind: 'rewrite', provider, model, meta: tone, in: text, out: data.rewritten });
     sendResponse(data);
   } catch (error) {
     console.error('Rewrite failed:', error);
@@ -606,7 +642,7 @@ async function rephraseText(
     });
     const cleaned = (raw || '{}').replace(/^```json\s*/, '').replace(/\s*```$/, '');
     const parsed = JSON.parse(cleaned);
-    return {
+    const result = {
       suggestions: (parsed.suggestions || []).map((s: { text?: string; label?: string }) => ({
         text: s.text || String(s),
         label: s.label || 'Option',
@@ -614,6 +650,15 @@ async function rephraseText(
       explanation: parsed.explanation || '',
       bestMatch: typeof parsed.bestMatch === 'number' ? parsed.bestMatch : 0,
     };
+    logEvent({
+      kind: 'rephrase',
+      provider,
+      model,
+      meta: goal,
+      in: sentence,
+      out: result.suggestions.map((s: { text: string }) => s.text).join(' | '),
+    });
+    return result;
   } catch (error) {
     console.error('Rephrase error:', error);
     return {
@@ -684,7 +729,16 @@ async function correctText(
       maxTokens: Math.min(4000, Math.ceil(text.length / 2) + 600),
       extraBody: ollamaKeepAliveParam(provider, ollamaKeepAlive),
     });
-    return { original: text, corrected: corrected.trim() || text, llm: true };
+    const out = corrected.trim() || text;
+    logEvent({
+      kind: 'correct',
+      provider,
+      model,
+      meta: out === text ? 'no-change' : 'changed',
+      in: text,
+      out,
+    });
+    return { original: text, corrected: out, llm: true };
   } catch (error) {
     console.error('Correct error:', error);
     return { original: text, corrected: text, llm: false };
