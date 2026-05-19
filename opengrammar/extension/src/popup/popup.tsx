@@ -508,7 +508,10 @@ const Popup = () => {
 
   const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const p = e.target.value;
-    saveSettings({ provider: p, model: providerModelMemory[p] || providers.find((x) => x.id === p)?.models[0] || 'gpt-4o-mini' });
+    // Ollama models are resolved live from /api/tags; don't seed a static
+    // or default name (it would 404 until the live picker fills it in).
+    const fallback = p === 'ollama' ? '' : providers.find((x) => x.id === p)?.models[0] || 'gpt-4o-mini';
+    saveSettings({ provider: p, model: providerModelMemory[p] || fallback });
   };
 
   const writingScore = Math.max(10, 100 - issueStats.grammar * 12 - issueStats.style * 6 - issueStats.clarity * 4);
