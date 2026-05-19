@@ -149,6 +149,18 @@ async function ollamaFetchJson(
 }
 
 /**
+ * Installed Ollama models via the native API (`/api/tags`, same source as
+ * `ollama list`). Authoritative and version-stable, unlike the OpenAI-compat
+ * `/v1/models`. Returns full tagged names; [] if the server is unreachable.
+ */
+export async function ollamaTags(baseUrl?: string): Promise<string[]> {
+  const tags = await ollamaFetchJson(ollamaRoot(baseUrl), '/api/tags', 3000);
+  return ((tags && tags.models) || [])
+    .map((m: { name?: string }) => m?.name)
+    .filter((n: unknown): n is string => typeof n === 'string');
+}
+
+/**
  * Ollama reachability + model readiness via the native API. A model in
  * /api/tags isn't necessarily loaded — /api/ps reports what's running;
  * with model+probe we do a 1-token generate to force-load and confirm.

@@ -19,6 +19,7 @@ import {
   listModels,
   ollamaKeepAliveParam,
   ollamaStatus,
+  ollamaTags,
   ollamaUnload as ollamaUnloadDirect,
   resolveBaseUrl,
 } from './llmClient';
@@ -673,11 +674,17 @@ function getProviders() {
   return PROVIDERS;
 }
 
-// Mirrors the former backend /models: start from the curated static list,
-// refine with the provider's live /models when a key (or Ollama) is present.
+// Live model list. Ollama: the native /api/tags (what `ollama list` uses)
+// — the real installed models, not the curated names. Other providers:
+// their OpenAI-compatible /v1/models when a key is set. The static
+// PROVIDERS list is only a fallback for an unreachable server / no key.
 async function getModels(provider: string, apiKey?: string, baseUrl?: string) {
   const staticModels = PROVIDERS.find((p) => p.id === provider)?.models || [];
-  if ((apiKey && apiKey !== 'ollama') || provider === 'ollama') {
+  if (provider === 'ollama') {
+    const live = await ollamaTags(baseUrl);
+    return live.length > 0 ? live : staticModels;
+  }
+  if (apiKey && apiKey !== 'ollama') {
     const live = await listModels(provider, apiKey, baseUrl);
     if (live.length > 0) return live;
   }
