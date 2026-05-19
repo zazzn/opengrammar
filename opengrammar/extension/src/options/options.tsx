@@ -287,8 +287,14 @@ async function checkBackendHealth() {
   if (!statusIndicator || !statusText) return;
 
   try {
-    const backendUrl = settings.backendUrl || 'http://localhost:8787/analyze';
-    const healthUrl = backendUrl.replace('/analyze', '/health');
+    // Must mirror the background's check (background/index.ts checkBackendHealth:
+    // `${backendUrl}/health`) so this dot and the popup never disagree. The old
+    // `.replace('/analyze','/health')` showed a false "Connected" when the user
+    // appended /analyze (replace hit /health while real calls 404'd on
+    // /analyze/correct). backendUrl is the bare origin; default matches the
+    // background's DEFAULT_BACKEND_URL.
+    const backendUrl = settings.backendUrl || 'http://localhost:8787';
+    const healthUrl = `${backendUrl}/health`;
 
     const response = await fetch(healthUrl, { method: 'GET' });
 
