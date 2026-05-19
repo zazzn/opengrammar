@@ -1644,26 +1644,29 @@ function showSentenceReview(
       ">${originalHtml}</div>
     </div>
 
-    <!-- Corrected sentence (all fixes applied) -->
+    <!-- Corrected sentence — the single preview surface. Picking a tone
+         swaps this content in place; the footer's Original button restores
+         the mechanical Harper correction. -->
     <div class="og-sr-accept-box" style="padding: 0 14px 10px; cursor:pointer;">
-      <div style="font-size:10px; color:#8e8e93; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:5px;">Corrected sentence</div>
-      <div style="
+      <div class="og-sr-corrected-label" style="font-size:10px; color:#8e8e93; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:5px;">Corrected sentence</div>
+      <div class="og-sr-corrected-text" style="
         font-size:13px; color:#1c1c1e; line-height:1.6; word-break:break-word; font-weight:500;
         background:#EEF2FF; border:1px solid #C7D2FE; border-radius:7px; padding:8px 10px;
         transition:background 0.12s;
       ">${escapeHtml(correctedText)}</div>
     </div>
 
-    <!-- Per-change breakdown -->
+    <!-- Per-change breakdown (diff vs original — also updates with tone) -->
     <details style="border-top:1px solid #f0f0f0;">
       <summary style="
         padding:8px 14px; cursor:pointer; font-size:12px; color:#5f6368;
         font-weight:600; list-style:none; user-select:none;
       ">View the change${changeCount !== 1 ? 's' : ''}</summary>
-      <div style="padding:2px 14px 10px;">${changeListHtml}</div>
+      <div class="og-sr-changes" style="padding:2px 14px 10px;">${changeListHtml}</div>
     </details>
 
-    <!-- Improve / tone rewrite (explicit button — never automatic) -->
+    <!-- Improve / tone rewrite — clicking a chip swaps the Corrected box
+         above. No separate preview / Apply / Cancel chrome. -->
     <div class="og-sr-improve" style="border-top:1px solid #f0f0f0; padding:9px 14px;">
       <button class="og-sr-improve-toggle" type="button" style="
         width:100%; display:flex; align-items:center; justify-content:center; gap:6px;
@@ -1675,7 +1678,9 @@ function showSentenceReview(
       <div class="og-sr-improve-status" style="display:none; font-size:11px; color:#8e8e93; margin-top:7px; text-align:center;"></div>
     </div>
 
-    <!-- Action buttons (sticky so they stay reachable when the card scrolls) -->
+    <!-- Action buttons (sticky so they stay reachable when the card scrolls).
+         Original reverts a tone preview back to the mechanical correction;
+         it stays disabled until the user has picked a tone. -->
     <div style="display:flex; border-top:1px solid #f0f0f0; position:sticky; bottom:0; background:#ffffff; z-index:1;">
       ${total > 1 ? `
       <button class="og-sr-fix-all" style="
@@ -1685,12 +1690,20 @@ function showSentenceReview(
         font-size:11px; font-weight:700; line-height:1.35;
         font-family:inherit; transition:background 0.12s;
       ">Fix All<br><span style="font-weight:400; color:#8e8e93;">${totalFixes} sentence${totalFixes !== 1 ? 's' : ''}</span></button>` : ''}
+      <button class="og-sr-original" disabled style="
+        flex:1; padding:11px 8px;
+        background:white; color:#5f6368;
+        border:none; border-right:1px solid #f0f0f0;
+        cursor:not-allowed; opacity:0.4;
+        font-size:12px; font-weight:600;
+        border-radius:0 0 0 ${total > 1 ? '0' : '12px'};
+        font-family:inherit; transition:opacity 0.12s, background 0.12s;
+      " title="Revert to the original correction (undo tone rewrite)">Original</button>
       <button class="og-sr-accept" style="
         flex:2; padding:11px 10px;
         background:#4F46E5; color:white;
         border:none; cursor:pointer;
         font-size:13px; font-weight:600;
-        border-radius:0 0 0 ${total > 1 ? '0' : '12px'};
         font-family:inherit; transition:background 0.12s;
         display:flex; align-items:center; justify-content:center; gap:5px;
       ">
@@ -1713,11 +1726,43 @@ function showSentenceReview(
 
   card.addEventListener('mousedown', (e) => e.preventDefault());
 
+  // currentText is what's shown in the Corrected box and what Accept applies.
+  // Starts as the mechanical Harper correction; a tone chip swaps it; the
+  // Original button restores it.
+  let currentText = corrText;
+  let currentLabel: string | null = null;
+
+  const labelEl   = card.querySelector('.og-sr-corrected-label') as HTMLElement | null;
+  const textEl    = card.querySelector('.og-sr-corrected-text') as HTMLElement | null;
+  const changesEl = card.querySelector('.og-sr-changes') as HTMLElement | null;
+
+  const setBusy = (busy: boolean) => {
+    if (textEl) textEl.style.opacity = busy ? '0.55' : '1';
+  };
+
+  const refreshCorrectedBox = () => {
+    if (labelEl) {
+      labelEl.textContent = currentLabel
+        ? `Corrected sentence · ${currentLabel}`
+        : 'Corrected sentence';
+    }
+    if (textEl) textEl.textContent = currentText;
+    if (changesEl) changesEl.innerHTML = renderInlineDiffHTML(origText, currentText);
+    const originalBtn = card.querySelector('.og-sr-original') as HTMLButtonElement | null;
+    if (originalBtn) {
+      const isOriginal = currentLabel === null;
+      originalBtn.disabled = isOriginal;
+      originalBtn.style.opacity = isOriginal ? '0.4' : '1';
+      originalBtn.style.cursor = isOriginal ? 'not-allowed' : 'pointer';
+    }
+  };
+
   const acceptSentence = () => {
-    const ok = replaceSentence(element, origText, group.start, corrText);
+    const apply = currentText;
+    const ok = replaceSentence(element, origText, group.start, apply);
     // Shift later groups by the length delta so their spans stay anchored.
     if (ok) {
-      const delta = corrText.length - origText.length;
+      const delta = apply.length - origText.length;
       if (delta !== 0) {
         for (let g = idx + 1; g < groups.length; g++) {
           groups[g]!.start += delta;
@@ -1729,6 +1774,22 @@ function showSentenceReview(
     if (groups.length === 0) { hideTooltip(); return; }
     showSentenceReview(allIssues, element, Math.min(idx, groups.length - 1), groups);
   };
+
+  // Original button: revert any tone preview back to the mechanical correction.
+  const originalBtnEl = card.querySelector('.og-sr-original') as HTMLButtonElement | null;
+  if (originalBtnEl) {
+    originalBtnEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (currentLabel === null) return;
+      currentText = corrText;
+      currentLabel = null;
+      refreshCorrectedBox();
+    });
+    originalBtnEl.addEventListener('mouseenter', () => {
+      if (!originalBtnEl.disabled) originalBtnEl.style.background = '#f8f9fa';
+    });
+    originalBtnEl.addEventListener('mouseleave', () => { originalBtnEl.style.background = 'white'; });
+  }
 
   const acceptBox = card.querySelector('.og-sr-accept-box') as HTMLElement | null;
   const correctedInner = acceptBox?.firstElementChild?.nextElementSibling as HTMLElement | undefined;
@@ -1817,12 +1878,12 @@ function showSentenceReview(
     }
 
     let busy = false;
-    let pending: { text: string; label: string } | null = null;
 
-    const resetStatus = () => {
-      pending = null;
-      improveStatus.style.display = 'none';
-      improveStatus.textContent = '';
+    const setStatus = (msg: string) => {
+      if (!msg) { improveStatus.style.display = 'none'; improveStatus.textContent = ''; return; }
+      improveStatus.style.display = 'block';
+      improveStatus.style.textAlign = 'center';
+      improveStatus.textContent = msg;
     };
 
     improveToggle.addEventListener('click', (e) => {
@@ -1830,9 +1891,7 @@ function showSentenceReview(
       const open = improveMenu.style.display !== 'none';
       improveMenu.style.display = open ? 'none' : 'flex';
       improveToggle.textContent = open ? '✦ Improve sentence ▾' : '✦ Improve sentence ▴';
-      if (open) resetStatus();
-      // Reveal the newly opened tone buttons even if the card was already
-      // at its max viewport height before this click.
+      if (open) setStatus('');
       if (!open) {
         requestAnimationFrame(() => improveMenu.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
       }
@@ -1840,47 +1899,9 @@ function showSentenceReview(
     improveToggle.addEventListener('mouseenter', () => { improveToggle.style.background = '#f5f3ff'; });
     improveToggle.addEventListener('mouseleave', () => { improveToggle.style.background = '#fff'; });
 
-    // Show the proposed rewrite and require explicit Apply — nothing changes
-    // until the user confirms. Picking another tone re-previews.
-    const renderPreview = (label: string, proposed: string) => {
-      improveStatus.style.display = 'block';
-      improveStatus.style.textAlign = 'left';
-      // Inline diff: red-strike for removed text, blue-bold for added,
-      // unchanged tokens are kept neutral — same convention as the small
-      // correction card so the eye learns one pattern.
-      const diffHtml = renderInlineDiffHTML(origText, proposed);
-      improveStatus.innerHTML = `
-        <div style="font-size:10px;color:#8e8e93;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">
-          Preview · ${escapeHtml(label)}
-        </div>
-        <div style="font-size:12px;color:#1c1c1e;line-height:1.5;background:#F5F3FF;
-          border:1px solid #DDD6FE;border-radius:6px;padding:7px 9px;word-break:break-word;">${diffHtml}</div>
-        <div style="display:flex;gap:6px;margin-top:7px;">
-          <button class="og-imp-apply" type="button" style="flex:1;padding:6px 8px;background:#4F46E5;
-            color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Apply</button>
-          <button class="og-imp-cancel" type="button" style="flex:1;padding:6px 8px;background:#fff;
-            color:#6b7280;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Cancel</button>
-        </div>
-        <div style="font-size:10px;color:#8e8e93;margin-top:5px;text-align:center;">Pick another tone above to re-preview.</div>
-      `;
-      (improveStatus.querySelector('.og-imp-apply') as HTMLButtonElement)?.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        if (!pending) return;
-        const ok = replaceSentence(element, origText, group.start, pending.text);
-        improveStatus.innerHTML = '';
-        improveStatus.textContent = ok ? 'Applied.' : 'Could not apply here.';
-        if (ok) setTimeout(() => hideTooltip(), 250);
-      });
-      (improveStatus.querySelector('.og-imp-cancel') as HTMLButtonElement)?.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        resetStatus();
-      });
-      // Scroll the Apply/Cancel row into view — without this the preview
-      // can render below the visible portion of a card that was already
-      // pinned to its max height.
-      requestAnimationFrame(() => improveStatus.scrollIntoView({ block: 'end', behavior: 'smooth' }));
-    };
-
+    // Tone chip click: fetch the rewrite and swap the Corrected box content
+    // in place. The footer Original button (handled outside this block) is
+    // what reverts; there is no separate Apply / Cancel step any more.
     improveMenu.addEventListener('click', (e) => {
       e.stopPropagation();
       const chip = (e.target as HTMLElement).closest('[data-tone]') as HTMLElement | null;
@@ -1888,26 +1909,32 @@ function showSentenceReview(
       const tone = chip.dataset.tone!;
       const label = chip.textContent || tone;
       busy = true;
+      setBusy(true);
       improveMenu.style.pointerEvents = 'none';
       improveMenu.style.opacity = '0.5';
-      improveStatus.style.display = 'block';
-      improveStatus.style.textAlign = 'center';
-      improveStatus.textContent = `Rewriting (${label})…`;
+      setStatus(`Rewriting (${label})…`);
       chrome.runtime.sendMessage(
         { type: 'REWRITE_TEXT', text: origText, tone },
         (resp) => {
           busy = false;
+          setBusy(false);
           improveMenu.style.pointerEvents = '';
           improveMenu.style.opacity = '';
           const rewritten = resp && resp.rewritten ? String(resp.rewritten).trim() : '';
           if (!rewritten || rewritten === origText) {
-            pending = null;
-            improveStatus.textContent =
-              resp && resp.error ? 'Rewrite failed — check provider/API key.' : 'No change suggested.';
+            setStatus(resp && resp.error
+              ? 'Rewrite failed — check provider/API key.'
+              : 'No change suggested.');
             return;
           }
-          pending = { text: rewritten, label };
-          renderPreview(label, rewritten);
+          currentText = rewritten;
+          currentLabel = label;
+          refreshCorrectedBox();
+          setStatus('');
+          // Scroll the (now updated) Corrected box back into view so the
+          // user sees the swap.
+          if (textEl) requestAnimationFrame(() =>
+            textEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
         },
       );
     });
