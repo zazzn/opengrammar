@@ -591,3 +591,39 @@ footer {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-tertiary);
 }
+
+/* Ollama GPU model guide */
+.gpu-guide {
+  overflow-x: auto;
+}
+
+.gpu-guide table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.gpu-guide th,
+.gpu-guide td {
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.gpu-guide thead th {
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border);
+}
+
+.gpu-guide tbody tr:hover {
+  background: var(--bg-secondary, rgba(0, 0, 0, 0.03));
+}
+
+.gpu-guide code {
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg-secondary, rgba(0, 0, 0, 0.06));
+}

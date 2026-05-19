@@ -158,6 +158,8 @@ const SettingsPanel = ({
   ollamaStatus,
   testOllama,
   ollamaSwitch,
+  unloadNow,
+  unloadMsg,
 }: any) => (
   <div className={`settings-area ${!settings.enabled ? 'muted' : ''}`}>
     <div className="field-group">
@@ -343,6 +345,22 @@ const SettingsPanel = ({
                 Returns system/VRAM when not in use. Shorter frees memory sooner;
                 longer keeps repeat checks fast.
               </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  style={{ width: 'auto', padding: '4px 10px', fontSize: 12 }}
+                  title="Evict the model from VRAM now (free GPU before gaming / heavy tasks)"
+                  onClick={() => unloadNow && unloadNow()}
+                >Unload now</button>
+                <span className="status-text" style={{ flex: 1 }}>{unloadMsg || ''}</span>
+              </div>
+              <p className="field-hint" style={{ marginTop: 5 }}>
+                Free the GPU before launching a game or other GPU-heavy task.
+                The extension can’t detect a game starting — use this, or a
+                short idle setting above. See Options → “Which model for my
+                GPU?” for sizing.
+              </p>
             </div>
           </div>
         )}
@@ -367,6 +385,7 @@ const Popup = () => {
   const [issueStats, setIssueStats]   = useState({ grammar: 0, style: 0, clarity: 0, total: 0 });
   const [ollamaStatus, setOllamaStatus] = useState<{ reachable: boolean; running: string[]; modelReady: boolean; testing: boolean }>({ reachable: false, running: [], modelReady: false, testing: false });
   const [ollamaSwitch, setOllamaSwitch] = useState<{ active: boolean; phase: 'unloading' | 'loading' | 'error'; model: string; elapsed: number; error?: string }>({ active: false, phase: 'loading', model: '', elapsed: 0 });
+  const [unloadMsg, setUnloadMsg] = useState('');
   const lastOllamaModel = useRef<string | null>(null);
   const switchTimer = useRef<number | null>(null);
   const advancedRef = useRef<HTMLDivElement>(null);
@@ -492,6 +511,23 @@ const Popup = () => {
     }
   };
 
+  // Manually evict the model from VRAM (free the GPU before gaming etc.).
+  const unloadNow = async () => {
+    setUnloadMsg('Unloading…');
+    try {
+      await chrome.runtime.sendMessage({
+        type: 'OLLAMA_UNLOAD',
+        baseUrl: ollamaV1(settings.ollamaUrl),
+        model: settings.model,
+      });
+      setOllamaStatus((s) => ({ ...s, modelReady: false, running: [] }));
+      setUnloadMsg('Unloaded — VRAM freed');
+    } catch {
+      setUnloadMsg('Unload failed');
+    }
+    setTimeout(() => setUnloadMsg(''), 5000);
+  };
+
   const loadIssueStats = () => { chrome.storage.local.get(['lastIssueStats'], (r) => { if (r.lastIssueStats) setIssueStats(r.lastIssueStats as typeof issueStats); }); };
 
   const saveSettings = (updates: Partial<Settings>) => {
@@ -552,6 +588,7 @@ const Popup = () => {
         scanModels={loadModels} scannedCount={availableModels.length}
         ollamaStatus={ollamaStatus} testOllama={() => checkOllama(true)}
         ollamaSwitch={ollamaSwitch}
+        unloadNow={unloadNow} unloadMsg={unloadMsg}
       />
 
       {/* ── Footer ── */}

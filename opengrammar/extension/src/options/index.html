@@ -197,6 +197,60 @@
         </div>
       </section>
 
+      <!-- Ollama GPU Model Guide -->
+      <section class="settings-section">
+        <h2>Ollama — Which model for my GPU?</h2>
+        <p class="section-description">
+          Reference for the local (Ollama) grammar/tone model. Sizes are the
+          Ollama default Q4 quant. The extension reads your installed models
+          live; use this to decide what to <code>ollama pull</code> and pick.
+          Picks favour fast, strong instruction-following models (qwen2.5
+          family); reasoning models (qwen3) give better edits but are slower.
+        </p>
+
+        <div class="gpu-guide">
+          <table>
+            <thead>
+              <tr><th>GPU (VRAM)</th><th>Recommended model</th><th>Approx VRAM</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>No NVIDIA / CPU only</td><td>Cloud (OpenAI/Groq/Abacus), or <code>gemma2:2b</code></td><td>CPU: needs ~4–6 GB free RAM, slow</td></tr>
+              <tr><td>GTX 10-series · 6 GB (1060)</td><td><code>qwen2.5:3b</code></td><td>~2–3 GB</td></tr>
+              <tr><td>GTX 10-series · 8 GB (1070/1080)</td><td><code>qwen2.5:7b</code> — sweet spot</td><td>~5 GB</td></tr>
+              <tr><td>GTX 10-series · 11 GB (1080 Ti)</td><td><code>qwen2.5:7b</code> / <code>llama3.1:8b</code></td><td>~5–6 GB</td></tr>
+              <tr><td>RTX 20-series · 6–8 GB</td><td><code>qwen2.5:7b</code></td><td>~5 GB</td></tr>
+              <tr><td>RTX 20-series · 11 GB (2080 Ti)</td><td><code>qwen2.5:7b</code>, or <code>qwen3</code> (slower)</td><td>~5–7 GB</td></tr>
+              <tr><td>RTX 30-series · 8–10 GB (3070/3080)</td><td><code>qwen2.5:7b</code></td><td>~5–6 GB</td></tr>
+              <tr><td>RTX 30-series · 12 GB (3060)</td><td><code>qwen2.5:7b</code> (14B Q4 tight)</td><td>~6–9 GB</td></tr>
+              <tr><td>RTX 30-series · 24 GB (3090)</td><td><code>qwen2.5:14b</code> / <code>qwen3</code></td><td>~9–11 GB</td></tr>
+              <tr><td>RTX 40-series · 8 GB (4060)</td><td><code>qwen2.5:7b</code></td><td>~5 GB</td></tr>
+              <tr><td>RTX 40-series · 12 GB (4070)</td><td><code>qwen2.5:7b</code> / 14B Q4</td><td>~6–9 GB</td></tr>
+              <tr><td>RTX 40-series · 16 GB (4080)</td><td><code>qwen2.5:14b</code></td><td>~9–10 GB</td></tr>
+              <tr><td>RTX 40-series · 24 GB (4090)</td><td><code>qwen2.5:14b</code>/<code>32b</code> Q4, <code>qwen3</code></td><td>~10–20 GB</td></tr>
+              <tr><td>RTX 50-series · 12–16 GB (5070/5080)</td><td><code>qwen2.5:14b</code></td><td>~9–10 GB</td></tr>
+              <tr><td>RTX 50-series · 32 GB (5090)</td><td><code>qwen2.5:32b</code> / <code>qwen3</code> — best</td><td>~20+ GB</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="section-description" style="margin-top: 12px;">
+          <strong>VRAM headroom:</strong> leave ~1–2 GB free. A model that
+          doesn't fit spills to system RAM and gets very slow. Skip
+          <code>coder</code>/<code>embed</code>/<code>vision</code> variants —
+          they're poor at prose grammar.
+        </p>
+        <p class="section-description">
+          <strong>Gaming / GPU-heavy tasks:</strong> Ollama keeps the model
+          in VRAM for the idle period after each use. The extension can't
+          detect a game launching (it's a browser extension), so to free VRAM:
+          set <em>“Unload model when idle”</em> (in the popup) to
+          <em>Immediately</em> or <em>30 s</em>, and/or click
+          <em>“Unload now”</em> in the popup before you start a game. This is
+          exactly why running Ollama on a separate machine avoids the
+          contention entirely.
+        </p>
+      </section>
+
       <!-- Debug & Tuning -->
       <section class="settings-section">
         <h2>Debug &amp; Tuning</h2>
