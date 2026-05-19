@@ -141,6 +141,9 @@ export interface AnalysisContext {
   previousText?: string;
   nextText?: string;
   fullTextExcerpt?: string;
+  /** Page title + URL + trimmed main visible text, so autocomplete can
+   *  ground a continuation in what the user is actually reading. */
+  pageContext?: string;
 }
 
 export interface AnalyzeResponse {

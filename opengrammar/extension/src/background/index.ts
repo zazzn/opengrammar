@@ -7,7 +7,6 @@ import type {
   AutocompleteResponse,
   EditorContext,
   LLMProvider,
-  RewriteContext,
   RewriteResponse,
   Issue,
 } from '../types';
@@ -25,8 +24,6 @@ import {
 } from './llmClient';
 import { clearLog, formatCompact, logEvent } from './debugLog';
 
-const REWRITE_PAGE_PATH = 'src/rewrite/index.html';
-const STATS_PAGE_PATH = 'src/stats/index.html';
 const DEFAULT_PROVIDER = 'openai';
 const DEFAULT_MODEL = 'gpt-4o-mini';
 const DEFAULT_ANALYTICS: AnalyticsSummary = {
@@ -124,30 +121,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
-  if (request.type === 'OPEN_REWRITE_PAGE') {
-    void openRewritePage().then(() => sendResponse({ success: true }));
-    return true;
-  }
-
-  if (request.type === 'GET_REWRITE_CONTEXT') {
-    void getRewriteContext().then((context) => {
-      sendResponse(context || { selectedText: '' });
-    });
-    return true;
-  }
-
-  if (request.type === 'APPLY_REWRITE_TO_SOURCE') {
-    void applyRewriteToSource(request.original, request.rewritten).then((result) => {
-      sendResponse(result);
-    });
-    return true;
-  }
-
-  if (request.type === 'OPEN_STATS_PAGE') {
-    void openStatsPage().then(() => sendResponse({ success: true }));
-    return true;
-  }
-
   if (request.type === 'TRACK_ANALYTICS_EVENT') {
     void trackAnalyticsEvent(request.eventType, request.payload).then(() => {
       sendResponse({ success: true });
@@ -219,17 +192,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// Handle keyboard shortcuts
-chrome.commands.onCommand.addListener((command) => {
-  if (command === 'rewrite-text') {
-    void openRewritePage();
-    return;
-  }
-
-  if (command === 'open-stats') {
-    void openStatsPage();
-  }
-});
 
 function filterIssues(issues: Issue[] | undefined, ignoredIssues: string[], dictionary: string[]): Issue[] {
   if (!issues || issues.length === 0) return [];
@@ -429,7 +391,10 @@ async function getLlmAutocomplete(
       {
         role: 'system',
         content:
-          'You are a writing assistant. Predict the next short continuation for the user. Return ONLY JSON with keys suggestion and confidence. Keep suggestion under 12 words and do not repeat the existing text.',
+          'You are a writing assistant. Predict the next short continuation for the user. ' +
+          'Use context.pageContext (the title/URL/main text of the page they are viewing) to make ' +
+          'the continuation specific and relevant to that page when applicable. ' +
+          'Return ONLY JSON with keys suggestion and confidence. Keep suggestion under 12 words and do not repeat the existing text.',
       },
       {
         role: 'user',
@@ -805,87 +770,6 @@ function normalizeIgnoredIssues(value: unknown): string[] {
       return null;
     })
     .filter((entry): entry is string => Boolean(entry));
-}
-
-async function getActiveTab(): Promise<chrome.tabs.Tab | undefined> {
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-  return tabs[0];
-}
-
-async function requestSelectedText(tabId: number): Promise<string> {
-  try {
-    const response = await chrome.tabs.sendMessage(tabId, { type: 'GET_SELECTED_TEXT' });
-    return response?.text || '';
-  } catch {
-    return '';
-  }
-}
-
-async function storeRewriteContext(sourceTabId?: number, selectedText: string = ''): Promise<void> {
-  const payload: RewriteContext = {
-    selectedText,
-    sourceTabId,
-    capturedAt: Date.now(),
-  };
-
-  await chrome.storage.local.set({ rewriteContext: payload });
-}
-
-async function getRewriteContext(): Promise<RewriteContext | null> {
-  const result = await chrome.storage.local.get('rewriteContext');
-  return (result.rewriteContext as RewriteContext | undefined) || null;
-}
-
-async function openRewritePage(): Promise<void> {
-  const activeTab = await getActiveTab();
-  const selectedText = activeTab?.id ? await requestSelectedText(activeTab.id) : '';
-  await storeRewriteContext(activeTab?.id, selectedText);
-  await trackAnalyticsEvent('rewrite_opened', {
-    count: 1,
-    domain: getDomainFromUrl(activeTab?.url),
-  });
-  await chrome.tabs.create({ url: chrome.runtime.getURL(REWRITE_PAGE_PATH) });
-}
-
-async function openStatsPage(): Promise<void> {
-  await chrome.tabs.create({ url: chrome.runtime.getURL(STATS_PAGE_PATH) });
-}
-
-async function applyRewriteToSource(
-  original: string,
-  rewritten: string,
-): Promise<{ success: boolean; error?: string }> {
-  const context = await getRewriteContext();
-  if (!context?.sourceTabId) {
-    return { success: false, error: 'No source tab available for rewrite.' };
-  }
-
-  try {
-    const response = await chrome.tabs.sendMessage(context.sourceTabId, {
-      type: 'APPLY_REWRITE',
-      original,
-      rewritten,
-    });
-
-    return response?.success
-      ? await trackRewriteApplyAndReturn(context.sourceTabId)
-      : { success: false, error: response?.error || 'Failed to apply rewrite.' };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to contact source tab.',
-    };
-  }
-}
-
-async function trackRewriteApplyAndReturn(sourceTabId?: number) {
-  let domain: string | undefined;
-  if (sourceTabId) {
-    const tab = await chrome.tabs.get(sourceTabId).catch(() => undefined);
-    domain = getDomainFromUrl(tab?.url);
-  }
-  await trackAnalyticsEvent('rewrite_applied', { count: 1, domain });
-  return { success: true };
 }
 
 async function storeActiveContext(

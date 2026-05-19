@@ -4,16 +4,9 @@ export class GoogleDocsHandler {
   private editorElement: HTMLElement | null = null;
   private observer: MutationObserver | null = null;
   private lastText = '';
-  private checkAsYouTypeEnabled = true;
 
   constructor() {
     this.init();
-
-    chrome.storage?.onChanged?.addListener((changes) => {
-      if (changes.checkAsYouType) {
-        this.checkAsYouTypeEnabled = changes.checkAsYouType.newValue !== false;
-      }
-    });
   }
 
   private async init() {
@@ -58,8 +51,6 @@ export class GoogleDocsHandler {
 
     this.observer = new MutationObserver(
       debounce(() => {
-        if (!this.checkAsYouTypeEnabled) return;
-
         const newText = this.extractText();
         if (newText !== this.lastText) {
           this.lastText = newText;
