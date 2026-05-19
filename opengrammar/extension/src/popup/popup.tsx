@@ -300,7 +300,9 @@ const SettingsPanel = ({
                   ? 'Server offline'
                   : st.modelReady
                     ? 'Ready · model loaded'
-                    : 'Online · model not loaded (loads on first use)';
+                    : st.error
+                      ? st.error
+                      : 'Online · model not loaded (loads on first use)';
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 6 }}>
                   <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, flexShrink: 0 }} />
@@ -371,7 +373,7 @@ const Popup = () => {
   const [fetchingModels, setFetching] = useState(false);
   const [showAdvanced, setAdvanced]   = useState(false);
   const [issueStats, setIssueStats]   = useState({ grammar: 0, style: 0, clarity: 0, total: 0 });
-  const [ollamaStatus, setOllamaStatus] = useState<{ reachable: boolean; running: string[]; modelReady: boolean; testing: boolean }>({ reachable: false, running: [], modelReady: false, testing: false });
+  const [ollamaStatus, setOllamaStatus] = useState<{ reachable: boolean; running: string[]; modelReady: boolean; testing: boolean; error?: string }>({ reachable: false, running: [], modelReady: false, testing: false });
   const [ollamaSwitch, setOllamaSwitch] = useState<{ active: boolean; phase: 'unloading' | 'loading' | 'error'; model: string; elapsed: number; error?: string }>({ active: false, phase: 'loading', model: '', elapsed: 0 });
   const [unloadMsg, setUnloadMsg] = useState('');
   const lastOllamaModel = useRef<string | null>(null);
@@ -480,22 +482,27 @@ const Popup = () => {
   };
 
   const checkOllama = async (probe: boolean) => {
-    if (probe) setOllamaStatus((s) => ({ ...s, testing: true }));
+    if (probe) setOllamaStatus((s) => ({ ...s, testing: true, error: undefined }));
     try {
-      const r = await chrome.runtime.sendMessage({
+      const req = {
         type: 'GET_OLLAMA_STATUS',
         baseUrl: ollamaV1(settings.ollamaUrl),
         model: settings.model,
         probe,
-      });
+      };
+      console.log('[OGrammar] checkOllama →', req);
+      const r = await chrome.runtime.sendMessage(req);
+      console.log('[OGrammar] checkOllama ←', r);
       setOllamaStatus({
         reachable: !!r?.reachable,
         running: r?.running || [],
         modelReady: !!r?.modelReady,
         testing: false,
+        error: r?.error,
       });
-    } catch {
-      setOllamaStatus({ reachable: false, running: [], modelReady: false, testing: false });
+    } catch (e) {
+      console.error('[OGrammar] checkOllama failed', e);
+      setOllamaStatus({ reachable: false, running: [], modelReady: false, testing: false, error: String(e) });
     }
   };
 

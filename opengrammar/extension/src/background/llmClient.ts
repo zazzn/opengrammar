@@ -137,11 +137,22 @@ async function ollamaFetchJson(
 ): Promise<any | null> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
+  const url = `${root}${path}`;
+  const started = Date.now();
   try {
-    const r = await fetch(`${root}${path}`, { ...init, signal: ctrl.signal });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch {
+    const r = await fetch(url, { ...init, signal: ctrl.signal });
+    const ms2 = Date.now() - started;
+    if (!r.ok) {
+      const body = await r.text().catch(() => '');
+      console.warn('[OGrammar] ollamaFetchJson HTTP', r.status, url, `${ms2}ms`, body.slice(0, 300));
+      return null;
+    }
+    const j = await r.json();
+    console.log('[OGrammar] ollamaFetchJson OK', url, `${ms2}ms`);
+    return j;
+  } catch (e) {
+    const ms2 = Date.now() - started;
+    console.error('[OGrammar] ollamaFetchJson ERR', url, `${ms2}ms`, e);
     return null;
   } finally {
     clearTimeout(t);

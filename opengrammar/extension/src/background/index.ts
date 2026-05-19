@@ -703,7 +703,10 @@ async function correctText(
 }
 
 async function getOllamaStatus(baseUrl?: string, model?: string, probe?: boolean) {
-  return ollamaStatus(baseUrl, model, probe);
+  console.log('[OGrammar] getOllamaStatus →', { baseUrl, model, probe });
+  const r = await ollamaStatus(baseUrl, model, probe);
+  console.log('[OGrammar] getOllamaStatus ←', r);
+  return r;
 }
 
 /**

@@ -71,15 +71,42 @@ API key (or Ollama). No backend URL — there isn't one.
 
 ### Local Ollama note
 
-Browsers block plain-HTTP requests from an extension to a private LAN IP.
-Run Ollama on the same machine, or expose it at `http://localhost:11434`
-via an SSH local forward, then set that as the Ollama URL:
+Two things to know when pointing OGrammar at a local Ollama:
+
+**1. Allow the extension's origin (required).** Ollama checks the
+`Origin` header on every non-GET request and rejects anything not on its
+allowlist with HTTP 403. The extension's origin
+(`chrome-extension://<id>`) is never on the default list, so you must
+opt it in via `OLLAMA_ORIGINS`. Symptom if you skip this: the model
+dropdown populates fine, but the status pill stays on "Online · model
+not loaded" and no rewrite/correction ever succeeds.
+
+- **Linux / WSL (systemd):**
+  ```bash
+  sudo mkdir -p /etc/systemd/system/ollama.service.d
+  sudo tee /etc/systemd/system/ollama.service.d/override.conf >/dev/null <<'EOF'
+  [Service]
+  Environment="OLLAMA_ORIGINS=chrome-extension://*"
+  EOF
+  sudo systemctl daemon-reload
+  sudo systemctl restart ollama
+  ```
+- **macOS** (Ollama.app): `launchctl setenv OLLAMA_ORIGINS "chrome-extension://*"`, then quit and restart the Ollama menu-bar app.
+- **Windows** (Ollama desktop): set the user env var
+  `OLLAMA_ORIGINS=chrome-extension://*` and restart Ollama.
+- **Foreground / debugging**: `OLLAMA_ORIGINS='chrome-extension://*' ollama serve`.
+
+**2. LAN reachability.** Browsers block plain-HTTP requests from an
+extension to a private LAN IP. Run Ollama on the same machine, or
+expose it at `http://localhost:11434` via an SSH local forward and set
+that as the Ollama URL in the popup:
 
 ```bash
 ssh -L 11434:localhost:11434 your-ollama-host
 ```
 
-Cloud providers need none of this (they're public HTTPS).
+Cloud providers need none of this (they're public HTTPS and don't have
+Ollama's origin restriction).
 
 ## Optional self-hosted proxy
 
