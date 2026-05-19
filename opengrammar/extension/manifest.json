@@ -3,7 +3,7 @@
   "name": "OGrammer",
   "version": "0.9",
   "description": "Your privacy-first, open-source writing assistant. Check grammar, spelling, and style everywhere on the web.",
-  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
+  "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "src/background/index.ts",
