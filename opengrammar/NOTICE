@@ -1,0 +1,46 @@
+OpenGrammar (fork)
+Copyright 2026 zazzn
+
+This product is a fork and derivative work of OpenGrammar.
+Licensed under the Apache License, Version 2.0 (see the LICENSE file).
+
+================================================================================
+Upstream / original work
+================================================================================
+
+OpenGrammar
+Copyright Swadhin Biswas and the OpenGrammar contributors
+Source:  https://github.com/swadhinbiswas/opengrammar
+License: Apache License, Version 2.0
+
+This fork (https://github.com/zazzn/opengrammar) makes significant changes to
+the upstream work, including but not limited to:
+
+  - Inline mechanical-only correction tier rebuilt on the Automattic Harper
+    local engine (offline, on-device), replacing the prior inline path.
+  - A local n-gram context re-ranker for spelling candidate selection.
+  - Grammar/tone moved to an explicit, non-inline button (whole-text LLM
+    review via the backend /correct and /rewrite routes).
+  - Additional LLM providers (e.g. Abacus RouteLLM), encrypted API-key
+    storage, Ollama idle-unload controls, and assorted UX fixes.
+
+A summary of changes is maintained in the project's operational notes.
+
+================================================================================
+Bundled third-party components
+================================================================================
+
+Harper  (harper.js)
+Copyright Automattic, Inc. and the Harper contributors
+Source:  https://github.com/Automattic/harper
+License: Apache License, Version 2.0
+
+  The Harper engine (Rust compiled to WebAssembly) is bundled in the browser
+  extension as the inline mechanical correction engine. It is redistributed
+  unmodified under the Apache License, Version 2.0.
+
+================================================================================
+
+This NOTICE file is provided for attribution purposes only and does not modify
+the LICENSE. Recipients who redistribute this work or derivative works must
+include this NOTICE file per Section 4(d) of the Apache License, Version 2.0.

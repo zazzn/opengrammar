@@ -1,0 +1,40 @@
+# Files NOT copied into the Docker build context (keeps builds fast & clean).
+# The image installs its own deps from package-lock.json — host copies of
+# these are never needed inside the build.
+
+node_modules
+dist
+
+# Logs / local runtime artifacts
+*.log
+.og-dev.log
+.og-dev.err.log
+
+# Secrets & local env (must never be baked into an image)
+.env
+.env.*
+.dev.vars
+.dev.vars.example
+
+# Deploy/platform configs unrelated to the Docker image
+.wrangler
+.vercel
+.netlify
+netlify
+api
+wrangler.toml
+vercel.json
+netlify.toml
+render.yaml
+
+# Dev-only / tests / benchmarks
+tests
+test-*.ts
+test-*.js
+bench.ts
+simulate.mjs
+
+# VCS & editor noise
+.git
+.gitignore
+*Zone.Identifier

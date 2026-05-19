@@ -1,63 +1,62 @@
 # =============================================================================
-# OpenGrammar Backend — Production Docker Image
-# Docker Hub: swadhinbiswas/opengrammar-backend
+# OpenGrammar Backend — Lean Production Docker Image
+# Docker Hub: zazzn/opengrammar-backend
+# Fork:       https://github.com/zazzn/opengrammar
+# Upstream:   https://github.com/swadhinbiswas/opengrammar
 # =============================================================================
+# Stateless Hono API (no DB, no volumes). Runs the TypeScript source directly
+# via tsx. Multi-stage so the final image carries ONLY production deps + tsx
+# (no typescript / wrangler / cloudflare / netlify dev tooling).
 
-# ----- Stage 1: Build --------------------------------------------------------
+# ----- Stage 1: typecheck (uses full deps, discarded) ------------------------
 FROM node:20-alpine AS builder
-
 WORKDIR /app
-
-# Install build tools
-RUN apk add --no-cache python3 make g++
-
-# Copy dependency files first (better layer caching)
-COPY package*.json tsconfig.json ./
-
-# Install ALL deps (including dev for build)
-RUN npm install
-
-# Copy source
+COPY package.json package-lock.json tsconfig.json ./
+RUN npm ci
 COPY src/ ./src/
 COPY server-node.ts ./
+# Blocking typecheck — a type error fails the build (source passes clean today).
+RUN npx tsc --noEmit
 
-# Type-check only (no emit needed — tsx handles transpilation at runtime)
-RUN npx tsc --noEmit || true
+# ----- Stage 2: production node_modules only ---------------------------------
+FROM node:20-alpine AS prod-deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+# Production deps only, then add tsx (runtime TS loader; it is a devDependency
+# in package.json, required here because we run the .ts entrypoint directly).
+RUN npm ci --omit=dev \
+ && npm install --no-save tsx@4 \
+ && npm cache clean --force
 
-# ----- Stage 2: Production ---------------------------------------------------
+# ----- Stage 3: runtime ------------------------------------------------------
 FROM node:20-alpine
 
 LABEL org.opencontainers.image.title="OpenGrammar Backend"
-LABEL org.opencontainers.image.description="Privacy-first, open-source grammar intelligence API"
-LABEL org.opencontainers.image.url="https://opengrammer.eu.cc"
-LABEL org.opencontainers.image.source="https://github.com/swadhinbiswas/opengrammar"
-LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.description="Privacy-first, open-source grammar intelligence API (fork)"
+LABEL org.opencontainers.image.url="https://github.com/zazzn/opengrammar"
+LABEL org.opencontainers.image.source="https://github.com/zazzn/opengrammar"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.version="2.0.0"
 
 WORKDIR /app
 
-# Runtime: dumb-init for proper PID 1 signal handling
+# dumb-init = proper PID 1 signal handling (clean Ctrl+C / docker stop)
 RUN apk add --no-cache dumb-init
 
-# Copy only production deps and source
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/server-node.ts ./
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/tsconfig.json ./
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=builder   /app/src          ./src
+COPY --from=builder   /app/server-node.ts ./
+COPY package.json tsconfig.json ./
 
-# Non-root user for security
-RUN addgroup -g 1001 -S opengrammar && \
-    adduser -S -u 1001 -G opengrammar opengrammar
+# Non-root user
+RUN addgroup -g 1001 -S opengrammar \
+ && adduser  -S -u 1001 -G opengrammar opengrammar
 USER opengrammar
 
-# Port
 EXPOSE 8787
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8787/health || exit 1
 
-# Start server
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "--import", "tsx/esm", "server-node.ts"]
