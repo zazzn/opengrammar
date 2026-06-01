@@ -30,6 +30,7 @@ const contextModel = parseModel(
 
 const COMMON_SPELLING_OVERRIDES = {
   adress: 'address',
+  hadd: 'had',
   teh: 'the',
 };
 

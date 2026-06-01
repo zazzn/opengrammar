@@ -69,6 +69,7 @@ const STYLE_LINTS_TO_ENABLE: Record<string, boolean> = {
 
 const COMMON_SPELLING_OVERRIDES: Record<string, string> = {
   adress: 'address',
+  hadd: 'had',
   teh: 'the',
 };
 

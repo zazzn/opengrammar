@@ -82,6 +82,16 @@
     "bucket": "quick-fix"
   },
   {
+    "id": "spell-basic-006",
+    "category": "normal-spelling",
+    "text": "I hadd changed everything included.",
+    "localIssues": [
+      { "original": "hadd", "suggestion": "had", "route": "quick-fix" }
+    ],
+    "llmCorrection": "I had changed everything included.",
+    "bucket": "quick-fix"
+  },
+  {
     "id": "spell-basic-005",
     "category": "normal-spelling",
     "text": "Damn, that's hilarous lol.",
