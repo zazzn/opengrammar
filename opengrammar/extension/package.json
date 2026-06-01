@@ -7,7 +7,10 @@
   "scripts": {
     "copy:wasm": "node scripts/copy-harper-wasm.mjs",
     "build:ngram": "node scripts/build-ngram-model.mjs",
+    "benchmark:ollama": "node scripts/benchmark-ollama-writing-models.mjs",
+    "test:suggestions": "node scripts/test-suggestion-corpus.mjs",
     "simulate:inline": "node scripts/simulate-inline.mjs",
+    "simulate:protected": "node scripts/simulate-protected.mjs",
     "predev": "node scripts/copy-harper-wasm.mjs",
     "dev": "vite",
     "prebuild": "node scripts/copy-harper-wasm.mjs",

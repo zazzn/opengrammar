@@ -22,6 +22,9 @@ opengrammar/extension/public/wasm/
 # n-gram corpus download cache (regenerable; model.bin IS committed)
 opengrammar/extension/.ngram-cache/
 
+# Exploratory FP-audit + benchmark scratch corpora (regenerable; see docs/24-25)
+opengrammar/extension/scripts/.fp-corpora/
+
 # Local agent/tooling config — never publish
 .claude/
 

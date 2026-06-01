@@ -1,4 +1,5 @@
 import type { AnalysisContext, AutocompleteResponse, Issue } from '../types';
+import { isProtectedNonProseText } from '../shared/protectedText';
 import { autocompleteManager } from './autocomplete';
 import {
   clearHighlights,
@@ -498,6 +499,7 @@ function handleGrammarSuccess(element: HTMLElement, text: string, issues: Issue[
 function looksNonProse(s: string): boolean {
   const t = s.trim();
   if (!t || /\s/.test(t)) return false; // has spaces → treat as prose
+  if (isProtectedNonProseText(t)) return true;
   return (
     t.includes('://') ||
     /^[\w.+-]+@[\w-]+\.[a-z]{2,}$/i.test(t) || // email

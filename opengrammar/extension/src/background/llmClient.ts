@@ -65,6 +65,21 @@ interface ChatMessage {
   content: string;
 }
 
+function withQwenNoThink(model: string, messages: ChatMessage[]): ChatMessage[] {
+  if (!/\bqwen3\b/i.test(model)) return messages;
+  const control = '/no_think';
+  if (messages.some((m) => m.content.includes(control))) return messages;
+
+  const firstSystem = messages.findIndex((m) => m.role === 'system');
+  if (firstSystem >= 0) {
+    return messages.map((m, i) =>
+      i === firstSystem ? { ...m, content: `${control}\n${m.content}` } : m,
+    );
+  }
+
+  return [{ role: 'system', content: control }, ...messages];
+}
+
 /**
  * One OpenAI-compatible chat completion. Returns the assistant message
  * content (string). Throws on a non-2xx response so callers keep their
@@ -79,30 +94,110 @@ export async function chatCompletion(opts: {
   maxTokens?: number;
   responseFormat?: { type: string };
   extraBody?: Record<string, unknown>;
+  timeoutMs?: number;
+  nativeOllama?: boolean;
 }): Promise<string> {
-  const { apiKey, baseURL, model, messages, temperature, maxTokens, responseFormat, extraBody } =
+  const { apiKey, baseURL, model, messages, temperature, maxTokens, responseFormat, extraBody, timeoutMs, nativeOllama } =
     opts;
-  const response = await fetch(`${baseURL.replace(/\/+$/, '')}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey || 'ollama'}`,
-    },
-    body: JSON.stringify({
+  if (nativeOllama) {
+    return nativeOllamaChatCompletion({
+      baseURL,
       model,
       messages,
       temperature,
-      ...(maxTokens ? { max_tokens: maxTokens } : {}),
-      ...(responseFormat ? { response_format: responseFormat } : {}),
-      ...(extraBody || {}),
-    }),
-  });
+      maxTokens,
+      responseFormat,
+      extraBody,
+      timeoutMs,
+    });
+  }
+
+  const ctrl = new AbortController();
+  const ms = timeoutMs ?? 180000;
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  let response: Response;
+  try {
+    response = await fetch(`${baseURL.replace(/\/+$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey || 'ollama'}`,
+      },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        model,
+        messages: withQwenNoThink(model, messages),
+        temperature,
+        ...(maxTokens ? { max_tokens: maxTokens } : {}),
+        ...(responseFormat ? { response_format: responseFormat } : {}),
+        ...(extraBody || {}),
+      }),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error(`LLM request timed out after ${Math.round(ms / 1000)} seconds`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
   if (!response.ok) {
     const detail = await response.text().catch(() => response.statusText);
     throw new Error(`LLM HTTP ${response.status}: ${detail.slice(0, 200)}`);
   }
   const data = await response.json();
   return stripReasoning(data?.choices?.[0]?.message?.content ?? '');
+}
+
+async function nativeOllamaChatCompletion(opts: {
+  baseURL: string;
+  model: string;
+  messages: ChatMessage[];
+  temperature: number;
+  maxTokens?: number;
+  responseFormat?: { type: string };
+  extraBody?: Record<string, unknown>;
+  timeoutMs?: number;
+}): Promise<string> {
+  const { baseURL, model, messages, temperature, maxTokens, responseFormat, extraBody, timeoutMs } = opts;
+  const ctrl = new AbortController();
+  const ms = timeoutMs ?? 180000;
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  let response: Response;
+  try {
+    const keepAlive = extraBody?.keep_alive;
+    response = await fetch(`${ollamaRoot(baseURL)}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: false,
+        think: false,
+        ...(responseFormat?.type === 'json_object' ? { format: 'json' } : {}),
+        ...(keepAlive ? { keep_alive: keepAlive } : {}),
+        options: {
+          temperature,
+          num_ctx: 4096,
+          ...(maxTokens ? { num_predict: maxTokens } : {}),
+        },
+      }),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error(`Ollama request timed out after ${Math.round(ms / 1000)} seconds`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!response.ok) {
+    const detail = await response.text().catch(() => response.statusText);
+    throw new Error(`Ollama HTTP ${response.status}: ${detail.slice(0, 200)}`);
+  }
+  const data = await response.json();
+  return stripReasoning(data?.message?.content ?? '');
 }
 
 /**
@@ -187,6 +282,19 @@ export async function ollamaTags(baseUrl?: string): Promise<string[]> {
   return ((tags && tags.models) || [])
     .map((m: { name?: string }) => m?.name)
     .filter((n: unknown): n is string => typeof n === 'string');
+}
+
+export async function ollamaPull(
+  baseUrl?: string,
+  model = 'qwen3:4b-instruct',
+): Promise<{ success: boolean; error?: string }> {
+  const pulled = await ollamaFetchJson(ollamaRoot(baseUrl), '/api/pull', 30 * 60 * 1000, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: model, stream: false }),
+  });
+  if (pulled) return { success: true };
+  return { success: false, error: `Could not pull ${model}` };
 }
 
 /**

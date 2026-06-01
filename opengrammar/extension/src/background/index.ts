@@ -10,13 +10,24 @@ import type {
   RewriteResponse,
   Issue,
 } from '../types';
-import { harperLint, warmHarper } from './harperEngine';
+import { harperLint, invalidateHarperLinter, warmHarper } from './harperEngine';
 import { getApiKey } from '../shared/apiKeyStore';
+import {
+  filterIssuesInProtectedSpans,
+  findProtectedSpans,
+  maskProtectedText,
+  preservesProtectedPlaceholders,
+  restoreProtectedText,
+  type ProtectedTextMask,
+} from '../shared/protectedText';
+import { applyIssuePolicy } from './issuePolicy';
+import { DEFAULT_WRITING_MODEL } from '../shared/ollamaModels';
 import { PROVIDERS } from '../types';
 import {
   chatCompletion,
   listModels,
   ollamaKeepAliveParam,
+  ollamaPull as ollamaPullDirect,
   ollamaStatus,
   ollamaTags,
   ollamaUnload as ollamaUnloadDirect,
@@ -169,6 +180,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.type === 'OLLAMA_PULL') {
+    pullOllama(request.baseUrl, request.model).then((r) => sendResponse(r));
+    return true;
+  }
+
   // D1: Badge count update
   if (request.type === 'UPDATE_BADGE_COUNT') {
     void updateBadge(request.count, sender.tab?.id);
@@ -216,6 +232,122 @@ function filterIssues(issues: Issue[] | undefined, ignoredIssues: string[], dict
   return filtered;
 }
 
+function preservesProtectedFragments(original: string, candidate: string): boolean {
+  const fragments = findProtectedSpans(original)
+    .map((span) => original.slice(span.start, span.end))
+    .filter((fragment) => fragment.trim().length > 1);
+
+  return fragments.every((fragment) => candidate.includes(fragment));
+}
+
+interface LlmCorrectionSpan {
+  original?: string;
+  replacement?: string;
+  start?: number;
+  end?: number;
+  type?: 'spelling' | 'grammar' | 'punctuation' | 'capitalization' | 'word-form';
+  confidence?: 'high' | 'medium' | 'low';
+  explanation?: string;
+}
+
+interface LlmCorrectionPayload {
+  originalText?: string;
+  correctedText?: string;
+  corrections?: LlmCorrectionSpan[];
+  protectedSpansPreserved?: boolean;
+  shouldShow?: boolean;
+}
+
+function protectedFragmentList(text: string): string[] {
+  return findProtectedSpans(text)
+    .map((span) => text.slice(span.start, span.end))
+    .filter((fragment) => fragment.trim().length > 1);
+}
+
+function extractJsonObject(text: string): string | null {
+  const trimmed = text.trim();
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) return trimmed;
+
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(trimmed);
+  if (fenced?.[1]?.trim().startsWith('{')) return fenced[1].trim();
+
+  const start = trimmed.indexOf('{');
+  const end = trimmed.lastIndexOf('}');
+  return start >= 0 && end > start ? trimmed.slice(start, end + 1) : null;
+}
+
+function parseCorrectionPayload(raw: string): LlmCorrectionPayload | null {
+  const json = extractJsonObject(raw);
+  if (!json) return null;
+  try {
+    const parsed = JSON.parse(json) as unknown;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed as LlmCorrectionPayload;
+  } catch {
+    return null;
+  }
+}
+
+function tokenChangeRatio(original: string, candidate: string): number {
+  const ow = original.match(/[A-Za-z0-9']+/g) || [];
+  const cw = candidate.match(/[A-Za-z0-9']+/g) || [];
+  if (ow.length === 0) return candidate.trim() === '' ? 0 : 1;
+  const maxLen = Math.max(ow.length, cw.length);
+  let same = 0;
+  for (let i = 0; i < Math.min(ow.length, cw.length); i++) {
+    if (ow[i]!.toLowerCase() === cw[i]!.toLowerCase()) same++;
+  }
+  return (maxLen - same) / Math.max(1, maxLen);
+}
+
+function isConservativeCorrection(original: string, candidate: string): boolean {
+  const o = original.trim();
+  const c = candidate.trim();
+  if (!c || o === c) return true;
+  if (c.length > Math.max(80, o.length * 1.8)) return false;
+  if (c.length < Math.max(1, o.length * 0.45)) return false;
+
+  const originalWords = o.match(/[A-Za-z0-9']+/g)?.length || 0;
+  const ratio = tokenChangeRatio(o, c);
+  const maxRatio = originalWords <= 8 ? 0.65 : 0.48;
+  return ratio <= maxRatio;
+}
+
+function normalizeCorrectionResult(
+  text: string,
+  raw: string,
+  mask?: ProtectedTextMask,
+): { corrected: string; corrections: LlmCorrectionSpan[]; shouldShow: boolean } {
+  const parsed = parseCorrectionPayload(raw);
+  const corrected = (parsed?.correctedText || (!parsed ? raw : '')).trim();
+  const corrections = mask ? [] : Array.isArray(parsed?.corrections) ? parsed.corrections : [];
+  const proposedMasked = corrected || (mask ? mask.maskedText : text);
+
+  if (parsed?.shouldShow === false) {
+    return { corrected: text, corrections: [], shouldShow: false };
+  }
+  if (corrections.length > 0 && corrections.every((c) => c.confidence === 'low')) {
+    return { corrected: text, corrections: [], shouldShow: false };
+  }
+
+  const proposed = mask ? restoreProtectedText(proposedMasked, mask) : proposedMasked;
+  const safe =
+    (!mask || preservesProtectedPlaceholders(proposedMasked, mask)) &&
+    preservesProtectedFragments(text, proposed) &&
+    isConservativeCorrection(text, proposed) &&
+    parsed?.protectedSpansPreserved !== false;
+
+  if (!safe) {
+    return { corrected: text, corrections: [], shouldShow: false };
+  }
+
+  return {
+    corrected: proposed,
+    corrections,
+    shouldShow: proposed.trim() !== text.trim(),
+  };
+}
+
 async function handleGrammarCheck(
   text: string,
   context: AnalysisContext | undefined,
@@ -243,7 +375,12 @@ async function handleGrammarCheck(
     try {
       const t0 = Date.now();
       const harperIssues = await harperLint(text);
-      const filtered = filterIssues(harperIssues, ignoredIssues || [], dictionary || []);
+      const contextSafeIssues = filterIssuesInProtectedSpans(
+        harperIssues,
+        findProtectedSpans(text),
+      );
+      const policySafeIssues = applyIssuePolicy(contextSafeIssues);
+      const filtered = filterIssues(policySafeIssues, ignoredIssues || [], dictionary || []);
 
       await trackAnalyticsEvent('analysis_runs', {
         count: 1,
@@ -266,7 +403,7 @@ async function handleGrammarCheck(
         in: text,
         out: filtered
           .slice(0, 12)
-          .map((i) => `${i.type}:"${i.original}"→"${i.suggestion}"`)
+          .map((i) => `${i.route}:${i.type}:"${i.original}"→"${i.suggestion}"`)
           .join(' · '),
       });
 
@@ -408,6 +545,7 @@ async function getLlmAutocomplete(
     temperature: 0.5,
     maxTokens: 80,
     responseFormat: { type: 'json_object' },
+    nativeOllama: provider === 'ollama',
   });
 
   const raw = content || '{"suggestion":"","confidence":0.5}';
@@ -467,13 +605,14 @@ async function handleRewrite(text: string, tone: string, sendResponse: (response
       return;
     }
     const apiKey = await getApiKey();
-    const { model, provider, customBaseUrl, ollamaUrl, ollamaKeepAlive } =
+    const { model, provider, customBaseUrl, ollamaUrl, ollamaKeepAlive, llmProtectedMasking } =
       await chrome.storage.sync.get([
         'model',
         'provider',
         'customBaseUrl',
         'ollamaUrl',
         'ollamaKeepAlive',
+        'llmProtectedMasking',
       ]);
 
     // Tone instructions ported verbatim from backend/src/index.ts (/rewrite).
@@ -497,16 +636,19 @@ async function handleRewrite(text: string, tone: string, sendResponse: (response
       messages: [
         {
           role: 'system',
-          content: `You are a writing assistant. ${toneInstructions[tone] || 'Improve the writing'}. Return ONLY the rewritten text, no explanations.`,
+          content: `You are a writing assistant. ${toneInstructions[tone] || 'Improve the writing'}. Preserve URLs, email addresses, file paths, code, @mentions, #hashtags, IDs, and version strings exactly as written. Return ONLY the rewritten text, no explanations.`,
         },
         { role: 'user', content: text },
       ],
       temperature: 0.7,
       maxTokens: 1000,
       extraBody: ollamaKeepAliveParam(provider, ollamaKeepAlive),
+      nativeOllama: provider === 'ollama',
     });
 
-    const data: RewriteResponse = { original: text, rewritten: rewritten || text, tone };
+    const proposed = rewritten || text;
+    const safeRewrite = preservesProtectedFragments(text, proposed) ? proposed : text;
+    const data: RewriteResponse = { original: text, rewritten: safeRewrite, tone };
     logEvent({ kind: 'rewrite', provider, model, meta: tone, in: text, out: data.rewritten });
     sendResponse(data);
   } catch (error) {
@@ -535,7 +677,8 @@ Rules:
 2. Apply the requested goal (clarity/formal/concise/friendly)
 3. Each rewrite must be meaningfully different from the others
 4. Keep the same approximate length unless goal is "concise"
-5. Return ONLY a JSON object — no preamble, no markdown
+5. Preserve URLs, email addresses, file paths, code, @mentions, #hashtags, IDs, and version strings exactly as written
+6. Return ONLY a JSON object — no preamble, no markdown
 
 Format:
 {
@@ -559,13 +702,14 @@ async function rephraseText(
   try {
     if (!sentence) return { suggestions: [], explanation: '', bestMatch: 0 };
     const apiKey = await getApiKey();
-    const { model, provider, customBaseUrl, ollamaUrl, ollamaKeepAlive } =
+    const { model, provider, customBaseUrl, ollamaUrl, ollamaKeepAlive, llmProtectedMasking } =
       await chrome.storage.sync.get([
         'model',
         'provider',
         'customBaseUrl',
         'ollamaUrl',
         'ollamaKeepAlive',
+        'llmProtectedMasking',
       ]);
     if (!apiKey && provider !== 'ollama') {
       return {
@@ -590,14 +734,18 @@ async function rephraseText(
       maxTokens: 512,
       responseFormat: { type: 'json_object' },
       extraBody: ollamaKeepAliveParam(provider, ollamaKeepAlive),
+      nativeOllama: provider === 'ollama',
     });
     const cleaned = (raw || '{}').replace(/^```json\s*/, '').replace(/\s*```$/, '');
     const parsed = JSON.parse(cleaned);
-    const result = {
-      suggestions: (parsed.suggestions || []).map((s: { text?: string; label?: string }) => ({
+    const suggestions = (parsed.suggestions || [])
+      .map((s: { text?: string; label?: string }) => ({
         text: s.text || String(s),
         label: s.label || 'Option',
-      })),
+      }))
+      .filter((s: { text: string }) => preservesProtectedFragments(sentence, s.text));
+    const result = {
+      suggestions,
       explanation: parsed.explanation || '',
       bestMatch: typeof parsed.bestMatch === 'number' ? parsed.bestMatch : 0,
     };
@@ -647,23 +795,35 @@ async function getModels(provider: string, apiKey?: string, baseUrl?: string) {
 // returns the original unchanged so a card never garbles.
 async function correctText(
   text: string,
-): Promise<{ original: string; corrected: string; llm: boolean }> {
+): Promise<{
+  original: string;
+  corrected: string;
+  llm: boolean;
+  corrections?: LlmCorrectionSpan[];
+  shouldShow?: boolean;
+  error?: string;
+}> {
   try {
     const apiKey = await getApiKey();
-    const { model, provider, customBaseUrl, ollamaUrl, ollamaKeepAlive } =
+    const { model, provider, customBaseUrl, ollamaUrl, ollamaKeepAlive, llmProtectedMasking } =
       await chrome.storage.sync.get([
         'model',
         'provider',
         'customBaseUrl',
         'ollamaUrl',
         'ollamaKeepAlive',
+        'llmProtectedMasking',
       ]);
 
     if (!apiKey && provider !== 'ollama') {
       return { original: text, corrected: text, llm: false };
     }
 
-    const corrected = await chatCompletion({
+    const useMasking = llmProtectedMasking !== false;
+    const mask = useMasking ? maskProtectedText(text) : undefined;
+    const llmText = mask?.maskedText || text;
+    const protectedFragments = mask?.fragments.map((fragment) => fragment.placeholder) || protectedFragmentList(text);
+    const raw = await chatCompletion({
       apiKey,
       baseURL: resolveBaseUrl(provider, customBaseUrl, ollamaUrl),
       model: model || 'gpt-4o-mini',
@@ -671,34 +831,59 @@ async function correctText(
         {
           role: 'system',
           content:
-            'You are a meticulous proofreader. Correct ONLY spelling, ' +
-            'grammar, punctuation, and capitalization errors. Do NOT rephrase, ' +
-            'reword, change tone/style, or add or remove information. Preserve ' +
-            'the original wording wherever it is already correct. Keep line ' +
-            'breaks. Leave URLs, email addresses, file paths, code, @mentions, ' +
-            'and #hashtags EXACTLY as written — never alter or "fix" them. ' +
-            'If a sentence is already correct, return it unchanged. ' +
-            'Return ONLY the corrected text, with no preamble, quotes, or notes.',
+            'You are a conservative proofreading engine. Correct only objective ' +
+            'errors: spelling, grammar, punctuation, capitalization, and obvious ' +
+            'word-form mistakes. Do not improve style, tone, clarity, slang, or ' +
+            'wording unless explicitly asked. Preserve meaning and casual voice. ' +
+            'Do not normalize phonetic casual speech such as whadda, whaddya, ' +
+            'whatcha, gotta, wanna, kinda, yall, or lol in correction mode. ' +
+            'Preserve every protected fragment and placeholder EXACTLY. ' +
+            'Placeholders look like [[OG_PROTECTED_1]] and must never be changed, removed, or reordered. ' +
+            'If the sentence is ' +
+            'acceptable as written, or if confidence is low, return shouldShow=false. ' +
+            'Return JSON only with this shape: ' +
+            '{"originalText":string,"correctedText":string,"shouldShow":boolean,' +
+            '"protectedSpansPreserved":boolean,"corrections":[{"original":string,' +
+            '"replacement":string,"start":number,"end":number,"type":"spelling|grammar|punctuation|capitalization|word-form","confidence":"high|medium|low","explanation":string}]}.',
         },
-        { role: 'user', content: text },
+        {
+          role: 'user',
+          content: JSON.stringify({
+            text: llmText,
+            protectedFragments,
+          }),
+        },
       ],
-      temperature: 0.1,
+      temperature: 0,
       maxTokens: Math.min(4000, Math.ceil(text.length / 2) + 600),
       extraBody: ollamaKeepAliveParam(provider, ollamaKeepAlive),
+      nativeOllama: provider === 'ollama',
     });
-    const out = corrected.trim() || text;
+    const result = normalizeCorrectionResult(text, raw, mask);
     logEvent({
       kind: 'correct',
       provider,
       model,
-      meta: out === text ? 'no-change' : 'changed',
+      meta: result.shouldShow ? 'changed' : 'no-change',
       in: text,
-      out,
+      out: result.corrected,
     });
-    return { original: text, corrected: out, llm: true };
+    return {
+      original: text,
+      corrected: result.corrected,
+      llm: true,
+      corrections: result.corrections,
+      shouldShow: result.shouldShow,
+    };
   } catch (error) {
     console.error('Correct error:', error);
-    return { original: text, corrected: text, llm: false };
+    return {
+      original: text,
+      corrected: text,
+      llm: false,
+      shouldShow: false,
+      error: error instanceof Error ? error.message : 'Correction failed',
+    };
   }
 }
 
@@ -723,8 +908,29 @@ async function unloadOllama(ollamaUrl?: string, model?: string): Promise<void> {
   }
 }
 
+async function pullOllama(
+  ollamaUrl?: string,
+  model = DEFAULT_WRITING_MODEL,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    return await ollamaPullDirect(ollamaUrl, model);
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : `Could not pull ${model}`,
+    };
+  }
+}
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'sync') return;
+
+  // Spelling dialect changed → rebuild the linter with the new dialect so the
+  // next check uses it, and warm it ahead of the first keystroke.
+  if (changes.harperDialect) {
+    invalidateHarperLinter();
+    void warmHarper();
+  }
 
   // Provider switched away from Ollama → free the local model's memory.
   if (
@@ -746,12 +952,18 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 async function initializeStoredDefaults(): Promise<void> {
-  const existing = await chrome.storage.sync.get(['enabled', 'provider', 'model']);
+  const existing = await chrome.storage.sync.get([
+    'enabled',
+    'provider',
+    'model',
+    'llmProtectedMasking',
+  ]);
 
   await chrome.storage.sync.set({
     enabled: existing.enabled !== false,
     provider: existing.provider || DEFAULT_PROVIDER,
     model: existing.model || DEFAULT_MODEL,
+    llmProtectedMasking: existing.llmProtectedMasking !== false,
   });
 }
 

@@ -4,6 +4,7 @@ import { diffWords, renderInlineDiffHTML, renderOriginalWithChangesHTML, summari
 import { applyFix } from './editorAdapter';
 import { stripQuotedBBCode } from './textExtractor';
 import { getApiKey } from '../shared/apiKeyStore';
+import { findProtectedSpans, type ProtectedSpan } from '../shared/protectedText';
 
 let currentTooltip: HTMLElement | null = null;
 let currentRephrasePanel: HTMLElement | null = null;
@@ -27,35 +28,72 @@ let currentSpellMenu: HTMLElement | null = null;
 const correctionCache = new Map<string, string>();
 
 const BUBBLE_SIZE = 30; // px — small, fits inside the field corner
+const COMPACT_BUBBLE_SIZE = 24;
 const MIN_FIELD_HEIGHT = 38; // skip tiny inputs (matches Grammarly)
 
-/** Anchor the bubble to the bottom-right corner of its target field. */
-function positionAssistantBubble() {
-  if (!assistantBubble || !assistantTarget || !assistantTarget.isConnected) return;
-  const r = assistantTarget.getBoundingClientRect();
+function clamp(n: number, min: number, max: number): number {
+  return Math.max(min, Math.min(n, max));
+}
+
+function isCompactEditor(element: HTMLElement, r = element.getBoundingClientRect()): boolean {
+  return element.tagName === 'INPUT' || r.height < 72 || r.width < 280;
+}
+
+function placeBubble(
+  bubble: HTMLElement,
+  target: HTMLElement,
+  slot: 0 | 1,
+) {
+  const r = target.getBoundingClientRect();
   if (r.height < MIN_FIELD_HEIGHT || r.width === 0) {
-    assistantBubble.style.display = 'none';
+    bubble.style.display = 'none';
     return;
   }
-  assistantBubble.style.display = 'inline-flex';
-  const inset = 6;
-  assistantBubble.style.left = `${Math.round(r.right - BUBBLE_SIZE - inset)}px`;
-  assistantBubble.style.top = `${Math.round(r.bottom - BUBBLE_SIZE - inset)}px`;
+
+  const compact = isCompactEditor(target, r);
+  const size = compact ? COMPACT_BUBBLE_SIZE : BUBBLE_SIZE;
+  const gap = compact ? 6 : 8;
+  const margin = 8;
+  let left: number;
+  let top: number;
+
+  bubble.style.display = 'inline-flex';
+  bubble.style.width = `${size}px`;
+  bubble.style.height = `${size}px`;
+
+  if (compact) {
+    left = r.right + gap;
+    top = r.top + r.height / 2 - size / 2 - slot * (size + gap);
+
+    if (left + size > window.innerWidth - margin) {
+      if (r.left - size - gap >= margin) {
+        left = r.left - size - gap;
+      } else {
+        left = r.right - size;
+        top = r.top - size - gap - slot * (size + gap);
+      }
+    }
+  } else {
+    const inset = 6;
+    left = r.right - size - inset;
+    top = r.bottom - size - inset - slot * (size + gap);
+  }
+
+  bubble.style.left = `${Math.round(clamp(left, margin, window.innerWidth - size - margin))}px`;
+  bubble.style.top = `${Math.round(clamp(top, margin, window.innerHeight - size - margin))}px`;
+}
+
+/** Anchor the bubble to the target field without covering compact inputs. */
+function positionAssistantBubble() {
+  if (!assistantBubble || !assistantTarget || !assistantTarget.isConnected) return;
+  placeBubble(assistantBubble, assistantTarget, 0);
 }
 
 /** Anchor the selection bubble just above the issue-bubble corner so the
  *  two never overlap. */
 function positionSelectionBubble() {
   if (!selectionBubble || !selectionTarget || !selectionTarget.isConnected) return;
-  const r = selectionTarget.getBoundingClientRect();
-  if (r.height < MIN_FIELD_HEIGHT || r.width === 0) {
-    selectionBubble.style.display = 'none';
-    return;
-  }
-  selectionBubble.style.display = 'inline-flex';
-  const inset = 6;
-  selectionBubble.style.left = `${Math.round(r.right - BUBBLE_SIZE - inset)}px`;
-  selectionBubble.style.top = `${Math.round(r.bottom - BUBBLE_SIZE * 2 - inset - 8)}px`;
+  placeBubble(selectionBubble, selectionTarget, 1);
 }
 let inputMirrorOverlay: HTMLElement | null = null;
 let inputMirrorContent: HTMLElement | null = null;
@@ -133,6 +171,8 @@ function initHighlightContainer() {
  */
 function isMechanical(i: Issue): boolean {
   if (i.ignored) return false;
+  if (i.route === 'suppress' || i.route === 'sentence-review') return false;
+  if (i.route === 'quick-fix') return true;
   if (i.type === 'spelling') return true;
   // Rewrite-tier (Grammarly-grey): clarity + style suggestions from local
   // Harper lints (PhraseSetCorrections, BoringWords, FillerWords, …). Allow
@@ -436,6 +476,11 @@ function removeIssueUnderline(issue: Issue, element: HTMLElement) {
 }
 
 function showSpellingMenu(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
+  if (issue.route && issue.route !== 'quick-fix') {
+    showSentenceReview([issue], element, 0);
+    return;
+  }
+
   currentSpellMenu?.remove();
   injectStyles();
 
@@ -1341,17 +1386,34 @@ interface SentenceGroup {
   corrText?: string;
 }
 
+function isProtectedOffset(index: number, spans: ProtectedSpan[]): boolean {
+  return spans.some((span) => index >= span.start && index < span.end);
+}
+
+function isSentenceBoundaryAt(text: string, index: number, spans: ProtectedSpan[]): boolean {
+  const ch = text[index];
+  if (ch === '\n') return true;
+  return (ch === '.' || ch === '!' || ch === '?') && !isProtectedOffset(index, spans);
+}
+
 /** Split text into sentences, keeping each one's start offset. */
 function splitSentences(s: string): Array<{ start: number; end: number; text: string }> {
   const out: Array<{ start: number; end: number; text: string }> = [];
-  const re = /[^.!?\n]*[.!?]+|\n+|[^.!?\n]+$/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(s)) !== null) {
-    if (m[0] === '') { re.lastIndex++; continue; }
-    const seg = m[0];
-    if (seg.trim().length === 0) continue;
-    out.push({ start: m.index, end: m.index + seg.length, text: seg });
+  const protectedSpans = findProtectedSpans(s);
+  let start = 0;
+
+  const push = (end: number) => {
+    const text = s.slice(start, end);
+    if (text.trim().length > 0) out.push({ start, end, text });
+    start = end;
+  };
+
+  for (let i = 0; i < s.length; i++) {
+    if (!isSentenceBoundaryAt(s, i, protectedSpans)) continue;
+    push(i + 1);
   }
+
+  if (start < s.length) push(s.length);
   return out;
 }
 
@@ -1386,7 +1448,7 @@ function buildGroupsFromCorrection(original: string, corrected: string): Sentenc
  *  deterministic, single-word). Grammar needs the LLM, so it's left alone
  *  rather than risk the old fragment-merge garble. */
 function buildSpellingOnlyGroups(text: string, allIssues: Issue[]): SentenceGroup[] {
-  const spelling = allIssues.filter((i) => i.type === 'spelling' && !i.ignored);
+  const spelling = allIssues.filter((i) => i.type === 'spelling' && !i.ignored && i.route === 'quick-fix');
   const base = getSentenceGroups(text, spelling);
   for (const g of base) {
     g.origText = text.slice(g.start, g.end).trim();
@@ -1423,19 +1485,18 @@ function getSentenceGroups(text: string, issues: Issue[]): SentenceGroup[] {
     .sort((a, b) => a.offset - b.offset);
 
   const groups: SentenceGroup[] = [];
+  const protectedSpans = findProtectedSpans(text);
   for (const issue of fixable) {
     let s = issue.offset;
     while (s > 0) {
-      const ch = text[s - 1];
-      if (ch === '.' || ch === '!' || ch === '?' || ch === '\n') break;
+      if (isSentenceBoundaryAt(text, s - 1, protectedSpans)) break;
       s--;
     }
     while (s < issue.offset && (text[s] === ' ' || text[s] === '\n')) s++;
 
     let e = issue.offset + issue.length;
     while (e < text.length) {
-      const ch = text[e];
-      if (ch === '.' || ch === '!' || ch === '?' || ch === '\n') { e++; break; }
+      if (isSentenceBoundaryAt(text, e, protectedSpans)) { e++; break; }
       e++;
     }
 
@@ -1506,8 +1567,82 @@ function showCheckingCard(element: HTMLElement) {
   card.innerHTML = `
     <div style="display:flex; align-items:center; gap:10px; padding:16px 18px;">
       <div style="width:18px;height:18px;border:2px solid #e5e7eb;border-top-color:#4F46E5;border-radius:50%;animation:og-spin 0.7s linear infinite;"></div>
-      <span style="font-size:13px; color:#3c3c43;">Checking your writing…</span>
+      <div>
+        <div class="og-checking-primary" style="font-size:13px; color:#3c3c43; font-weight:600;">Checking your writing…</div>
+        <div class="og-checking-secondary" style="font-size:11px; color:#8e8e93; margin-top:3px; display:none;"></div>
+      </div>
     </div>`;
+  document.body.appendChild(card);
+  const anchorEl = overlayTarget && overlayTarget.isConnected ? overlayTarget : element;
+  placeFixedPanel(card, anchorEl.getBoundingClientRect(), 8);
+  currentTooltip = card;
+  return card;
+}
+
+function updateCheckingCard(card: HTMLElement | null, primary: string, secondary = '') {
+  if (!card || !card.isConnected) return;
+  const p = card.querySelector('.og-checking-primary') as HTMLElement | null;
+  const s = card.querySelector('.og-checking-secondary') as HTMLElement | null;
+  if (p) p.textContent = primary;
+  if (s) {
+    s.textContent = secondary;
+    s.style.display = secondary ? 'block' : 'none';
+  }
+}
+
+function showReviewStatusCard(
+  element: HTMLElement,
+  title: string,
+  message: string,
+  retry?: () => void,
+) {
+  uiActive = true;
+  currentTooltip?.remove();
+  injectStyles();
+
+  const card = document.createElement('div');
+  card.className = 'opengrammar-tooltip';
+  card.style.cssText = `
+    position: fixed; left:-9999px; top:-9999px; width: 334px;
+    background:#fff; border-radius:12px; border:1px solid rgba(0,0,0,0.07);
+    box-shadow:0 4px 32px rgba(0,0,0,0.14); z-index:2147483647;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    animation: og-fade-in 0.12s ease;
+    overflow:hidden;
+  `;
+  card.innerHTML = `
+    <div style="padding:14px 16px 12px; border-bottom:1px solid #f0f0f0;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:7px;">
+        <span style="width:8px; height:8px; border-radius:50%; background:#f59e0b; flex-shrink:0;"></span>
+        <span style="font-size:12px; font-weight:700; color:#92400e; text-transform:uppercase; letter-spacing:0.5px;">${escapeHtml(title)}</span>
+      </div>
+      <div style="font-size:13px; color:#3c3c43; line-height:1.45;">${escapeHtml(message)}</div>
+    </div>
+    <div style="display:flex; border-top:1px solid #f0f0f0;">
+      ${retry ? `<button class="og-review-retry" type="button" style="
+        flex:1; padding:11px 14px; background:#4F46E5; color:#fff;
+        border:none; cursor:pointer; font-size:13px; font-weight:700; font-family:inherit;
+      ">Retry</button>` : ''}
+      <button class="og-review-close" type="button" style="
+        flex:1; padding:11px 14px; background:#fff; color:#5f6368;
+        border:none; ${retry ? 'border-left:1px solid #f0f0f0;' : ''}
+        cursor:pointer; font-size:13px; font-weight:600; font-family:inherit;
+      ">Close</button>
+    </div>
+  `;
+
+  card.addEventListener('mousedown', (e) => e.preventDefault());
+  const retryBtn = card.querySelector('.og-review-retry') as HTMLButtonElement | null;
+  retryBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    retry?.();
+  });
+  const closeBtn = card.querySelector('.og-review-close') as HTMLButtonElement | null;
+  closeBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    hideTooltip();
+  });
+
   document.body.appendChild(card);
   const anchorEl = overlayTarget && overlayTarget.isConnected ? overlayTarget : element;
   placeFixedPanel(card, anchorEl.getBoundingClientRect(), 8);
@@ -1533,23 +1668,85 @@ function showSentenceReview(
   // whole text (errors-only), then diffed — never an offset-merge of rule
   // fragments. Rule engine now only drives inline spelling underlines.
   if (!precomputed) {
-    const proceed = (corrected: string, llm: boolean) => {
+    const proceed = (corrected: string, llm: boolean): boolean => {
       const changed = (corrected || '').trim() !== text.trim();
       const g =
         llm && changed
           ? buildGroupsFromCorrection(text, corrected)
           : buildSpellingOnlyGroups(text, allIssues);
-      if (g.length === 0) { hideTooltip(); return; }
+      if (g.length === 0) return false;
       showSentenceReview(allIssues, element, 0, g);
+      return true;
     };
     const cached = correctionCache.get(text);
-    if (cached !== undefined) { proceed(cached, cached.trim() !== text.trim()); return; }
-    showCheckingCard(element);
+    if (cached !== undefined) {
+      const shown = proceed(cached, cached.trim() !== text.trim());
+      if (!shown) {
+        showReviewStatusCard(
+          element,
+          'No sentence change',
+          'The model did not find a confident sentence-level correction. Local underlines will remain available where a quick fix is safe.',
+        );
+      }
+      return;
+    }
+    const checkingCard = showCheckingCard(element);
+    const slowTimer = window.setTimeout(() => {
+      updateCheckingCard(
+        checkingCard,
+        'Loading the local model…',
+        'The first Ollama request can take a bit while the model enters memory.',
+      );
+    }, 3500);
+    const verySlowTimer = window.setTimeout(() => {
+      updateCheckingCard(
+        checkingCard,
+        'Still waiting for Ollama…',
+        'Keep this open. If it fails, you will get a retry button instead of losing the panel.',
+      );
+    }, 20000);
     chrome.runtime.sendMessage({ type: 'CORRECT_TEXT', text }, (resp) => {
+      window.clearTimeout(slowTimer);
+      window.clearTimeout(verySlowTimer);
+      const runtimeError = chrome.runtime.lastError?.message;
+      if (runtimeError) {
+        showReviewStatusCard(
+          element,
+          'Model response failed',
+          runtimeError,
+          () => showSentenceReview(allIssues, element, 0),
+        );
+        return;
+      }
+      if (!resp) {
+        showReviewStatusCard(
+          element,
+          'No model response',
+          'OGrammar did not receive a response from the configured model.',
+          () => showSentenceReview(allIssues, element, 0),
+        );
+        return;
+      }
       const corrected = (resp && resp.corrected) || text;
       const llm = !!(resp && resp.llm);
       if (llm) correctionCache.set(text, corrected);
-      proceed(corrected, llm);
+      const shown = proceed(corrected, llm);
+      if (!shown && resp?.error) {
+        showReviewStatusCard(
+          element,
+          'Correction failed',
+          String(resp.error),
+          () => showSentenceReview(allIssues, element, 0),
+        );
+        return;
+      }
+      if (!shown) {
+        showReviewStatusCard(
+          element,
+          'No sentence change',
+          'The model did not find a confident sentence-level correction. Local underlines will remain available where a quick fix is safe.',
+        );
+      }
     });
     return;
   }
