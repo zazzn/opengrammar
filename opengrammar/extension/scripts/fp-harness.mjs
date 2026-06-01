@@ -68,7 +68,7 @@ const STYLE_LINTS_TO_ENABLE = {
   LongSentences: false,
   BoringWords: false,
 };
-const COMMON_SPELLING_OVERRIDES = { adress: 'address', hadd: 'had', teh: 'the' };
+const COMMON_SPELLING_OVERRIDES = { adress: 'address', corect: 'correct', hadd: 'had', teh: 'the' };
 
 // Optional --dialect=British|Australian|Canadian|American (default American,
 // matching the extension default). Mirrors harperEngine.resolveDialect().

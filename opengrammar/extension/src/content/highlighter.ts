@@ -1735,7 +1735,7 @@ function showSentenceReview(
       }
       const corrected = (resp && resp.corrected) || text;
       const llm = !!(resp && resp.llm);
-      if (llm) correctionCache.set(text, corrected);
+      if (llm && corrected.trim() !== text.trim()) correctionCache.set(text, corrected);
       const shown = proceed(corrected, llm);
       if (!shown && resp?.error) {
         showReviewStatusCard(

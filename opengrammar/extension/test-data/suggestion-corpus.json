@@ -104,6 +104,17 @@
     "bucket": "sentence-review"
   },
   {
+    "id": "forum-simple-001",
+    "category": "forum-writing",
+    "text": "That's corect every time I would click on the tab to try to bring it up, it would hang the whole application.\n\ni'm running windows 11... I haven't a clue what version of Java I have installed, but if it wasn't installed with tunerstudio then I could have the wrong version?",
+    "localIssues": [
+      { "original": "corect", "suggestion": "correct", "route": "quick-fix" },
+      { "original": "i'm", "suggestion": "I'm", "route": "quick-fix" }
+    ],
+    "llmCorrection": "That's correct every time I would click on the tab to try to bring it up, it would hang the whole application.\n\nI'm running Windows 11... I haven't a clue what version of Java I have installed, but if it wasn't installed with TunerStudio then I could have the wrong version?",
+    "bucket": "sentence-review"
+  },
+  {
     "id": "spell-basic-005",
     "category": "normal-spelling",
     "text": "Damn, that's hilarous lol.",

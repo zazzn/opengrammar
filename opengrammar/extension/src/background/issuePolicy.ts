@@ -8,7 +8,7 @@ const LOW_CONTEXT_SHORT_WORD_MAX = 3;
 // verified real typo (≥0.83) and above every verified jargon/name/brand
 // false-positive (≤0.80), so it cleanly separates the two.
 const QUICKFIX_OVERLAP_MIN = 0.82;
-const HIGH_CONFIDENCE_OVERRIDES = new Set(['address', 'had', 'the']);
+const HIGH_CONFIDENCE_OVERRIDES = new Set(['address', 'correct', 'had', 'the']);
 const CONTRACTION_LIKE_TYPOS = /^(?:dont|doesnt|didnt|isnt|arent|wasnt|werent|cant|couldnt|shouldnt|wouldnt|wont|havent|havnt|hasnt|hadnt|im|ive|id|ill|youre|youve|youll|theyre|theyve|theyll|thats|whats|lets)$/i;
 
 function bare(text: string): string {
