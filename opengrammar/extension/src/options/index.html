@@ -187,13 +187,13 @@
         <p class="section-description">
           The extension reads your installed models live; use this to decide
           what to <code>ollama pull</code>.
-          <strong>Recommended local model: <code>qwen3:4b-instruct</code></strong>
-          — it won our proofreading benchmark (best local quality, fewest
-          mistakes, and the fastest local model), and at only ~2.6&nbsp;GB it
+          <strong>Recommended local model: <code>qwen3.5:4b</code></strong>
+          — with protected-text masking enabled it won our proofreading
+          benchmark with perfect local score and no hard failures. At ~3.4&nbsp;GB it
           runs comfortably on 8&nbsp;GB cards like the <strong>GTX&nbsp;1070</strong>
           and most GPUs down to 6&nbsp;GB. A bigger GPU does <em>not</em> need a
-          bigger model — <code>qwen3:4b-instruct</code> beat <code>qwen2.5:7b</code>
-          in testing. For the cloud,
+          bigger model — <code>qwen3.5:4b</code> beat <code>qwen2.5:7b</code>
+          after masking. For the cloud,
           <strong><code>deepseek-chat</code> (DeepSeek provider) is the top
           pick</strong> — the highest quality of everything we tested and only
           pennies per month.
@@ -209,15 +209,15 @@
               <tr><th>GPU (VRAM)</th><th>Recommended model</th><th>Approx VRAM</th></tr>
             </thead>
             <tbody>
-              <tr><td>No NVIDIA / CPU only</td><td>Cloud <code>deepseek-chat</code> (best), or local <code>qwen3:4b-instruct</code> (works, slower on CPU)</td><td>CPU: ~4 GB free RAM</td></tr>
-              <tr><td>GTX 10-series · 6 GB (1060)</td><td><code>qwen3:4b-instruct</code></td><td>~3 GB</td></tr>
-              <tr><td>GTX 10-series · 8 GB (1070/1080)</td><td><code>qwen3:4b-instruct</code> — sweet spot ✅</td><td>~3–4 GB</td></tr>
-              <tr><td>GTX 10-series · 11 GB (1080 Ti)</td><td><code>qwen3:4b-instruct</code></td><td>~3–4 GB</td></tr>
-              <tr><td>RTX 20-series · 6–8 GB</td><td><code>qwen3:4b-instruct</code></td><td>~3–4 GB</td></tr>
-              <tr><td>RTX 30-series · 8–12 GB (3060/3070/3080)</td><td><code>qwen3:4b-instruct</code></td><td>~3–4 GB</td></tr>
-              <tr><td>RTX 40-series · 8–12 GB (4060/4070)</td><td><code>qwen3:4b-instruct</code></td><td>~3–4 GB</td></tr>
-              <tr><td>RTX 40/50-series · 16 GB+ (4080/5080)</td><td><code>qwen3:4b-instruct</code>; room for <code>qwen2.5:14b</code> if you want</td><td>~4–10 GB</td></tr>
-              <tr><td>RTX 30/40/50 · 24 GB+ (3090/4090/5090)</td><td><code>qwen3:4b-instruct</code> is still the pick; larger models give little gain for proofreading</td><td>~4–20 GB</td></tr>
+              <tr><td>No NVIDIA / CPU only</td><td>Cloud <code>deepseek-chat</code> (best), or local <code>qwen3.5:4b</code> (works, slower on CPU)</td><td>CPU: ~5 GB free RAM</td></tr>
+              <tr><td>GTX 10-series · 6 GB (1060)</td><td><code>qwen3.5:4b</code></td><td>~4 GB</td></tr>
+              <tr><td>GTX 10-series · 8 GB (1070/1080)</td><td><code>qwen3.5:4b</code> — sweet spot</td><td>~4 GB</td></tr>
+              <tr><td>GTX 10-series · 11 GB (1080 Ti)</td><td><code>qwen3.5:4b</code></td><td>~4 GB</td></tr>
+              <tr><td>RTX 20-series · 6–8 GB</td><td><code>qwen3.5:4b</code></td><td>~4 GB</td></tr>
+              <tr><td>RTX 30-series · 8–12 GB (3060/3070/3080)</td><td><code>qwen3.5:4b</code></td><td>~4 GB</td></tr>
+              <tr><td>RTX 40-series · 8–12 GB (4060/4070)</td><td><code>qwen3.5:4b</code></td><td>~4 GB</td></tr>
+              <tr><td>RTX 40/50-series · 16 GB+ (4080/5080)</td><td><code>qwen3.5:4b</code>; room for <code>qwen2.5:14b</code> if you want</td><td>~4–10 GB</td></tr>
+              <tr><td>RTX 30/40/50 · 24 GB+ (3090/4090/5090)</td><td><code>qwen3.5:4b</code> is still the pick; larger models give little gain for proofreading</td><td>~4–20 GB</td></tr>
             </tbody>
           </table>
         </div>
@@ -265,7 +265,22 @@
         <div class="setting-group">
           <label class="toggle-setting">
             <div class="toggle-info">
-              <span class="setting-label">Mask protected text before AI correction</span>
+              <span class="setting-label setting-label-row">
+                <span>Mask protected text before AI correction</span>
+                <span class="info-bubble-wrap">
+                  <span class="info-bubble-trigger" tabindex="0" aria-label="Why OGrammar masks protected text">?</span>
+                  <span class="info-bubble" role="tooltip">
+                    Before sending a sentence to the selected AI model, OGrammar replaces URLs,
+                    emails, file paths, code, commands, API keys, IDs, model names, measurements,
+                    and common chat slang with placeholders such as [[OG_PROTECTED_1]]. The model
+                    can still fix the surrounding sentence, but it cannot rewrite the protected
+                    text itself. After the correction returns, OGrammar restores the original text
+                    locally and rejects the suggestion if a placeholder was changed. This reduces
+                    broken links, altered commands, changed code, and unwanted slang cleanup,
+                    while letting smaller local models perform better.
+                  </span>
+                </span>
+              </span>
               <span class="setting-description">Hide URLs, code, IDs, commands, and slang from the LLM before restoring them locally</span>
             </div>
             <input type="checkbox" id="llmProtectedMasking" class="toggle-input">

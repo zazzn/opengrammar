@@ -286,7 +286,7 @@ export async function ollamaTags(baseUrl?: string): Promise<string[]> {
 
 export async function ollamaPull(
   baseUrl?: string,
-  model = 'qwen3:4b-instruct',
+  model = 'qwen3.5:4b',
 ): Promise<{ success: boolean; error?: string }> {
   const pulled = await ollamaFetchJson(ollamaRoot(baseUrl), '/api/pull', 30 * 60 * 1000, {
     method: 'POST',
