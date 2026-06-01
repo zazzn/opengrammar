@@ -67,7 +67,7 @@ const STYLE_LINTS_TO_ENABLE = {
   RepeatedWords: true,
   DiscourseMarkers: true,
 };
-const COMMON_SPELLING_OVERRIDES = { adress: 'address', teh: 'the' };
+const COMMON_SPELLING_OVERRIDES = { adress: 'address', hadd: 'had', teh: 'the' };
 
 // Optional --dialect=British|Australian|Canadian|American (default American,
 // matching the extension default). Mirrors harperEngine.resolveDialect().
