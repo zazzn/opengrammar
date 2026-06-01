@@ -1,9 +1,13 @@
 import type { AnalyticsSummary, IgnoredIssue } from '../types';
 import { clearAllApiKeys } from '../shared/apiKeyStore';
 
+type HarperDialect = 'American' | 'British' | 'Australian' | 'Canadian';
+
 interface Settings {
   autocompleteEnabled: boolean;
+  harperDialect: HarperDialect;
   debugLogging: boolean;
+  llmProtectedMasking: boolean;
   disabledDomains: string[];
   dictionary: string[];
   ignoredIssues: IgnoredIssue[];
@@ -12,7 +16,9 @@ interface Settings {
 // DOM Elements
 const elements = {
   autocompleteEnabled: document.getElementById('autocompleteEnabled') as HTMLInputElement,
+  harperDialect: document.getElementById('harperDialect') as HTMLSelectElement,
   debugLogging: document.getElementById('debugLogging') as HTMLInputElement,
+  llmProtectedMasking: document.getElementById('llmProtectedMasking') as HTMLInputElement,
   copyDebugLog: document.getElementById('copyDebugLog') as HTMLButtonElement,
   clearDebugLog: document.getElementById('clearDebugLog') as HTMLButtonElement,
   debugLogStatus: document.getElementById('debugLogStatus') as HTMLElement,
@@ -43,11 +49,19 @@ const elements = {
 
 let settings: Settings = {
   autocompleteEnabled: true,
+  harperDialect: 'American',
   debugLogging: false,
+  llmProtectedMasking: true,
   disabledDomains: [],
   dictionary: [],
   ignoredIssues: [],
 };
+
+const HARPER_DIALECTS: HarperDialect[] = ['American', 'British', 'Australian', 'Canadian'];
+
+function normalizeDialect(value: unknown): HarperDialect {
+  return HARPER_DIALECTS.includes(value as HarperDialect) ? (value as HarperDialect) : 'American';
+}
 
 let analyticsSummary: AnalyticsSummary | null = null;
 
@@ -73,11 +87,21 @@ async function initialize() {
 async function loadSettings() {
   return new Promise<void>((resolve) => {
     chrome.storage.sync.get(
-      ['autocompleteEnabled', 'debugLogging', 'disabledDomains', 'dictionary', 'ignoredIssues'],
+      [
+        'autocompleteEnabled',
+        'harperDialect',
+        'debugLogging',
+        'llmProtectedMasking',
+        'disabledDomains',
+        'dictionary',
+        'ignoredIssues',
+      ],
       (result) => {
         settings = {
           autocompleteEnabled: result.autocompleteEnabled !== false,
+          harperDialect: normalizeDialect(result.harperDialect),
           debugLogging: result.debugLogging === true,
+          llmProtectedMasking: result.llmProtectedMasking !== false,
           disabledDomains: result.disabledDomains || [],
           dictionary: result.dictionary || [],
           ignoredIssues: normalizeIgnoredIssues(result.ignoredIssues),
@@ -85,7 +109,9 @@ async function loadSettings() {
 
         // Update UI
         elements.autocompleteEnabled.checked = settings.autocompleteEnabled;
+        elements.harperDialect.value = settings.harperDialect;
         elements.debugLogging.checked = settings.debugLogging;
+        elements.llmProtectedMasking.checked = settings.llmProtectedMasking;
 
         resolve();
       },
@@ -135,7 +161,9 @@ async function saveSettings() {
     chrome.storage.sync.set(
       {
         autocompleteEnabled: settings.autocompleteEnabled,
+        harperDialect: settings.harperDialect,
         debugLogging: settings.debugLogging,
+        llmProtectedMasking: settings.llmProtectedMasking,
         disabledDomains: settings.disabledDomains,
         dictionary: settings.dictionary,
         ignoredIssues: settings.ignoredIssues,
@@ -158,6 +186,11 @@ function setupEventListeners() {
     saveSettings();
   });
 
+  elements.harperDialect.addEventListener('change', () => {
+    settings.harperDialect = normalizeDialect(elements.harperDialect.value);
+    saveSettings();
+  });
+
   // Debug & Tuning
   elements.debugLogging.addEventListener('change', () => {
     settings.debugLogging = elements.debugLogging.checked;
@@ -165,6 +198,11 @@ function setupEventListeners() {
     elements.debugLogStatus.textContent = settings.debugLogging
       ? 'Logging on — reproduce the issue, then Copy.'
       : 'Logging off.';
+  });
+
+  elements.llmProtectedMasking.addEventListener('change', () => {
+    settings.llmProtectedMasking = elements.llmProtectedMasking.checked;
+    saveSettings();
   });
 
   elements.copyDebugLog.addEventListener('click', async () => {

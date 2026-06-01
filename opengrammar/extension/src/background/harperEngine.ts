@@ -20,6 +20,39 @@ import { rankByContext, warmContextModel } from './contextRanker';
 
 let linterPromise: Promise<LocalLinter> | null = null;
 
+export type HarperDialectName = 'American' | 'British' | 'Australian' | 'Canadian';
+
+const DIALECT_BY_NAME: Record<HarperDialectName, Dialect> = {
+  American: Dialect.American,
+  British: Dialect.British,
+  Australian: Dialect.Australian,
+  Canadian: Dialect.Canadian,
+};
+
+/**
+ * The Harper spelling dialect, from the user's `harperDialect` setting. Defaults
+ * to American (the prior hardcoded behaviour) when unset or unreadable. Running
+ * the wrong dialect is a large false-positive source: under American, correct
+ * British/AU/CA spellings (colour, organise, centre, behaviour) are flagged and
+ * routed to quick-fix, silently "Americanizing" correct text.
+ */
+async function resolveDialect(): Promise<Dialect> {
+  try {
+    const { harperDialect } = await chrome.storage.sync.get('harperDialect');
+    return DIALECT_BY_NAME[harperDialect as HarperDialectName] ?? Dialect.American;
+  } catch {
+    return Dialect.American;
+  }
+}
+
+/**
+ * Drop the cached linter so the next lint rebuilds it with the current dialect
+ * setting. Call this when `harperDialect` changes.
+ */
+export function invalidateHarperLinter(): void {
+  linterPromise = null;
+}
+
 // Harper ships many style/conciseness lints as OPT-IN. Turning them on here
 // gives us the Grammarly-style "consider rewriting" grey-underline tier for
 // free, fully on-device: wordy-phrase compression, filler-word removal,
@@ -34,12 +67,33 @@ const STYLE_LINTS_TO_ENABLE: Record<string, boolean> = {
   DiscourseMarkers: true,
 };
 
+const COMMON_SPELLING_OVERRIDES: Record<string, string> = {
+  adress: 'address',
+  teh: 'the',
+};
+
+function applyCommonSpellingOverride(
+  original: string,
+  suggestion: string,
+): string {
+  const replacement = COMMON_SPELLING_OVERRIDES[original.toLowerCase()];
+  if (!replacement) return suggestion;
+  if (suggestion.toLowerCase() === replacement) return suggestion;
+
+  if (original.toUpperCase() === original) return replacement.toUpperCase();
+  if (original[0] === original[0]?.toUpperCase()) {
+    return replacement[0]!.toUpperCase() + replacement.slice(1);
+  }
+  return replacement;
+}
+
 function getLinter(): Promise<LocalLinter> {
   if (!linterPromise) {
     linterPromise = (async () => {
       const wasmUrl = chrome.runtime.getURL('wasm/harper_wasm_bg.wasm');
       const binary = createBinaryModuleFromUrl(wasmUrl);
-      const linter = new LocalLinter({ binary, dialect: Dialect.American });
+      const dialect = await resolveDialect();
+      const linter = new LocalLinter({ binary, dialect });
       await linter.setup();
       // Merge our opt-ins on top of the defaults rather than replacing the
       // whole config, so future Harper releases that flip more lints on by
@@ -197,6 +251,12 @@ export async function harperLint(text: string): Promise<Issue[]> {
             suggestion = s0.t;
             break;
         }
+      }
+
+      const beforeCommonOverride = suggestion;
+      suggestion = applyCommonSpellingOverride(original, suggestion);
+      if (suggestion !== beforeCommonOverride) {
+        reason = `Did you mean to spell \`${original}\` as \`${suggestion}\`?`;
       }
 
       // Drop no-ops — nothing to one-click apply.

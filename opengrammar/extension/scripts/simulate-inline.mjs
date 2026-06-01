@@ -19,11 +19,18 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import ts from 'typescript';
 import { LocalLinter } from 'harper.js';
 import { binaryInlined } from 'harper.js/binaryInlined';
-import { parseModel, rankCandidates } from '../src/background/contextRankerCore.ts';
 
 const root = dirname(fileURLToPath(import.meta.url)) + '/..';
+const coreSource = readFileSync(join(root, 'src/background/contextRankerCore.ts'), 'utf8');
+const coreJs = ts.transpileModule(coreSource, {
+  compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2022 },
+}).outputText;
+const { parseModel, rankCandidates } = await import(
+  `data:text/javascript;base64,${Buffer.from(coreJs).toString('base64')}`
+);
 const raw = readFileSync(join(root, 'public/ngram/model.bin'));
 const M = parseModel(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength));
 

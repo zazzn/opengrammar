@@ -8,6 +8,13 @@ import ReactDOM from 'react-dom/client';
 import './popup.css';
 import type { ProviderConfig } from '../types';
 import { getApiKey, setApiKey } from '../shared/apiKeyStore';
+import {
+  DEFAULT_WRITING_MODEL,
+  hiddenOllamaWritingModels,
+  ollamaWritingModelLabel,
+  pickRecommendedOllamaWritingModel,
+  visibleOllamaWritingModels,
+} from '../shared/ollamaModels';
 
 interface Settings {
   enabled: boolean;
@@ -23,28 +30,6 @@ interface Settings {
 export function ollamaV1(url: string): string {
   const b = (url || 'http://localhost:11434').trim().replace(/\/+$/, '');
   return /\/v1$/.test(b) ? b : `${b}/v1`;
-}
-
-/**
- * Best local models for grammar/writing correction, best → acceptable.
- * Strong instruction-following + low latency is what matters here.
- * qwen2.5:7b is the top pick: excellent at editing/rewriting, fast on
- * modest hardware. We match by prefix since installed names carry tags
- * (e.g. "qwen2.5:7b-instruct-q4_K_M").
- */
-const RECOMMENDED_OLLAMA = [
-  'qwen3', 'qwen2.5', 'llama3.1', 'llama3.2', 'gemma2', 'mistral-nemo', 'mistral', 'phi3.5', 'phi3',
-];
-function pickRecommended(installed: string[]): string | null {
-  // Code/embedding variants are poor at prose grammar — skip them.
-  const general = installed.filter(
-    (m) => !/(coder|embed|vision|math|guard)/i.test(m),
-  );
-  for (const fam of RECOMMENDED_OLLAMA) {
-    const hit = general.find((m) => m.toLowerCase().startsWith(fam));
-    if (hit) return hit;
-  }
-  return general[0] || installed[0] || null;
 }
 
 /* ─── Score ring SVG component ─── */
@@ -143,11 +128,15 @@ const SettingsPanel = ({
   advancedRef,
   scanModels,
   scannedCount,
+  hiddenOllamaModels,
   ollamaStatus,
   testOllama,
   ollamaSwitch,
   unloadNow,
   unloadMsg,
+  pullRecommended,
+  pullingModel,
+  pullMsg,
 }: any) => (
   <div className={`settings-area ${!settings.enabled ? 'muted' : ''}`}>
     <div className="field-group">
@@ -206,15 +195,45 @@ const SettingsPanel = ({
         {fetchingModels
           ? <option>Loading…</option>
           : modelList.map((m: string) => {
-              const rec = settings.provider === 'ollama' && m === pickRecommended(modelList);
-              return <option key={m} value={m}>{m}{rec ? '  (Recommended)' : ''}</option>;
+              const rec = settings.provider === 'ollama' ? pickRecommendedOllamaWritingModel(modelList) : null;
+              const label = settings.provider === 'ollama' ? ollamaWritingModelLabel(m, rec) : '';
+              return <option key={m} value={m}>{m}{label ? `  (${label})` : ''}</option>;
             })}
       </select>
-      {settings.provider === 'ollama' && pickRecommended(modelList) && (
-        <p className="field-hint" style={{ marginTop: 5 }}>
-          Recommended for grammar: <strong>{pickRecommended(modelList)}</strong>
-        </p>
-      )}
+      {settings.provider === 'ollama' && (() => {
+        const rec = pickRecommendedOllamaWritingModel(modelList);
+        const hidden = hiddenOllamaModels || [];
+        const missingDefault = !modelList.includes(DEFAULT_WRITING_MODEL);
+        return (
+          <>
+            {rec && (
+              <p className="field-hint" style={{ marginTop: 5 }}>
+                Recommended from installed writing models: <strong>{rec}</strong>
+              </p>
+            )}
+            {hidden.length > 0 && (
+              <p className="field-hint" style={{ marginTop: 5 }}>
+                Hidden from this list: {hidden.length} code/embed/vision/math model{hidden.length !== 1 ? 's' : ''}.
+              </p>
+            )}
+            {missingDefault && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  style={{ width: 'auto', padding: '5px 10px', fontSize: 12 }}
+                  title={`Pull ${DEFAULT_WRITING_MODEL} from Ollama`}
+                  onClick={() => pullRecommended && pullRecommended()}
+                  disabled={!!pullingModel}
+                >
+                  {pullingModel ? 'Pulling…' : `Pull ${DEFAULT_WRITING_MODEL}`}
+                </button>
+                <span className="status-text" style={{ flex: 1 }}>{pullMsg || ''}</span>
+              </div>
+            )}
+          </>
+        );
+      })()}
     </div>
 
     <button type="button" className={`advanced-toggle ${showAdvanced ? 'open' : ''}`} onClick={() => setAdvanced((v: boolean) => !v)}>
@@ -370,12 +389,15 @@ const Popup = () => {
   const [loading, setLoading]         = useState(true);
   const [providers, setProviders]     = useState<ProviderConfig[]>([]);
   const [availableModels, setModels]  = useState<string[]>([]);
+  const [hiddenOllamaModels, setHiddenOllamaModels] = useState<string[]>([]);
   const [fetchingModels, setFetching] = useState(false);
   const [showAdvanced, setAdvanced]   = useState(false);
   const [issueStats, setIssueStats]   = useState({ grammar: 0, style: 0, clarity: 0, total: 0 });
   const [ollamaStatus, setOllamaStatus] = useState<{ reachable: boolean; running: string[]; modelReady: boolean; testing: boolean; error?: string }>({ reachable: false, running: [], modelReady: false, testing: false });
   const [ollamaSwitch, setOllamaSwitch] = useState<{ active: boolean; phase: 'unloading' | 'loading' | 'error'; model: string; elapsed: number; error?: string }>({ active: false, phase: 'loading', model: '', elapsed: 0 });
   const [unloadMsg, setUnloadMsg] = useState('');
+  const [pullingModel, setPullingModel] = useState('');
+  const [pullMsg, setPullMsg] = useState('');
   const lastOllamaModel = useRef<string | null>(null);
   const switchTimer = useRef<number | null>(null);
   const advancedRef = useRef<HTMLDivElement>(null);
@@ -471,12 +493,15 @@ const Popup = () => {
     try {
       const r = await chrome.runtime.sendMessage({ type: 'GET_MODELS', provider: settings.provider, apiKey: settings.apiKey, baseUrl });
       const models: string[] = r?.models || [];
-      if (models.length) setModels(models);
+      const displayModels =
+        settings.provider === 'ollama' ? visibleOllamaWritingModels(models) : models;
+      setModels(displayModels);
+      setHiddenOllamaModels(settings.provider === 'ollama' ? hiddenOllamaWritingModels(models) : []);
       // For Ollama, default to the recommended model if the user hasn't
-      // explicitly picked one that's actually installed.
+      // explicitly picked a visible writing model that's actually installed.
       if (settings.provider === 'ollama' && models.length) {
-        const rec = pickRecommended(models);
-        if (rec && !models.includes(settings.model)) saveSettings({ model: rec });
+        const rec = pickRecommendedOllamaWritingModel(models);
+        if (rec && !displayModels.includes(settings.model)) saveSettings({ model: rec });
       }
     } catch {} finally { setFetching(false); }
   };
@@ -521,6 +546,32 @@ const Popup = () => {
       setUnloadMsg('Unload failed');
     }
     setTimeout(() => setUnloadMsg(''), 5000);
+  };
+
+  const pullRecommended = async () => {
+    const model = DEFAULT_WRITING_MODEL;
+    setPullingModel(model);
+    setPullMsg('Downloading model…');
+    try {
+      const r = await chrome.runtime.sendMessage({
+        type: 'OLLAMA_PULL',
+        baseUrl: ollamaV1(settings.ollamaUrl),
+        model,
+      });
+      if (r?.success) {
+        setPullMsg('Installed');
+        await loadModels();
+        saveSettings({ model });
+        void checkOllama(true);
+      } else {
+        setPullMsg(r?.error || 'Pull failed');
+      }
+    } catch (error) {
+      setPullMsg(error instanceof Error ? error.message : 'Pull failed');
+    } finally {
+      setPullingModel('');
+      setTimeout(() => setPullMsg(''), 7000);
+    }
   };
 
   const loadIssueStats = () => { chrome.storage.local.get(['lastIssueStats'], (r) => { if (r.lastIssueStats) setIssueStats(r.lastIssueStats as typeof issueStats); }); };
@@ -588,10 +639,12 @@ const Popup = () => {
         settings={settings} saveSettings={saveSettings} providers={providers} selectedProvider={selectedProvider} modelList={modelList}
         fetchingModels={fetchingModels} handleProviderChange={handleProviderChange} showApiKey={showApiKey} setShowApiKey={setShowApiKey}
         showAdvanced={showAdvanced} setAdvanced={setAdvanced} advancedRef={advancedRef}
-        scanModels={loadModels} scannedCount={availableModels.length}
+        scanModels={loadModels} scannedCount={availableModels.length + hiddenOllamaModels.length}
+        hiddenOllamaModels={hiddenOllamaModels}
         ollamaStatus={ollamaStatus} testOllama={() => checkOllama(true)}
         ollamaSwitch={ollamaSwitch}
         unloadNow={unloadNow} unloadMsg={unloadMsg}
+        pullRecommended={pullRecommended} pullingModel={pullingModel} pullMsg={pullMsg}
       />
 
       {/* ── Footer ── */}

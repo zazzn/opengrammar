@@ -1,0 +1,590 @@
+[
+  {
+    "id": "spell-basic-001",
+    "category": "normal-spelling",
+    "text": "I definately recieved the adress from him.",
+    "localIssues": [
+      { "original": "definately", "suggestion": "definitely", "route": "quick-fix" },
+      { "original": "recieved", "suggestion": "received", "route": "quick-fix" },
+      { "original": "adress", "suggestion": "address", "route": "quick-fix" }
+    ],
+    "llmCorrection": "I definitely received the address from him.",
+    "bucket": "quick-fix"
+  },
+  {
+    "id": "spell-basic-002",
+    "category": "normal-spelling",
+    "text": "Please fix the gramar before sending.",
+    "localIssues": [
+      { "original": "gramar", "suggestion": "grammar", "route": "quick-fix" }
+    ],
+    "llmCorrection": "Please fix the grammar before sending.",
+    "bucket": "quick-fix"
+  },
+  {
+    "id": "spell-basic-003",
+    "category": "normal-spelling",
+    "text": "We recieved the package yesterday afternoon.",
+    "localIssues": [
+      { "original": "recieved", "suggestion": "received", "route": "quick-fix" }
+    ],
+    "llmCorrection": "We received the package yesterday afternoon.",
+    "bucket": "quick-fix"
+  },
+  {
+    "id": "spell-context-001",
+    "category": "context-spelling",
+    "text": "I have a borwn dog.",
+    "localIssues": [
+      { "original": "borwn", "suggestion": "brown", "route": "quick-fix" }
+    ],
+    "bucket": "quick-fix"
+  },
+  {
+    "id": "spell-context-002",
+    "category": "context-spelling",
+    "text": "She was borwn in May.",
+    "note": "borwn is ambiguous (born/brown/boron); 'born' is a non-anagram pick with a rival anagram 'brown', so it must go to sentence-review, not a one-click quick-fix. (The anagram pick borwn->brown stays quick-fix in spell-context-001/003.)",
+    "localIssues": [
+      { "original": "borwn", "suggestion": "born", "route": "sentence-review" }
+    ],
+    "bucket": "sentence-review"
+  },
+  {
+    "id": "spell-context-003",
+    "category": "context-spelling",
+    "text": "The leaves turned borwn in autumn.",
+    "localIssues": [
+      { "original": "borwn", "suggestion": "brown", "route": "quick-fix" }
+    ],
+    "status": "known-gap",
+    "bucket": "bad-local-suggestion",
+    "notes": "Known bigram-context limitation from simulate:inline."
+  },
+  {
+    "id": "spell-context-004",
+    "category": "context-spelling",
+    "text": "I havnt tested it yet.",
+    "localIssues": [
+      { "original": "havnt", "suggestion": "haven't", "route": "sentence-review" }
+    ],
+    "status": "known-gap",
+    "bucket": "bad-local-suggestion",
+    "notes": "Harper does not offer haven't; route should avoid haunt-style quick fixes."
+  },
+  {
+    "id": "spell-basic-004",
+    "category": "normal-spelling",
+    "text": "Fix teh typo before shipping.",
+    "localIssues": [
+      { "original": "teh", "suggestion": "the", "route": "quick-fix" }
+    ],
+    "bucket": "quick-fix"
+  },
+  {
+    "id": "spell-basic-005",
+    "category": "normal-spelling",
+    "text": "Damn, that's hilarous lol.",
+    "protected": ["lol"],
+    "localIssues": [
+      { "original": "hilarous", "suggestion": "hilarious", "route": "quick-fix" }
+    ],
+    "llmCorrection": "Damn, that's hilarious lol.",
+    "bucket": "quick-fix"
+  },
+  {
+    "id": "grammar-context-001",
+    "category": "context-grammar",
+    "text": "Their going to meet us at 6pm.",
+    "llmCorrection": "They're going to meet us at 6pm.",
+    "bucket": "sentence-review"
+  },
+  {
+    "id": "grammar-context-002",
+    "category": "context-grammar",
+    "text": "Please email me at test@example.com when its done.",
+    "protected": ["test@example.com"],
+    "llmCorrection": "Please email me at test@example.com when it's done.",
+    "bucket": "sentence-review"
+  },
+  {
+    "id": "grammar-context-003",
+    "category": "context-grammar",
+    "text": "Your going to love this setup.",
+    "llmCorrection": "You're going to love this setup.",
+    "bucket": "sentence-review"
+  },
+  {
+    "id": "grammar-context-004",
+    "category": "context-grammar",
+    "text": "This are the parts I ordered.",
+    "llmCorrection": "These are the parts I ordered.",
+    "bucket": "sentence-review"
+  },
+  {
+    "id": "grammar-context-005",
+    "category": "context-grammar",
+    "text": "Its going to be fine.",
+    "llmCorrection": "It's going to be fine.",
+    "bucket": "sentence-review"
+  },
+  {
+    "id": "grammar-context-006",
+    "category": "context-grammar",
+    "text": "This is is a test.",
+    "llmCorrection": "This is a test.",
+    "bucket": "sentence-review"
+  },
+  {
+    "id": "caps-001",
+    "category": "capitalization",
+    "text": "this is fine but i forgot to capitalize the first word.",
+    "llmCorrection": "This is fine but I forgot to capitalize the first word.",
+    "bucket": "sentence-review"
+  },
+  {
+    "id": "protected-url-001",
+    "category": "protected-url",
+    "text": "The docs are at https://example.com/adress/recieved?key=OPENAI_API_KEY.",
+    "protected": ["https://example.com/adress/recieved?key=OPENAI_API_KEY"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "protected-url-002",
+    "category": "protected-url",
+    "text": "Open www.recieved-adress.com before posting.",
+    "protected": ["www.recieved-adress.com"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "protected-url-003",
+    "category": "protected-url",
+    "text": "Go to https://example.com/recieve-now and dont change it.",
+    "protected": ["https://example.com/recieve-now"],
+    "localIssues": [
+      { "original": "dont", "suggestion": "don't", "route": "quick-fix" }
+    ],
+    "bucket": "quick-fix"
+  },
+  {
+    "id": "protected-email-001",
+    "category": "protected-email",
+    "text": "Send it to recieved.adress@example.com today.",
+    "protected": ["recieved.adress@example.com"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "protected-domain-001",
+    "category": "protected-domain",
+    "text": "The staging host is opengrammar.localhost:3000/adress.",
+    "protected": ["opengrammar.localhost:3000/adress"],
+    "status": "known-gap",
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "protected-path-001",
+    "category": "protected-path",
+    "text": "Edit /home/zazzn/opengrammar/opengrammar/extension/src/background/index.ts.",
+    "protected": ["/home/zazzn/opengrammar/opengrammar/extension/src/background/index.ts"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "protected-path-002",
+    "category": "protected-path",
+    "text": "Load C:\\Users\\zazzn\\opengrammar\\dist\\manifest.json in Chrome.",
+    "protected": ["C:\\Users\\zazzn\\opengrammar\\dist\\manifest.json"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "protected-path-006",
+    "category": "protected-path",
+    "text": "Open src/background/harperEngine.ts and fix teh typo.",
+    "protected": ["src/background/harperEngine.ts"],
+    "localIssues": [
+      { "original": "teh", "suggestion": "the", "route": "quick-fix" }
+    ],
+    "bucket": "quick-fix"
+  },
+  {
+    "id": "protected-command-001",
+    "category": "protected-command",
+    "text": "Run NODE_ENV=production npm run build -- --watch before testing.",
+    "protected": ["NODE_ENV=production npm run build -- --watch"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "protected-command-002",
+    "category": "protected-command",
+    "text": "Try ollama pull qwen2.5:7b before running the benchmark.",
+    "protected": ["ollama pull qwen2.5:7b"],
+    "status": "known-gap",
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "protected-command-004",
+    "category": "protected-command",
+    "text": "Run npm install qwen2.5-coder:7b and dont change the command.",
+    "protected": ["npm install", "qwen2.5-coder:7b"],
+    "localIssues": [
+      { "original": "dont", "suggestion": "don't", "route": "quick-fix" }
+    ],
+    "bucket": "quick-fix"
+  },
+  {
+    "id": "protected-package-001",
+    "category": "protected-package",
+    "text": "Use @vitejs/plugin-react with react-dom/client and node:fs.",
+    "protected": ["@vitejs/plugin-react", "react-dom/client", "node:fs"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "protected-config-001",
+    "category": "protected-config",
+    "text": "Set api_base_url=http://localhost:11434 and OPENAI_API_KEY=sk-testplaceholder123456789.",
+    "protected": ["api_base_url=http://localhost:11434", "OPENAI_API_KEY=sk-testplaceholder123456789"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "protected-id-001",
+    "category": "protected-id",
+    "text": "Track OG-104, PR #42, and 550e8400-e29b-41d4-a716-446655440000.",
+    "protected": ["OG-104", "PR #42", "550e8400-e29b-41d4-a716-446655440000"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "protected-id-002",
+    "category": "protected-id",
+    "text": "Release v1.2.3 fixes issue OG-123 and recieves input.",
+    "protected": ["v1.2.3", "OG-123"],
+    "localIssues": [
+      { "original": "recieves", "suggestion": "receives", "route": "quick-fix" }
+    ],
+    "bucket": "quick-fix"
+  },
+  {
+    "id": "protected-hash-001",
+    "category": "protected-id",
+    "text": "The digest is sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890.",
+    "protected": ["sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "protected-model-001",
+    "category": "protected-model-name",
+    "text": "Use qwen2.5:7b for grammar and qwen3:latest as an alternate.",
+    "protected": ["qwen2.5:7b", "qwen3:latest"],
+    "status": "known-gap",
+    "bucket": "protected-span-failure",
+    "notes": "Current matcher protects qwen2 and 7b separately, not the full model tag."
+  },
+  {
+    "id": "protected-model-002",
+    "category": "protected-model-name",
+    "text": "Hide qwen2.5-coder:7b from the writing model picker.",
+    "protected": ["qwen2.5-coder:7b"],
+    "bucket": "protected-span"
+  },
+  {
+    "id": "auto-tech-001",
+    "category": "automotive-forum",
+    "text": "The 2JZ NA-T setup made 700hp at 60-70psi with VVTI.",
+    "protected": ["2JZ", "NA-T", "700hp", "60-70psi", "VVTI"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "auto-tech-002",
+    "category": "automotive-forum",
+    "text": "I need a 6spd swap with a V160 and E85 tune.",
+    "protected": ["6spd", "V160", "E85"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "casual-001",
+    "category": "chat-slang",
+    "text": "Damn, that's hilarious lol.",
+    "protected": ["lol"],
+    "expectNoLocalIssues": true,
+    "llmCorrection": "Damn, that's hilarious lol.",
+    "bucket": "ignore"
+  },
+  {
+    "id": "casual-002",
+    "category": "chat-slang",
+    "text": "Whaddada you know lol",
+    "protected": ["Whaddada", "lol"],
+    "expectNoLocalIssues": true,
+    "llmCorrection": "Whaddada you know lol",
+    "bucket": "ignore"
+  },
+  {
+    "id": "casual-003",
+    "category": "chat-slang",
+    "text": "I gotta admit y'all made a kinda wild setup.",
+    "protected": ["gotta", "y'all", "kinda"],
+    "bucket": "ignore"
+  },
+  {
+    "id": "casual-004",
+    "category": "chat-slang",
+    "text": "Whaddya think about this noob mistake?",
+    "protected": ["Whaddya", "noob"],
+    "expectNoLocalIssues": true,
+    "bucket": "ignore"
+  },
+  {
+    "id": "proper-noun-001",
+    "category": "proper-noun",
+    "text": "OpenGrammar works with Obsidian, Ollama, Chrome, and GitHub.",
+    "protected": ["OpenGrammar", "Obsidian", "Ollama", "Chrome", "GitHub"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "proper-noun-002",
+    "category": "protected-domain",
+    "text": "The site opengrammar.dev is working fine.",
+    "protected": ["opengrammar.dev"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "markdown-001",
+    "category": "markup",
+    "text": "See [bad adress docs](https://example.com/recieved/adress) for details.",
+    "protected": ["https://example.com/recieved/adress"],
+    "localIssues": [
+      { "original": "adress", "suggestion": "address", "route": "quick-fix" }
+    ],
+    "bucket": "quick-fix"
+  },
+  {
+    "id": "code-001",
+    "category": "code",
+    "text": "The value `recievedAdress` should stay as-is in code.",
+    "protected": ["`recievedAdress`"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "code-002",
+    "category": "code",
+    "text": "```js\nconst recievedAdress = getAdress();\n```",
+    "protected": ["```js\nconst recievedAdress = getAdress();\n```"],
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span"
+  },
+  {
+    "id": "form-small-001",
+    "category": "small-form-field",
+    "text": "https://example.com/adress",
+    "protected": ["https://example.com/adress"],
+    "expectNoLocalIssues": true,
+    "bucket": "ignore"
+  },
+  {
+    "id": "form-small-002",
+    "category": "small-form-field",
+    "text": "OPENAI_API_KEY",
+    "protected": ["OPENAI_API_KEY"],
+    "expectNoLocalIssues": true,
+    "bucket": "ignore"
+  },
+  {
+    "id": "clean-001",
+    "category": "no-change",
+    "text": "The quick brown fox jumps over the lazy dog.",
+    "expectNoLocalIssues": true,
+    "bucket": "ignore"
+  },
+  {
+    "id": "clean-002",
+    "category": "no-change",
+    "text": "We received the package yesterday afternoon.",
+    "expectNoLocalIssues": true,
+    "bucket": "ignore"
+  },
+  {
+    "id": "whole-sentence-001",
+    "category": "whole-sentence",
+    "text": "i definately recieved the adress from him.",
+    "localIssues": [
+      { "original": "definately", "suggestion": "definitely", "route": "quick-fix" },
+      { "original": "recieved", "suggestion": "received", "route": "quick-fix" },
+      { "original": "adress", "suggestion": "address", "route": "quick-fix" }
+    ],
+    "llmCorrection": "I definitely received the address from him.",
+    "bucket": "sentence-review"
+  },
+  {
+    "id": "whole-sentence-002",
+    "category": "whole-sentence",
+    "text": "whadda ya think, this are good lol",
+    "protected": ["whadda", "ya", "lol"],
+    "llmCorrection": "whadda ya think, this is good lol",
+    "bucket": "sentence-review"
+  },
+  {
+    "id": "protected-docker-001",
+    "category": "docker-image",
+    "text": "Pull postgres:16-alpine first.",
+    "protected": ["postgres:16-alpine"],
+    "status": "known-gap",
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "protected-package-002",
+    "category": "package-name",
+    "text": "npm install tailwindcss autoprefixer",
+    "protected": ["npm install tailwindcss autoprefixer"],
+    "status": "known-gap",
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "protected-path-003",
+    "category": "protected-path",
+    "text": "Open C:\\Program Files\\OGrammar\\app.exe",
+    "protected": ["C:\\Program Files\\OGrammar\\app.exe"],
+    "status": "known-gap",
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "protected-path-004",
+    "category": "protected-path",
+    "text": "Save to \\\\server\\share\\OGrammar Notes\\draft.txt",
+    "protected": ["\\\\server\\share\\OGrammar Notes\\draft.txt"],
+    "status": "known-gap",
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "protected-path-005",
+    "category": "protected-path",
+    "text": "Check %APPDATA%\\OGrammar and $HOME/.config/ogrammar.",
+    "protected": ["%APPDATA%\\OGrammar", "$HOME/.config/ogrammar"],
+    "status": "known-gap",
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "protected-command-003",
+    "category": "protected-command",
+    "text": "sudo systemctl restart ollama && journalctl -u ollama",
+    "protected": ["sudo systemctl restart ollama && journalctl -u ollama"],
+    "status": "known-gap",
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "bbcode-quote-001",
+    "category": "bbcode",
+    "text": "[quote=Sebambam]Whadda ya know lol[/quote] I recieved it.",
+    "protected": ["[quote=Sebambam]Whadda ya know lol[/quote]"],
+    "localIssues": [
+      { "original": "recieved", "suggestion": "received", "route": "quick-fix" }
+    ],
+    "status": "known-gap",
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "auto-tech-003",
+    "category": "automotive-forum",
+    "text": "The 2jz-gte vvti na-t setup made 600-700hp.",
+    "protected": ["2jz-gte", "vvti", "na-t", "600-700hp"],
+    "status": "known-gap",
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "keyboard-001",
+    "category": "keyboard-shortcut",
+    "text": "Press Ctrl+Shift+P then Win+R.",
+    "protected": ["Ctrl+Shift+P", "Win+R"],
+    "status": "known-gap",
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "datetime-001",
+    "category": "date-time",
+    "text": "Meeting is 2026-06-01 at 10:30pm PST.",
+    "protected": ["2026-06-01", "10:30pm PST"],
+    "status": "known-gap",
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "phone-001",
+    "category": "phone-number",
+    "text": "Call (555) 123-4567 ext. 22.",
+    "protected": ["(555) 123-4567 ext. 22"],
+    "status": "known-gap",
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "currency-001",
+    "category": "currency",
+    "text": "The kit costs $1,299.99 plus 8.25% tax.",
+    "protected": ["$1,299.99", "8.25%"],
+    "status": "known-gap",
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "css-001",
+    "category": "css-token",
+    "text": "Set --brand-color to #ff00aa on .btn-primary.",
+    "protected": ["--brand-color", "#ff00aa", ".btn-primary"],
+    "status": "known-gap",
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "log-line-001",
+    "category": "log-line",
+    "text": "[ERROR] 2026-06-01T10:30:00Z ECONNREFUSED on port 11434.",
+    "protected": ["[ERROR] 2026-06-01T10:30:00Z ECONNREFUSED on port 11434"],
+    "status": "known-gap",
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "address-001",
+    "category": "street-address",
+    "text": "Ship to 123 Main St. Apt 4B.",
+    "protected": ["123 Main St. Apt 4B"],
+    "status": "known-gap",
+    "expectNoLocalIssues": true,
+    "bucket": "protected-span-failure"
+  },
+  {
+    "id": "ui-model-001",
+    "category": "manual-ui",
+    "text": "Cold-load qwen2.5:7b, open sentence review, and keep the review card visible while the model loads.",
+    "manual": true,
+    "bucket": "ui-confusing"
+  },
+  {
+    "id": "ui-model-002",
+    "category": "manual-ui",
+    "text": "Select Ollama model dropdown and confirm qwen2.5-coder:7b is hidden while qwen2.5:7b is recommended.",
+    "manual": true,
+    "bucket": "ui-confusing"
+  }
+]

@@ -36,6 +36,23 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
+
+        <div class="setting-group">
+          <label for="harperDialect">
+            <span class="setting-label">Spelling dialect</span>
+            <span class="setting-description">
+              Which English spelling the local checker treats as correct. Pick
+              British, Australian, or Canadian to stop correct local spellings
+              (colour, organise, centre, behaviour) from being flagged.
+            </span>
+          </label>
+          <select id="harperDialect" class="text-input" style="margin-top: 8px;">
+            <option value="American">American (color, organize, center)</option>
+            <option value="British">British (colour, organise, centre)</option>
+            <option value="Australian">Australian</option>
+            <option value="Canadian">Canadian</option>
+          </select>
+        </div>
       </section>
 
       <!-- API Keys -->
@@ -168,11 +185,22 @@
       <section class="settings-section">
         <h2>Ollama — Which model for my GPU?</h2>
         <p class="section-description">
-          Reference for the local (Ollama) grammar/tone model. Sizes are the
-          Ollama default Q4 quant. The extension reads your installed models
-          live; use this to decide what to <code>ollama pull</code> and pick.
-          Picks favour fast, strong instruction-following models (qwen2.5
-          family); reasoning models (qwen3) give better edits but are slower.
+          The extension reads your installed models live; use this to decide
+          what to <code>ollama pull</code>.
+          <strong>Recommended local model: <code>qwen3:4b-instruct</code></strong>
+          — it won our proofreading benchmark (best local quality, fewest
+          mistakes, and the fastest local model), and at only ~2.6&nbsp;GB it
+          runs comfortably on 8&nbsp;GB cards like the <strong>GTX&nbsp;1070</strong>
+          and most GPUs down to 6&nbsp;GB. A bigger GPU does <em>not</em> need a
+          bigger model — <code>qwen3:4b-instruct</code> beat <code>qwen2.5:7b</code>
+          in testing. For the cloud,
+          <strong><code>deepseek-chat</code> (DeepSeek provider) is the top
+          pick</strong> — the highest quality of everything we tested and only
+          pennies per month.
+        </p>
+        <p class="section-description" style="margin-top: 8px;">
+          📊 <a href="https://github.com/zazzn/opengrammar/blob/og-rewrite/docs/25-local-llm-model-benchmark.md"
+            target="_blank" class="link"><strong>See our full model benchmark &amp; cost results →</strong></a>
         </p>
 
         <div class="gpu-guide">
@@ -181,21 +209,15 @@
               <tr><th>GPU (VRAM)</th><th>Recommended model</th><th>Approx VRAM</th></tr>
             </thead>
             <tbody>
-              <tr><td>No NVIDIA / CPU only</td><td>Cloud (OpenAI/Groq/Abacus), or <code>gemma2:2b</code></td><td>CPU: needs ~4–6 GB free RAM, slow</td></tr>
-              <tr><td>GTX 10-series · 6 GB (1060)</td><td><code>qwen2.5:3b</code></td><td>~2–3 GB</td></tr>
-              <tr><td>GTX 10-series · 8 GB (1070/1080)</td><td><code>qwen2.5:7b</code> — sweet spot</td><td>~5 GB</td></tr>
-              <tr><td>GTX 10-series · 11 GB (1080 Ti)</td><td><code>qwen2.5:7b</code> / <code>llama3.1:8b</code></td><td>~5–6 GB</td></tr>
-              <tr><td>RTX 20-series · 6–8 GB</td><td><code>qwen2.5:7b</code></td><td>~5 GB</td></tr>
-              <tr><td>RTX 20-series · 11 GB (2080 Ti)</td><td><code>qwen2.5:7b</code>, or <code>qwen3</code> (slower)</td><td>~5–7 GB</td></tr>
-              <tr><td>RTX 30-series · 8–10 GB (3070/3080)</td><td><code>qwen2.5:7b</code></td><td>~5–6 GB</td></tr>
-              <tr><td>RTX 30-series · 12 GB (3060)</td><td><code>qwen2.5:7b</code> (14B Q4 tight)</td><td>~6–9 GB</td></tr>
-              <tr><td>RTX 30-series · 24 GB (3090)</td><td><code>qwen2.5:14b</code> / <code>qwen3</code></td><td>~9–11 GB</td></tr>
-              <tr><td>RTX 40-series · 8 GB (4060)</td><td><code>qwen2.5:7b</code></td><td>~5 GB</td></tr>
-              <tr><td>RTX 40-series · 12 GB (4070)</td><td><code>qwen2.5:7b</code> / 14B Q4</td><td>~6–9 GB</td></tr>
-              <tr><td>RTX 40-series · 16 GB (4080)</td><td><code>qwen2.5:14b</code></td><td>~9–10 GB</td></tr>
-              <tr><td>RTX 40-series · 24 GB (4090)</td><td><code>qwen2.5:14b</code>/<code>32b</code> Q4, <code>qwen3</code></td><td>~10–20 GB</td></tr>
-              <tr><td>RTX 50-series · 12–16 GB (5070/5080)</td><td><code>qwen2.5:14b</code></td><td>~9–10 GB</td></tr>
-              <tr><td>RTX 50-series · 32 GB (5090)</td><td><code>qwen2.5:32b</code> / <code>qwen3</code> — best</td><td>~20+ GB</td></tr>
+              <tr><td>No NVIDIA / CPU only</td><td>Cloud <code>deepseek-chat</code> (best), or local <code>qwen3:4b-instruct</code> (works, slower on CPU)</td><td>CPU: ~4 GB free RAM</td></tr>
+              <tr><td>GTX 10-series · 6 GB (1060)</td><td><code>qwen3:4b-instruct</code></td><td>~3 GB</td></tr>
+              <tr><td>GTX 10-series · 8 GB (1070/1080)</td><td><code>qwen3:4b-instruct</code> — sweet spot ✅</td><td>~3–4 GB</td></tr>
+              <tr><td>GTX 10-series · 11 GB (1080 Ti)</td><td><code>qwen3:4b-instruct</code></td><td>~3–4 GB</td></tr>
+              <tr><td>RTX 20-series · 6–8 GB</td><td><code>qwen3:4b-instruct</code></td><td>~3–4 GB</td></tr>
+              <tr><td>RTX 30-series · 8–12 GB (3060/3070/3080)</td><td><code>qwen3:4b-instruct</code></td><td>~3–4 GB</td></tr>
+              <tr><td>RTX 40-series · 8–12 GB (4060/4070)</td><td><code>qwen3:4b-instruct</code></td><td>~3–4 GB</td></tr>
+              <tr><td>RTX 40/50-series · 16 GB+ (4080/5080)</td><td><code>qwen3:4b-instruct</code>; room for <code>qwen2.5:14b</code> if you want</td><td>~4–10 GB</td></tr>
+              <tr><td>RTX 30/40/50 · 24 GB+ (3090/4090/5090)</td><td><code>qwen3:4b-instruct</code> is still the pick; larger models give little gain for proofreading</td><td>~4–20 GB</td></tr>
             </tbody>
           </table>
         </div>
@@ -204,7 +226,8 @@
           <strong>VRAM headroom:</strong> leave ~1–2 GB free. A model that
           doesn't fit spills to system RAM and gets very slow. Skip
           <code>coder</code>/<code>embed</code>/<code>vision</code> variants —
-          they're poor at prose grammar.
+          the popup hides them from the writing-model picker because they are
+          not tuned for prose correction.
         </p>
         <p class="section-description">
           <strong>Gaming / GPU-heavy tasks:</strong> Ollama keeps the model
@@ -235,6 +258,17 @@
               <span class="setting-description">Record recent events (last 200) locally</span>
             </div>
             <input type="checkbox" id="debugLogging" class="toggle-input">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-group">
+          <label class="toggle-setting">
+            <div class="toggle-info">
+              <span class="setting-label">Mask protected text before AI correction</span>
+              <span class="setting-description">Hide URLs, code, IDs, commands, and slang from the LLM before restoring them locally</span>
+            </div>
+            <input type="checkbox" id="llmProtectedMasking" class="toggle-input">
             <span class="toggle-slider"></span>
           </label>
         </div>
