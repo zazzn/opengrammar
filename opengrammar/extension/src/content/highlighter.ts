@@ -203,11 +203,13 @@ function isMechanical(i: Issue): boolean {
 export function highlightIssues(element: HTMLElement, issues: Issue[]) {
   initHighlightContainer();
   clearHighlights();
-  if (!issues || issues.length === 0) return;
 
-  // ONE indicator: the AI Grammar/Tone review button (opens the LLM
-  // whole-text review). It's the only floating control now.
-  showAssistantBubble(element, issues);
+  // ONE indicator: the AI Grammar/Tone review button (opens the LLM whole-text
+  // review). Keep it visible even when the local rule engine found zero issues:
+  // context-only errors such as "My" mid-sentence or groves/grooves need the
+  // sentence-level model, so no underline would otherwise mean no discoverable
+  // path to the correction.
+  showAssistantBubble(element, issues || []);
 
   const mechanical = issues.filter(isMechanical);
   if (mechanical.length === 0) {
@@ -620,7 +622,12 @@ function showAssistantBubble(element: HTMLElement, issues: Issue[]) {
   const bubble = document.createElement('button');
   bubble.className = 'opengrammar-assistant';
   bubble.type = 'button';
-  bubble.setAttribute('aria-label', `OpenGrammar: ${issues.length} suggestion${issues.length !== 1 ? 's' : ''}`);
+  const count = issues.length;
+  const label = count > 0
+    ? `OpenGrammar: ${count} suggestion${count !== 1 ? 's' : ''}`
+    : 'OpenGrammar: review writing with AI';
+  bubble.setAttribute('aria-label', label);
+  bubble.title = count > 0 ? label : 'Review writing with DeepSeek/local AI';
   bubble.style.cssText = `
     position: fixed;
     left: 0; top: 0;
@@ -636,7 +643,8 @@ function showAssistantBubble(element: HTMLElement, issues: Issue[]) {
   `;
 
   const hasErrors = issues.some(i => i.type === 'grammar' || i.type === 'spelling');
-  const badgeBg = hasErrors ? '#e53935' : '#f59e0b';
+  const badgeBg = count === 0 ? '#4F46E5' : hasErrors ? '#e53935' : '#f59e0b';
+  const badgeText = count === 0 ? 'AI' : String(count);
 
   bubble.innerHTML = `
     <span style="position:relative;display:flex;align-items:center;justify-content:center;">
@@ -654,7 +662,7 @@ function showAssistantBubble(element: HTMLElement, issues: Issue[]) {
         border:1.5px solid white;
         font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
         box-shadow:0 1px 3px rgba(0,0,0,0.25);
-      ">${issues.length}</span>
+      ">${badgeText}</span>
     </span>
   `;
 

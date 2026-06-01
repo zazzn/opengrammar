@@ -483,10 +483,14 @@ function handleGrammarSuccess(element: HTMLElement, text: string, issues: Issue[
   } else {
     if (editableElement) editableElement.lastIssues = [];
     void syncActiveContext(text, []);
-    // Text is now clean — remove the stale bubble/underlines from the previous
-    // analysis. Without this, an accepted fix leaves a lingering icon whose
-    // (now stale) issues garble the panel when reopened.
-    if (!isUIActive()) clearHighlights();
+    // No local mechanical issues. Keep the AI review bubble available for prose:
+    // context-only mistakes may still be caught by the sentence-level model.
+    // For very short snippets, remove UI noise.
+    const wordCount = text.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+    if (!isUIActive()) {
+      if (wordCount >= 4) highlightIssues(element, []);
+      else clearHighlights();
+    }
     void chrome.runtime.sendMessage({ type: 'UPDATE_BADGE_COUNT', count: 0 });
   }
 }
