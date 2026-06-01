@@ -70,8 +70,11 @@ const HASH_RE = /\b[a-f0-9]{12,}\b/gi;
 const VERSION_RE = /\bv?\d+(?:\.\d+){1,}(?:[-+][A-Za-z0-9.-]+)?\b/g;
 const MEASUREMENT_RE = /\b(?:\d+(?:\.\d+)?(?:\s*[-–]\s*\d+(?:\.\d+)?)?\s*(?:hp|whp|bhp|psi|bar|rpm|mph|kph|kmh|gb|mb|kb|tb|ms|sec|s|kg|g|lb|lbs|oz|mm|cm|m|km|in|ft|yd|v|w|kw|mah|hz|khz|mhz|ghz|%|°c|°f)|0x[A-Fa-f0-9]+|[A-Z]?\d+[A-Z]{1,4}|[A-Z]{1,4}\d+[A-Z0-9]*|[A-Z]{1,4}(?:-[A-Z0-9]{1,4})+)\b/g;
 const SPECIAL_TECH_TOKEN_RE = /(^|[\s([{"'])(C\+\+|C#)(?=$|[\s.,;:!?)}\]>"'])/g;
-const CHAT_SLANG_RE = /\b(?:lol|lmao|lmfao|rofl|haha|hahaha|hehe|omg|wtf|btw|imo|imho|idk|tbh|fyi|brb|irl|gg|np|thx|ty|rn|smh|ngl|fr|afaik|fwiw|asap|dm|pm|jk|ikr|nvm|tldr|tl;dr|noob|whadda|whaddya|whatcha|watcha|whatchu|gonna|gotta|wanna|kinda|sorta|dunno|lemme|gimme|yall|ya|cuz|sup|bro|bruh|yo)\b|y'all|ain't/gi;
+const CHAT_SLANG_RE = /\b(?:lol|lmao|lmfao|rofl|haha|hahaha|hehe|omg|wtf|btw|imo|imho|idk|tbh|fyi|brb|irl|gg|np|thx|ty|rn|smh|ngl|fr|afaik|fwiw|asap|dm|pm|jk|ikr|nvm|tldr|tl;dr|noob|whadda|whaddya|whatcha|watcha|whatchu|gonna|gotta|wanna|kinda|sorta|dunno|lemme|gimme|yall|ya|cuz|sup|bro|bruh|yo|finna|periodt|lowkey|deadass|imma|ight|wyd|istg)\b|y'all|ain't/gi;
 const PHONETIC_CASUAL_RE = /\b(?:wha+d+(?:a|ya|da)+|wha+d+u+p+|wha+t?cha+|wha+t?chu+|go+n+a+|got+a+|wan+a+|kin+da+|sor+ta+|du+n+o+|lem+e+|gim+e+|y['’]?all|ain['’]?t)\b/gi;
+// Intentional letter-elongation (soooo, yesss, noooo) — no real English word has
+// a 3x repeated letter, so this only matches deliberate casual emphasis.
+const ELONGATION_RE = /\b[A-Za-z]*([A-Za-z])\1{2,}[A-Za-z]*\b/g;
 const PROPER_NOUN_RE = /\b(?:OpenGrammar|OGrammar|Grammarly|Obsidian|Ollama|RouteLLM|Abacus|GitHub|GitLab|Discord|Reddit|Chrome|Harper|TypeScript|JavaScript|Node\.js|React|Vite)\b/g;
 const ENV_TOKEN_RE = /\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+\b/g;
 const CODE_TOKEN_RE = /\b(?:[A-Za-z][A-Za-z0-9]*_[A-Za-z0-9_]+|[A-Za-z]+[A-Z][A-Za-z0-9]*|[A-Za-z]+[0-9]+[A-Za-z0-9]*|[A-Za-z0-9]*[0-9]+[A-Za-z]+[A-Za-z0-9]*)\b/g;
@@ -111,6 +114,7 @@ export function findProtectedSpans(text: string): ProtectedSpan[] {
   collectGroupSpans(text, SPECIAL_TECH_TOKEN_RE, 2, 'measurement', spans);
   collectRegexSpans(text, CHAT_SLANG_RE, 'chat-slang', spans);
   collectRegexSpans(text, PHONETIC_CASUAL_RE, 'chat-slang', spans);
+  collectRegexSpans(text, ELONGATION_RE, 'chat-slang', spans);
   collectRegexSpans(text, PROPER_NOUN_RE, 'proper-noun', spans);
   collectRegexSpans(text, ENV_TOKEN_RE, 'code-token', spans);
   collectRegexSpans(text, CODE_TOKEN_RE, 'code-token', spans);

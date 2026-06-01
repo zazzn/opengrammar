@@ -266,11 +266,13 @@
           <label class="toggle-setting">
             <div class="toggle-info">
               <span class="setting-label setting-label-row">
-                <span>Mask protected text before AI correction</span>
+                <span>Mask protected text before AI correction (advanced, off by default)</span>
                 <span class="info-bubble-wrap">
                   <span class="info-bubble-trigger" tabindex="0" aria-label="Why OGrammar masks protected text">?</span>
                   <span class="info-bubble" role="tooltip">
-                    Before sending a sentence to the selected AI model, OGrammar replaces URLs,
+                    Off by default: OGrammar now sends the full sentence and keeps only the
+                    AI edits that don't touch protected text, so the model has full context.
+                    When you enable this, before sending a sentence OGrammar instead replaces URLs,
                     emails, file paths, code, commands, API keys, IDs, model names, measurements,
                     and common chat slang with placeholders such as [[OG_PROTECTED_1]]. The model
                     can still fix the surrounding sentence, but it cannot rewrite the protected
@@ -281,7 +283,7 @@
                   </span>
                 </span>
               </span>
-              <span class="setting-description">Hide URLs, code, IDs, commands, and slang from the LLM before restoring them locally</span>
+              <span class="setting-description">Off by default — the AI sees the full sentence and OGrammar applies only edits that don't touch protected text. Enable to replace protected text with placeholders before sending (safer, but can confuse the model on jargon-heavy text).</span>
             </div>
             <input type="checkbox" id="llmProtectedMasking" class="toggle-input">
             <span class="toggle-slider"></span>

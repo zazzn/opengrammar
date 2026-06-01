@@ -214,3 +214,47 @@ export function rankCandidates(
   out.unshift(w);
   return out;
 }
+
+/**
+ * Rank an arbitrary candidate pool (e.g. from a Hunspell/SymSpell suggester) by
+ * the same neighbour-aware noisy-channel score used above, returning ALL
+ * candidates sorted best-first. Unlike `rankCandidates` — which conservatively
+ * trusts Harper's frequency-first order and only overrides on a big margin —
+ * this assumes the pool has no meaningful prior order (Hunspell's ranking is
+ * opaque/weak), so it scores every candidate by context + channel and sorts.
+ * `m === null` → frequency-free fallback that prefers the most plausible typo
+ * (transposition / smallest edit distance). Pure & synchronous.
+ */
+export function rankSpellCandidates(
+  m: NgramModel | null,
+  text: string,
+  offset: number,
+  length: number,
+  original: string,
+  cands: string[],
+): string[] {
+  if (cands.length <= 1) return cands.slice();
+  if (!m) {
+    return cands.slice().sort((a, b) => channel(original, b) - channel(original, a));
+  }
+  const [left, right] = neighbours(text, offset, offset + length);
+  const score = (c: string): number => {
+    const w = c.toLowerCase();
+    let ctx = 0;
+    let parts = 0;
+    if (left) {
+      ctx += condLn(m, left, w);
+      parts++;
+    }
+    if (right) {
+      ctx += condLn(m, w, right);
+      parts++;
+    }
+    if (parts === 0) ctx = uniLn(m, w);
+    return ctx + W_CH * channel(original, c);
+  };
+  return cands
+    .map((c) => ({ c, s: score(c) }))
+    .sort((a, b) => b.s - a.s)
+    .map((x) => x.c);
+}
