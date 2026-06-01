@@ -34,6 +34,15 @@ const COMMON_SPELLING_OVERRIDES = {
   teh: 'the',
 };
 
+const STYLE_LINTS_TO_ENABLE = {
+  FillerWords: true,
+  RepeatedWords: true,
+  DiscourseMarkers: true,
+  Readability: false,
+  LongSentences: false,
+  BoringWords: false,
+};
+
 function applyCommonSpellingOverride(original, suggestion) {
   const replacement = COMMON_SPELLING_OVERRIDES[original.toLowerCase()];
   if (!replacement) return suggestion;
@@ -165,6 +174,8 @@ function findIssue(issues, expected) {
 
 const linter = new LocalLinter({ binary: binaryInlined });
 await linter.setup();
+const lintConfig = await linter.getLintConfig();
+await linter.setLintConfig({ ...lintConfig, ...STYLE_LINTS_TO_ENABLE });
 
 const results = [];
 const byBucket = new Map();
