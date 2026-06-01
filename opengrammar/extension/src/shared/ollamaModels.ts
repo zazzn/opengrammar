@@ -6,19 +6,20 @@ export interface OllamaModelChoice {
   reason?: string;
 }
 
-export const DEFAULT_WRITING_MODEL = 'qwen3:4b-instruct';
+export const DEFAULT_WRITING_MODEL = 'qwen3.5:4b';
 
 const EXCLUDED_MODEL_RE =
   /\b(?:coder|code|embed|embedding|vision|vl|math|guard|moderation|rerank|nomic|clip|whisper|llava)\b/i;
 
 const UNSUPPORTED_WRITING_MODEL_RE =
-  /^qwen3:(?:4b|8b|latest)(?!.*instruct)/i;
+  /^qwen3:(?:4b|8b)(?!.*instruct)/i;
 
 const WRITING_RANKS: Array<{ re: RegExp; rank: number; label?: string }> = [
-  { re: /^qwen3:4b-instruct(?:$|[-_])/i, rank: 100, label: 'Recommended' },
-  { re: /^qwen2\.5:7b(?:$|[-_])/i, rank: 92, label: 'Sentence-review baseline' },
-  { re: /^qwen3\.5:2b(?:$|[-_])/i, rank: 91, label: 'Experimental' },
-  { re: /^qwen3\.5:4b(?:$|[-_])/i, rank: 89, label: 'Context alternate' },
+  { re: /^qwen3\.5:4b(?:$|[-_])/i, rank: 100, label: 'Recommended' },
+  { re: /^qwen2\.5:7b(?:$|[-_])/i, rank: 96, label: 'Sentence-review baseline' },
+  { re: /^qwen3:latest(?:$|[-_])/i, rank: 94, label: 'Context alternate' },
+  { re: /^qwen3:4b-instruct(?:$|[-_])/i, rank: 92, label: 'Fast safe alternate' },
+  { re: /^qwen3\.5:2b(?:$|[-_])/i, rank: 91, label: 'Fast alternate' },
   { re: /^qwen2\.5:3b(?:$|[-_])/i, rank: 88, label: 'Fast alternate' },
   { re: /^llama3\.2:3b(?:$|[-_])/i, rank: 86, label: 'Fast alternate' },
   { re: /^qwen2\.5:14b(?:$|[-_])/i, rank: 86, label: 'Large alternate' },

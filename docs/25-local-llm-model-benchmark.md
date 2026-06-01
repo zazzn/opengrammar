@@ -262,10 +262,83 @@ paid provider's cost.
 
 ### Cross-provider recommendation
 
-- **Local / private / free:** `qwen3:4b-instruct` (107/123, 902 ms).
-- **Best cloud quality + cheapest:** `deepseek-chat` (121/123, ~$0.00004/call).
+- **Local / private / free:** `qwen3.5:4b` with protected-text masking on
+  (123/123, 0 hard failures, ~1046 ms).
+- **Best cloud quality + cheapest:** `deepseek-chat` (123/123 with masking, ~$0.00004/call).
 - **Fastest cloud:** Groq `llama-3.3-70b-versatile` (396 ms, 97/123) when in-browser
   latency matters more than top accuracy.
 - Groq `gpt-oss-20b` (117/123) proves Groq can match on quality, but it is slower
   and pricier than `deepseek-chat`, so it is not the default pick.
 - Skip Groq `llama-3.1-8b-instant` for proofreading (76/123, 13 hard failures).
+
+---
+
+## Protected-text masking rerun — 2026-06-01
+
+OGrammar now masks protected text before LLM correction, using the same
+`findProtectedSpans()` logic that protects the local Harper path.
+
+Example:
+
+```text
+Original: Go to https://example.com/adress/recieved and dont change it.
+LLM sees:  Go to [[OG_PROTECTED_1]] and dont change it.
+Restored:  Go to https://example.com/adress/recieved and don't change it.
+```
+
+The setting is enabled by default and can be toggled from Options:
+**Mask protected text before AI correction**.
+
+### Masked local benchmark
+
+Command:
+
+```bash
+cd /home/zazzn/opengrammar/opengrammar/extension
+node scripts/benchmark-models.mjs --local=qwen3:4b-instruct,qwen3.5:0.8b,qwen3.5:2b,qwen3.5:4b,qwen2.5:7b,gemma3:4b,qwen3:latest --repeats=1
+```
+
+| Model | Exact | Weighted | Hard | JSON | Protected | No false positive | Sentence review | Avg | GPU |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| qwen3.5:4b | 46/46 | 123/123 | 0 | 46/46 | 46/46 | 46/46 | 10/10 | 913ms | 100% |
+| qwen2.5:7b | 45/46 | 121/123 | 0 | 46/46 | 46/46 | 46/46 | 9/10 | 2078ms | 100% |
+| qwen3:latest | 44/46 | 119/123 | 0 | 46/46 | 46/46 | 46/46 | 8/10 | 1257ms | 100% |
+| qwen3.5:2b | 42/46 | 115/123 | 1 | 46/46 | 45/46 | 45/46 | 8/10 | 806ms | 100% |
+| qwen3:4b-instruct | 41/46 | 113/123 | 0 | 46/46 | 46/46 | 46/46 | 5/10 | 685ms | 100% |
+| gemma3:4b | 36/46 | 99/123 | 4 | 43/46 | 43/46 | 43/46 | 5/10 | 1655ms | 100% |
+| qwen3.5:0.8b | 24/46 | 89/123 | 1 | 45/46 | 46/46 | 45/46 | 0/10 | 508ms | 100% |
+
+Repeat top-model check:
+
+```bash
+node scripts/benchmark-models.mjs --local=qwen3.5:4b,qwen2.5:7b,qwen3:latest,qwen3:4b-instruct --repeats=2
+```
+
+| Model | Exact | Weighted | Hard | JSON | Protected | No false positive | Sentence review | Avg | GPU |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| qwen3.5:4b | 46/46 | 123/123 | 0 | 46/46 | 46/46 | 46/46 | 10/10 | 1046ms | 100% |
+| qwen2.5:7b | 45/46 | 121/123 | 0 | 46/46 | 46/46 | 46/46 | 9/10 | 2087ms | 100% |
+| qwen3:latest | 44/46 | 119/123 | 0 | 46/46 | 46/46 | 46/46 | 8/10 | 1044ms | 100% |
+| qwen3:4b-instruct | 41/46 | 113/123 | 0 | 46/46 | 46/46 | 46/46 | 5/10 | 694ms | 100% |
+
+### Masked cloud benchmark
+
+Command:
+
+```bash
+REMOTE_DELAY_MS=250 node scripts/benchmark-models.mjs --local= --remote
+```
+
+| Model | Exact | Weighted | Hard | JSON | Protected | No false positive | Sentence review | Avg |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| deepseek-chat | 46/46 | 123/123 | 0 | 46/46 | 46/46 | 46/46 | 10/10 | 1908ms |
+| abacus/route-llm | 45/46 | 120/123 | 1 | 46/46 | 46/46 | 45/46 | 10/10 | 2100ms |
+| deepseek-reasoner | 41/46 | 115/123 | 3 | 43/46 | 44/46 | 46/46 | 7/10 | 3235ms |
+
+Updated recommendation:
+
+- **Best local:** `qwen3.5:4b`.
+- **Best cloud:** `deepseek-chat`.
+- Masking is worth keeping on by default. It turns protected-text safety from a
+  model-choice problem into an app-level guarantee, and it made weaker models
+  substantially more usable.
