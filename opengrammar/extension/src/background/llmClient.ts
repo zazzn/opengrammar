@@ -4,6 +4,8 @@
 // lets the SW bypass CORS). Prompt/param logic here is ported verbatim from
 // the former backend (backend/src/index.ts) so output quality is unchanged.
 
+import { PROVIDERS } from '../types';
+
 /** Normalize an Ollama server URL to its OpenAI-compatible /v1 base. */
 export function ollamaV1(url?: string): string {
   const b = (url || 'http://localhost:11434').trim().replace(/\/+$/, '');
@@ -19,16 +21,10 @@ export function ollamaRoot(baseUrl?: string): string {
 }
 
 function getProviderBaseUrl(provider: string): string {
-  const urls: Record<string, string> = {
-    openai: 'https://api.openai.com/v1',
-    openrouter: 'https://openrouter.ai/api/v1',
-    groq: 'https://api.groq.com/openai/v1',
-    together: 'https://api.together.xyz/v1',
-    abacus: 'https://routellm.abacus.ai/v1',
-    ollama: 'http://localhost:11434/v1',
-    custom: '',
-  };
-  return urls[provider] ?? urls.openai;
+  return (
+    PROVIDERS.find((p) => p.id === provider)?.baseUrl ||
+    PROVIDERS.find((p) => p.id === 'openai')!.baseUrl
+  );
 }
 
 /**
