@@ -320,39 +320,101 @@ function isConservativeCorrection(original: string, candidate: string): boolean 
   return ratio <= maxRatio;
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Apply the model's word-level corrections to `text`, keeping ONLY edits whose
+ * target does not overlap a protected span. The model sees the full sentence
+ * (so it understands context and corrects well); protection is enforced HERE by
+ * filtering its edits — jargon/URLs/code are preserved by construction, and a
+ * single bad edit never discards the whole correction. Each `original` is
+ * matched at a word boundary so we don't replace a substring inside another word
+ * (e.g. the "i" inside "this"). Edits are applied right-to-left to keep offsets
+ * valid, skipping any that overlap an already-applied edit.
+ */
+function applySafeCorrections(
+  text: string,
+  corrections: LlmCorrectionSpan[],
+  spans: { start: number; end: number }[],
+): { corrected: string; applied: LlmCorrectionSpan[] } {
+  const edits: { start: number; end: number; replacement: string; c: LlmCorrectionSpan }[] = [];
+  for (const c of corrections) {
+    const original = (c.original || '').trim();
+    const replacement = c.replacement ?? '';
+    if (!original || original === replacement) continue;
+    const wordish = /^[A-Za-z0-9']+$/.test(original);
+    const re = wordish
+      ? new RegExp(`(?<![A-Za-z0-9])${escapeRegExp(original)}(?![A-Za-z0-9])`, 'g')
+      : new RegExp(escapeRegExp(original), 'g');
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      const start = m.index;
+      const end = start + original.length;
+      if (spans.some((s) => start < s.end && end > s.start)) continue; // inside a protected span
+      edits.push({ start, end, replacement, c });
+      break; // first safe occurrence
+    }
+  }
+  edits.sort((a, b) => b.start - a.start);
+  let out = text;
+  const used: { start: number; end: number }[] = [];
+  const applied: LlmCorrectionSpan[] = [];
+  for (const e of edits) {
+    if (used.some((r) => e.start < r.end && e.end > r.start)) continue;
+    out = out.slice(0, e.start) + e.replacement + out.slice(e.end);
+    used.push({ start: e.start, end: e.end });
+    applied.push(e.c);
+  }
+  return { corrected: out, applied };
+}
+
 function normalizeCorrectionResult(
   text: string,
   raw: string,
   mask?: ProtectedTextMask,
 ): { corrected: string; corrections: LlmCorrectionSpan[]; shouldShow: boolean } {
   const parsed = parseCorrectionPayload(raw);
-  const corrected = (parsed?.correctedText || (!parsed ? raw : '')).trim();
-  const corrections = mask ? [] : Array.isArray(parsed?.corrections) ? parsed.corrections : [];
-  const proposedMasked = corrected || (mask ? mask.maskedText : text);
-
   if (parsed?.shouldShow === false) {
     return { corrected: text, corrections: [], shouldShow: false };
   }
-  if (corrections.length > 0 && corrections.every((c) => c.confidence === 'low')) {
+
+  if (!mask) {
+    // Default path: full context in, apply only protected-span-safe edits.
+    const spans = findProtectedSpans(text);
+    const corrections = Array.isArray(parsed?.corrections) ? parsed.corrections : [];
+    if (corrections.length > 0) {
+      const { corrected, applied } = applySafeCorrections(text, corrections, spans);
+      return { corrected, corrections: applied, shouldShow: corrected.trim() !== text.trim() };
+    }
+    // No structured edits: fall back to the model's full correctedText, but only
+    // if it keeps protected fragments intact and isn't an over-broad rewrite.
+    const proposed = (parsed?.correctedText || '').trim();
+    if (
+      proposed &&
+      proposed !== text.trim() &&
+      preservesProtectedFragments(text, proposed) &&
+      isConservativeCorrection(text, proposed)
+    ) {
+      return { corrected: proposed, corrections: [], shouldShow: true };
+    }
     return { corrected: text, corrections: [], shouldShow: false };
   }
 
-  const proposed = mask ? restoreProtectedText(proposedMasked, mask) : proposedMasked;
+  // Legacy opt-in masking path (unchanged behaviour).
+  const correctedMasked = (parsed?.correctedText || (!parsed ? raw : '')).trim();
+  const proposedMasked = correctedMasked || mask.maskedText;
+  const proposed = restoreProtectedText(proposedMasked, mask);
   const safe =
-    (!mask || preservesProtectedPlaceholders(proposedMasked, mask)) &&
+    preservesProtectedPlaceholders(proposedMasked, mask) &&
     preservesProtectedFragments(text, proposed) &&
     isConservativeCorrection(text, proposed) &&
     parsed?.protectedSpansPreserved !== false;
-
   if (!safe) {
     return { corrected: text, corrections: [], shouldShow: false };
   }
-
-  return {
-    corrected: proposed,
-    corrections,
-    shouldShow: proposed.trim() !== text.trim(),
-  };
+  return { corrected: proposed, corrections: [], shouldShow: proposed.trim() !== text.trim() };
 }
 
 async function handleGrammarCheck(
@@ -826,7 +888,11 @@ async function correctText(
       return { original: text, corrected: text, llm: false };
     }
 
-    const useMasking = llmProtectedMasking !== false;
+    // Default OFF: send the full sentence (better corrections) and enforce
+    // protection by applying only safe edits (see normalizeCorrectionResult).
+    // Masking is now an explicit opt-in — it strips context and made the model
+    // abstain on jargon-heavy text.
+    const useMasking = llmProtectedMasking === true;
     const mask = useMasking ? maskProtectedText(text) : undefined;
     const llmText = mask?.maskedText || text;
     const protectedFragments = mask?.fragments.map((fragment) => fragment.placeholder) || protectedFragmentList(text);
@@ -838,20 +904,21 @@ async function correctText(
         {
           role: 'system',
           content:
-            'You are a conservative proofreading engine. Correct only objective ' +
-            'errors: spelling, grammar, punctuation, capitalization, and obvious ' +
-            'word-form mistakes. Do not improve style, tone, clarity, slang, or ' +
-            'wording unless explicitly asked. Preserve meaning and casual voice. ' +
-            'Do not normalize phonetic casual speech such as whadda, whaddya, ' +
-            'whatcha, gotta, wanna, kinda, yall, or lol in correction mode. ' +
-            'Preserve every protected fragment and placeholder EXACTLY. ' +
-            'Placeholders look like [[OG_PROTECTED_1]] and must never be changed, removed, or reordered. ' +
-            'If the sentence is ' +
-            'acceptable as written, or if confidence is low, return shouldShow=false. ' +
-            'Return JSON only with this shape: ' +
-            '{"originalText":string,"correctedText":string,"shouldShow":boolean,' +
-            '"protectedSpansPreserved":boolean,"corrections":[{"original":string,' +
-            '"replacement":string,"start":number,"end":number,"type":"spelling|grammar|punctuation|capitalization|word-form","confidence":"high|medium|low","explanation":string}]}.',
+            'You are a precise proofreading engine. Fix only real, objective ' +
+            'mistakes: spelling, grammar, punctuation, capitalization, and ' +
+            'word-form errors. Do NOT rewrite for style, tone, or clarity, and do ' +
+            'NOT change casual wording or slang. Leave every item in ' +
+            'protectedFragments EXACTLY as written — technical terms, part ' +
+            'numbers, model names, URLs, file paths, code, IDs, version strings, ' +
+            '@handles, and placeholders like [[OG_PROTECTED_1]] must never change. ' +
+            'Return JSON ONLY with this shape: {"correctedText":string,' +
+            '"shouldShow":boolean,"protectedSpansPreserved":boolean,' +
+            '"corrections":[{"original":string,"replacement":string,' +
+            '"type":"spelling|grammar|punctuation|capitalization|word-form",' +
+            '"confidence":"high|medium|low"}]}. The "corrections" array lists each ' +
+            'individual fix — give the EXACT original substring and its ' +
+            'replacement; return an empty array if there are no real mistakes. ' +
+            'Set correctedText to the fully corrected text.',
         },
         {
           role: 'user',

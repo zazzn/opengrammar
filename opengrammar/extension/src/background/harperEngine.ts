@@ -16,7 +16,8 @@ import {
 } from 'harper.js';
 import type { Lint } from 'harper.js';
 import type { Issue } from '../types';
-import { rankByContext, warmContextModel } from './contextRanker';
+import { rankByContext, rankSpellByContext, warmContextModel } from './contextRanker';
+import { spellSuggestions, warmSpell } from './spellSuggest';
 
 let linterPromise: Promise<LocalLinter> | null = null;
 
@@ -126,7 +127,7 @@ function getLinter(): Promise<LocalLinter> {
 /** Warm the engine ahead of first use (called on install/startup). */
 export async function warmHarper(): Promise<void> {
   try {
-    await Promise.all([getLinter(), warmContextModel()]);
+    await Promise.all([getLinter(), warmContextModel(), warmSpell()]);
     console.log('[harper] local engine ready');
   } catch (e) {
     console.warn('[harper] warm failed:', e);
@@ -226,27 +227,41 @@ export async function harperLint(text: string): Promise<Issue[]> {
       let reason = lint.message();
 
       if (type === 'spelling') {
-        // Spelling suggestions are all Replace-kind. Pick the best (promoting
-        // transpositions) and expose the rest via the menu's existing
-        // "Other suggestions: …" parsing in highlighter.ts.
-        const cands = sg
+        const harperCands = sg
           .filter((x) => x.k === SuggestionKind.Replace)
           .map((x) => x.t)
           .filter((t) => t && t !== original);
+        // Hunspell (nspell) gives a far better candidate pool than Harper for
+        // real typos (doublt→doubt, crayz→crazy, where Harper offers
+        // double/crays). Use it when available; fall back to Harper's own
+        // candidates if the dictionary failed to load or returns nothing.
+        const hunspellCands = await spellSuggestions(original);
+        const useHunspell = hunspellCands.length > 0;
+        const pool = useHunspell ? hunspellCands.slice() : harperCands;
+        for (const c of harperCands) {
+          if (!pool.some((x) => x.toLowerCase() === c.toLowerCase())) pool.push(c);
+        }
+        const cands = pool.filter((t) => t && t.toLowerCase() !== original.toLowerCase());
         if (cands.length === 0) continue;
-        // Context re-ranker owns the decision: neighbour-aware noisy-channel
-        // with a conservative override gate, and an internal transposition
-        // fallback when the n-gram model is unavailable.
-        const ranked = await rankByContext(
-          text,
-          startU16,
-          endU16 - startU16,
-          original,
-          cands,
-        );
+        // Full-score the Hunspell pool by neighbour context; for the Harper-only
+        // fallback keep the conservative re-ranker that trusts Harper's order.
+        const ranked = useHunspell
+          ? await rankSpellByContext(text, startU16, endU16 - startU16, original, cands)
+          : await rankByContext(text, startU16, endU16 - startU16, original, cands);
         suggestion = ranked[0];
-        const alts = ranked.slice(1);
-        if (alts.length > 0) reason = `${reason} Other suggestions: ${alts.join(', ')}.`;
+        const alts = (
+          useHunspell
+            ? ranked
+                .slice(1)
+                .filter((c) => hunspellCands.some((h) => h.toLowerCase() === c.toLowerCase()))
+            : ranked.slice(1)
+        ).slice(0, 5);
+        if (useHunspell) {
+          reason = `Did you mean to spell \`${original}\` as \`${suggestion}\`?`;
+          if (alts.length > 0) reason += ` Other suggestions: ${alts.join(', ')}.`;
+        } else if (alts.length > 0) {
+          reason = `${reason} Other suggestions: ${alts.join(', ')}.`;
+        }
       } else {
         const s0 = sg[0];
         switch (s0.k) {

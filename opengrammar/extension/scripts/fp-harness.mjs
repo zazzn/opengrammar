@@ -49,7 +49,48 @@ async function loadTs(relPath) {
   return import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
 }
 
-const { parseModel, rankCandidates } = await loadTs('src/background/contextRankerCore.ts');
+const { parseModel, rankCandidates, rankSpellCandidates } = await loadTs('src/background/contextRankerCore.ts');
+
+// frequency-dictionary spell suggester — mirrors src/background/spellSuggest.ts.
+const FREQ = new Map();
+for (const line of readFileSync(join(root, 'public/dict/frequency_dictionary_en_82_765.txt'), 'utf8').split('\n')) {
+  const t = line.replace(/^﻿/, '').trim();
+  if (!t) continue;
+  const sp = t.split(/\s+/);
+  const w = sp[0].toLowerCase();
+  const c = Number(sp[1]);
+  if (w && Number.isFinite(c)) FREQ.set(w, c);
+}
+const SPELL_LETTERS = "abcdefghijklmnopqrstuvwxyz'".split('');
+function spellEdits1(w) {
+  const out = new Set();
+  for (let i = 0; i <= w.length; i++) {
+    if (i < w.length) out.add(w.slice(0, i) + w.slice(i + 1));
+    if (i < w.length - 1) out.add(w.slice(0, i) + w[i + 1] + w[i] + w.slice(i + 2));
+    if (i < w.length) for (const c of SPELL_LETTERS) out.add(w.slice(0, i) + c + w.slice(i + 1));
+    for (const c of SPELL_LETTERS) out.add(w.slice(0, i) + c + w.slice(i));
+  }
+  return out;
+}
+function spellMatchCase(o, c) {
+  if (o === o.toUpperCase() && /[A-Z]/.test(o)) return c.toUpperCase();
+  if (o[0] && o[0] === o[0].toUpperCase()) return c[0].toUpperCase() + c.slice(1);
+  return c;
+}
+function hunspellSuggest(word) {
+  const w = word.toLowerCase();
+  if (FREQ.has(w)) return [];
+  const rank = (set) => {
+    set.delete(w);
+    return [...set].sort((a, b) => (FREQ.get(b) || 0) - (FREQ.get(a) || 0)).slice(0, 12).map((c) => spellMatchCase(word, c));
+  };
+  const e1 = new Set();
+  for (const e of spellEdits1(w)) if (FREQ.has(e)) e1.add(e);
+  if (e1.size > 0) return rank(e1);
+  const e2 = new Set();
+  for (const e of spellEdits1(w)) for (const x of spellEdits1(e)) if (FREQ.has(x)) e2.add(x);
+  return rank(e2);
+}
 const { findProtectedSpans, filterIssuesInProtectedSpans, isProtectedNonProseText } =
   await loadTs('src/shared/protectedText.ts');
 const { applyIssuePolicy } = await loadTs('src/background/issuePolicy.ts');
@@ -166,15 +207,35 @@ async function harperLint(text) {
       let reason = lint.message();
 
       if (type === 'spelling') {
-        const cands = sg
+        const harperCands = sg
           .filter((x) => x.k === SuggestionKind.Replace)
           .map((x) => x.t)
           .filter((t) => t && t !== original);
+        const hunspellCands = hunspellSuggest(original);
+        const useHunspell = hunspellCands.length > 0;
+        const pool = useHunspell ? hunspellCands.slice() : harperCands;
+        for (const c of harperCands) {
+          if (!pool.some((x) => x.toLowerCase() === c.toLowerCase())) pool.push(c);
+        }
+        const cands = pool.filter((t) => t && t.toLowerCase() !== original.toLowerCase());
         if (cands.length === 0) continue;
-        const ranked = rankCandidates(MODEL, text, startU16, endU16 - startU16, original, cands);
+        const ranked = useHunspell
+          ? rankSpellCandidates(MODEL, text, startU16, endU16 - startU16, original, cands)
+          : rankCandidates(MODEL, text, startU16, endU16 - startU16, original, cands);
         suggestion = ranked[0];
-        const alts = ranked.slice(1);
-        if (alts.length > 0) reason = `${reason} Other suggestions: ${alts.join(', ')}.`;
+        const alts = (
+          useHunspell
+            ? ranked
+                .slice(1)
+                .filter((c) => hunspellCands.some((h) => h.toLowerCase() === c.toLowerCase()))
+            : ranked.slice(1)
+        ).slice(0, 5);
+        if (useHunspell) {
+          reason = `Did you mean to spell \`${original}\` as \`${suggestion}\`?`;
+          if (alts.length > 0) reason += ` Other suggestions: ${alts.join(', ')}.`;
+        } else if (alts.length > 0) {
+          reason = `${reason} Other suggestions: ${alts.join(', ')}.`;
+        }
       } else {
         const s0 = sg[0];
         switch (s0.k) {

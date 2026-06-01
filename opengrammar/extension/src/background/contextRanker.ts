@@ -4,6 +4,7 @@
 import {
   parseModel,
   rankCandidates,
+  rankSpellCandidates,
   type NgramModel,
 } from './contextRankerCore';
 
@@ -48,4 +49,21 @@ export async function rankByContext(
   if (cands.length <= 1) return cands.slice();
   const m = await loadModel();
   return rankCandidates(m, text, offset, length, original, cands);
+}
+
+/**
+ * Rank a Hunspell/SymSpell candidate pool by neighbour context
+ * (contextRankerCore.rankSpellCandidates). Use for an externally-generated pool
+ * with no meaningful prior order; full-scores and sorts every candidate.
+ */
+export async function rankSpellByContext(
+  text: string,
+  offset: number,
+  length: number,
+  original: string,
+  cands: string[],
+): Promise<string[]> {
+  if (cands.length <= 1) return cands.slice();
+  const m = await loadModel();
+  return rankSpellCandidates(m, text, offset, length, original, cands);
 }
