@@ -177,6 +177,38 @@ export function renderOriginalWithChangesHTML(original: string, suggestion: stri
 }
 
 /**
+ * Render the CORRECTED sentence with the text that is new in the suggestion
+ * highlighted in place. This complements `renderOriginalWithChangesHTML`:
+ * original shows what will be removed/replaced, corrected shows what will be
+ * inserted/replaced. Token-level highlighting is intentional so punctuation,
+ * capitalization, and short word replacements are visible at a glance.
+ */
+export function renderCorrectedWithChangesHTML(original: string, suggestion: string): string {
+  const ops = lcsDiff(tokenize(original), tokenize(suggestion));
+  let html = '';
+  for (const op of ops) {
+    if (op.kind === 'del') continue;
+    if (op.kind === 'eq') {
+      html += esc(op.text);
+      continue;
+    }
+
+    const isWhitespace = /^\s+$/.test(op.text);
+    if (isWhitespace) {
+      html += esc(op.text);
+      continue;
+    }
+
+    const punctOnly = /^[^\sA-Za-z0-9]+$/.test(op.text.trim());
+    const style = punctOnly
+      ? 'background:#dcfce7;border-radius:3px;padding:0 3px;color:#047857;border-bottom:1.5px solid #10b981;font-weight:800;'
+      : 'background:#dbeafe;border-radius:3px;padding:0 2px;color:#1d4ed8;border-bottom:1.5px solid #60a5fa;font-weight:800;';
+    html += `<span style="${style}">${esc(op.text)}</span>`;
+  }
+  return html;
+}
+
+/**
  * A concise, imperative "what's wrong" headline derived from the diff,
  * so the card leads with the specific fix instead of a grammar lecture.
  * Returns null if no good summary (caller falls back to the rule reason).

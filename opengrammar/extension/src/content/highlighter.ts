@@ -1,6 +1,12 @@
 import type { IgnoredIssue, Issue } from '../types';
 import { buildTextMap, offsetToRange, resolveInString, resolveSpan } from './textMap';
-import { diffWords, renderInlineDiffHTML, renderOriginalWithChangesHTML, summarizeChange } from './diff';
+import {
+  diffWords,
+  renderCorrectedWithChangesHTML,
+  renderInlineDiffHTML,
+  renderOriginalWithChangesHTML,
+  summarizeChange,
+} from './diff';
 import { applyFix } from './editorAdapter';
 import { stripQuotedBBCode } from './textExtractor';
 import { getApiKey } from '../shared/apiKeyStore';
@@ -1765,8 +1771,8 @@ function showSentenceReview(
   const changeCount   = Math.max(1, Math.ceil(diffNonEq.length / 2));
   const totalFixes    = groups.length;
   const typeSummary   = summarizeChange(origText, corrText) || '';
-  const originalHtml  = escapeHtml(origText);
   const correctedText = corrText;
+  const correctedHtml = renderCorrectedWithChangesHTML(origText, correctedText);
   const changeListHtml = `<div style="font-size:13px; line-height:1.6; word-break:break-word;">${renderInlineDiffHTML(origText, corrText)}</div>`;
 
   const card = document.createElement('div');
@@ -1845,17 +1851,17 @@ function showSentenceReview(
       ">${renderOriginalWithChangesHTML(origText, correctedText)}</div>
     </div>
 
-    <!-- Corrected sentence — the single preview surface. Always plain
-         text; the "what changed" signal lives on the Original box above
-         as whole-word highlights (mechanical) or is omitted entirely (a
-         tone rewrite is a new sentence recommendation, not a diff). -->
+    <!-- Corrected sentence — the single preview surface. The updated text
+         is highlighted directly here too, so punctuation, capitalization,
+         inserted words, and replacements are visible before expanding the
+         diff details. -->
     <div class="og-sr-accept-box" style="padding: 0 14px 10px; cursor:pointer;">
       <div class="og-sr-corrected-label" style="font-size:10px; color:#8e8e93; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:5px;">Corrected sentence</div>
       <div class="og-sr-corrected-text" style="
         font-size:13px; color:#1c1c1e; line-height:1.6; word-break:break-word; font-weight:500;
         background:#EEF2FF; border:1px solid #C7D2FE; border-radius:7px; padding:8px 10px;
         transition:background 0.12s;
-      ">${escapeHtml(correctedText)}</div>
+      ">${correctedHtml}</div>
     </div>
 
     <!-- Per-change breakdown (diff vs original — also updates with tone) -->
@@ -1950,11 +1956,7 @@ function showSentenceReview(
         ? `Corrected sentence · ${currentLabel}`
         : 'Corrected sentence';
     }
-    // Corrected box is ALWAYS plain text. The "what changed" signal lives
-    // on the Original box (whole-word highlights) in mechanical mode, and
-    // is suppressed entirely in tone mode — a tone rewrite restructures
-    // the sentence, so token-level highlights would be noise.
-    if (textEl) textEl.textContent = currentText;
+    if (textEl) textEl.innerHTML = renderCorrectedWithChangesHTML(origText, currentText);
     if (originalEl) {
       originalEl.innerHTML = inToneMode
         ? escapeHtml(origText)
