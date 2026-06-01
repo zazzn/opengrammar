@@ -53,18 +53,25 @@ export function invalidateHarperLinter(): void {
   linterPromise = null;
 }
 
-// Harper ships many style/conciseness lints as OPT-IN. Turning them on here
-// gives us the Grammarly-style "consider rewriting" grey-underline tier for
-// free, fully on-device: wordy-phrase compression, filler-word removal,
-// boring-word callouts, repeated words, long-sentence flags. The lint names
-// match the Rust source under harper-core/src/linting; if any name drifts
-// in a future Harper release Harper silently ignores unknown keys.
+// Harper lint config overrides. The word/phrase-level style opt-ins give the
+// Grammarly-style "consider rewriting" grey tier for free; the whole-sentence
+// readability lints are forced OFF.
+//
+// CRITICAL: Harper's `Readability` lint (default ON) and `LongSentences`
+// SWALLOW the word-level spelling/capitalization fixes inside a long sentence —
+// for a single long run-on Harper returns ONLY the "hard to read" lint and
+// emits none of the actual typo fixes (verified). That silently breaks inline
+// correction on exactly the text people write (forum posts, emails). So we
+// disable them; the LLM "sentence review" tier handles readability instead.
+// `BoringWords` is also off — it made meaning-changing swaps (very→too,
+// several→various) on clean prose (false-positive audit, docs/24 T7).
 const STYLE_LINTS_TO_ENABLE: Record<string, boolean> = {
-  BoringWords: true,
   FillerWords: true,
-  LongSentences: true,
   RepeatedWords: true,
   DiscourseMarkers: true,
+  Readability: false,
+  LongSentences: false,
+  BoringWords: false,
 };
 
 const COMMON_SPELLING_OVERRIDES: Record<string, string> = {

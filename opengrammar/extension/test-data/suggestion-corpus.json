@@ -92,6 +92,18 @@
     "bucket": "quick-fix"
   },
   {
+    "id": "forum-long-sentence-001",
+    "category": "forum-writing",
+    "text": "So i doubtt this is anywhere of the same issue, but my car had this miss/buck at lower rpm light throttle only when cold, it turns out after alot of money and testing it was the dwell on needed to be increase from 40 to 50 for the coils. Strangly, I would see the rpm tach go crazy when this happened, so I always thought it was a CPS issue since the (7m-gte does both crank and cam in one sensor).",
+    "localIssues": [
+      { "original": "i", "suggestion": "I", "route": "quick-fix" },
+      { "original": "doubtt", "suggestion": "doubt", "route": "sentence-review" },
+      { "original": "alot", "suggestion": "a lot", "route": "quick-fix" }
+    ],
+    "llmCorrection": "So I doubt this is anywhere of the same issue, but my car had this miss/buck at lower rpm light throttle only when cold, it turns out after a lot of money and testing it was the dwell on needed to be increased from 40 to 50 for the coils. Strangely, I would see the rpm tach go crazy when this happened, so I always thought it was a CPS issue since the (7m-gte does both crank and cam in one sensor).",
+    "bucket": "sentence-review"
+  },
+  {
     "id": "spell-basic-005",
     "category": "normal-spelling",
     "text": "Damn, that's hilarous lol.",

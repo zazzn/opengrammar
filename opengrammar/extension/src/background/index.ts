@@ -289,14 +289,21 @@ function parseCorrectionPayload(raw: string): LlmCorrectionPayload | null {
 }
 
 function tokenChangeRatio(original: string, candidate: string): number {
-  const ow = original.match(/[A-Za-z0-9']+/g) || [];
-  const cw = candidate.match(/[A-Za-z0-9']+/g) || [];
+  const ow = (original.match(/[A-Za-z0-9']+/g) || []).map((w) => w.toLowerCase());
+  const cw = (candidate.match(/[A-Za-z0-9']+/g) || []).map((w) => w.toLowerCase());
   if (ow.length === 0) return candidate.trim() === '' ? 0 : 1;
   const maxLen = Math.max(ow.length, cw.length);
-  let same = 0;
-  for (let i = 0; i < Math.min(ow.length, cw.length); i++) {
-    if (ow[i]!.toLowerCase() === cw[i]!.toLowerCase()) same++;
+
+  let prev = new Array(cw.length + 1).fill(0);
+  let cur = new Array(cw.length + 1).fill(0);
+  for (let i = 1; i <= ow.length; i++) {
+    for (let j = 1; j <= cw.length; j++) {
+      cur[j] = ow[i - 1] === cw[j - 1] ? prev[j - 1]! + 1 : Math.max(prev[j]!, cur[j - 1]!);
+    }
+    [prev, cur] = [cur, prev];
+    cur.fill(0);
   }
+  const same = prev[cw.length] || 0;
   return (maxLen - same) / Math.max(1, maxLen);
 }
 

@@ -61,11 +61,12 @@ const MODEL = parseModel(
 
 // ── mirrors src/background/harperEngine.ts ───────────────────────────────────
 const STYLE_LINTS_TO_ENABLE = {
-  BoringWords: true,
   FillerWords: true,
-  LongSentences: true,
   RepeatedWords: true,
   DiscourseMarkers: true,
+  Readability: false,
+  LongSentences: false,
+  BoringWords: false,
 };
 const COMMON_SPELLING_OVERRIDES = { adress: 'address', hadd: 'had', teh: 'the' };
 
