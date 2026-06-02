@@ -232,10 +232,10 @@ function clearOverlayUnderlines() {
 }
 
 /**
- * Build one positioned squiggle from a viewport-space rect. Shared by the
+ * Build one positioned underline from a viewport-space rect. Shared by the
  * contenteditable (Range) and input/textarea (measurement-mirror) paths so
- * both look and behave identically. Outer div is a transparent hit area
- * over the word; the wave is anchored just under the glyphs (not the
+ * both look and behave identically. Outer div is a transparent hit area over
+ * the word; the straight local line is anchored just under the glyphs (not the
  * bottom of a tall line-box).
  */
 function makeUnderlineDiv(
@@ -260,13 +260,11 @@ function makeUnderlineDiv(
   `;
   const wave = document.createElement('div');
   wave.style.cssText = `
-    position: absolute; left: 0; width: 100%; height: 3px;
+    position: absolute; left: 0; width: 100%; height: 2px;
     bottom: ${leadBelow}px;
-    background-image:
-      linear-gradient(45deg, transparent 60%, ${c.line} 60%, ${c.line} 78%, transparent 78%),
-      linear-gradient(-45deg, transparent 60%, ${c.line} 60%, ${c.line} 78%, transparent 78%);
-    background-size: 6px 3px;
-    background-repeat: repeat-x;
+    background: ${c.line};
+    border-radius: 999px;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.65);
     pointer-events: none;
   `;
   u.appendChild(wave);
@@ -1942,6 +1940,12 @@ function showSentenceReview(
 
   card.addEventListener('mousedown', (e) => e.preventDefault());
 
+  const anchorEl = (overlayTarget && overlayTarget.isConnected ? overlayTarget : element);
+  const repositionSentenceCard = () => {
+    if (!card.isConnected) return;
+    placeFixedPanel(card, anchorEl.getBoundingClientRect(), 8);
+  };
+
   // currentText is what's shown in the Corrected box and what Accept applies.
   // Starts as the mechanical Harper correction; a tone chip swaps it; the
   // Original button restores it.
@@ -2119,7 +2123,10 @@ function showSentenceReview(
       improveToggle.textContent = open ? '✦ Improve sentence ▾' : '✦ Improve sentence ▴';
       if (open) setStatus('');
       if (!open) {
-        requestAnimationFrame(() => improveMenu.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+        requestAnimationFrame(() => {
+          repositionSentenceCard();
+          improveMenu.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        });
       }
     });
     improveToggle.addEventListener('mouseenter', () => { improveToggle.style.background = '#f5f3ff'; });
@@ -2157,6 +2164,7 @@ function showSentenceReview(
           currentLabel = label;
           refreshCorrectedBox();
           setStatus('');
+          requestAnimationFrame(repositionSentenceCard);
           // Scroll the (now updated) Corrected box back into view so the
           // user sees the swap.
           if (textEl) requestAnimationFrame(() =>
@@ -2177,8 +2185,7 @@ function showSentenceReview(
   document.body.appendChild(card);
   // Anchor the panel to the editor (not the viewport corner) so it sits
   // right by the text box; placeFixedPanel keeps it fully on-screen.
-  const anchorEl = (overlayTarget && overlayTarget.isConnected ? overlayTarget : element);
-  placeFixedPanel(card, anchorEl.getBoundingClientRect(), 8);
+  repositionSentenceCard();
   currentTooltip = card;
 }
 
