@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OGrammar QA Playground</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --line: #d9deea;
+      --text: #1f2937;
+      --muted: #64748b;
+      --accent: #4f46e5;
+      --local: #dc2626;
+      --llm: #2563eb;
+      --protect: #0f766e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 14px 18px;
+      background: #111827;
+      color: #fff;
+      border-bottom: 1px solid #030712;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    header p {
+      margin: 4px 0 0;
+      color: #cbd5e1;
+      font-size: 13px;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) 360px;
+      gap: 16px;
+      padding: 16px;
+      max-width: 1480px;
+      margin: 0 auto;
+    }
+
+    .stack { display: grid; gap: 14px; }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .panel-head span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .body { padding: 14px; }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    button, select {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #1f2937;
+      border-radius: 6px;
+      padding: 7px 10px;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    button:focus-visible, textarea:focus, [contenteditable="true"]:focus, input:focus {
+      outline: 2px solid rgba(79, 70, 229, 0.4);
+      outline-offset: 2px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    textarea, input, .rich-editor {
+      width: 100%;
+      border: 1px solid #b6c1d4;
+      border-radius: 7px;
+      background: #fff;
+      color: #111827;
+      font: 14px/1.55 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 10px;
+    }
+
+    textarea {
+      min-height: 190px;
+      resize: vertical;
+    }
+
+    input { min-height: 38px; }
+
+    .rich-editor {
+      min-height: 210px;
+      white-space: pre-wrap;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .scenario-note {
+      margin: 0 0 10px;
+      padding: 9px 10px;
+      border-left: 3px solid var(--accent);
+      background: #eef2ff;
+      color: #334155;
+      font-size: 13px;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: #475569;
+      font-size: 12px;
+    }
+
+    .swatch {
+      width: 24px;
+      height: 3px;
+      border-radius: 999px;
+      background: #94a3b8;
+    }
+
+    .swatch.local { background: var(--local); }
+    .swatch.llm { background: var(--llm); }
+    .swatch.protect { background: var(--protect); }
+    .swatch.stale { background: #f59e0b; }
+
+    aside {
+      position: sticky;
+      top: 78px;
+      align-self: start;
+      display: grid;
+      gap: 14px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 9px;
+      background: #f8fafc;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 18px;
+      line-height: 1.1;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    pre {
+      margin: 0;
+      padding: 10px;
+      max-height: 320px;
+      overflow: auto;
+      border-radius: 7px;
+      background: #0f172a;
+      color: #dbeafe;
+      font-size: 12px;
+      white-space: pre-wrap;
+    }
+
+    .checklist {
+      margin: 0;
+      padding-left: 18px;
+      color: #475569;
+      font-size: 13px;
+    }
+
+    .checklist li { margin: 5px 0; }
+
+    @media (max-width: 1040px) {
+      main { grid-template-columns: 1fr; }
+      aside { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>OGrammar QA Playground</h1>
+    <p>Use this with the unpacked extension loaded. Pick a scenario, edit naturally, pause, then inspect what OGrammar underlines and what the AI review suggests.</p>
+  </header>
+
+  <main>
+    <section class="stack">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Scenario Controls</h2>
+          <span>Manual, human-in-the-loop QA surface</span>
+        </div>
+        <div class="body">
+          <div class="toolbar">
+            <select id="scenarioSelect" aria-label="Scenario"></select>
+            <button id="loadScenario" class="primary" type="button">Load Scenario</button>
+            <button id="clearFields" type="button">Clear Fields</button>
+            <button id="snapshot" type="button">Snapshot Diagnostics</button>
+            <button id="toggleSpellcheck" type="button">Browser Spellcheck: On</button>
+          </div>
+          <p id="scenarioNote" class="scenario-note"></p>
+          <div class="legend">
+            <div class="legend-item"><span class="swatch local"></span>Expected local mechanical underline</div>
+            <div class="legend-item"><span class="swatch llm"></span>Expected LLM/context issue</div>
+            <div class="legend-item"><span class="swatch protect"></span>Protected span should not change</div>
+            <div class="legend-item"><span class="swatch stale"></span>Watch for stale/offscreen UI</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Forum Reply Mock</h2>
+          <span>textarea, informal writing, quote block, tech terms</span>
+        </div>
+        <div class="body">
+          <label for="forumSubject">Subject</label>
+          <input id="forumSubject" data-og-field="forum-subject" spellcheck="true" />
+          <div style="height:10px"></div>
+          <label for="forumBody">Reply Body</label>
+          <textarea id="forumBody" data-og-field="forum-body" spellcheck="true"></textarea>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Email Compose Mock</h2>
+          <span>subject, body, signature, quoted prior email</span>
+        </div>
+        <div class="body">
+          <div class="field-grid">
+            <div>
+              <label for="emailTo">To</label>
+              <input id="emailTo" data-og-field="email-to" value="alex@example.com" spellcheck="false" />
+            </div>
+            <div>
+              <label for="emailSubject">Subject</label>
+              <input id="emailSubject" data-og-field="email-subject" spellcheck="true" />
+            </div>
+          </div>
+          <label for="emailBody">Email Body</label>
+          <textarea id="emailBody" data-og-field="email-body" spellcheck="true"></textarea>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Rich Text / Tech Notes Mock</h2>
+          <span>contenteditable, code-ish text, protected spans</span>
+        </div>
+        <div class="body">
+          <label for="richEditor">Editable Note</label>
+          <div id="richEditor" class="rich-editor" data-og-field="rich-editor" contenteditable="true" spellcheck="true"></div>
+        </div>
+      </div>
+    </section>
+
+    <aside>
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Diagnostics</h2>
+          <span>What to watch</span>
+        </div>
+        <div class="body">
+          <div class="metric-grid">
+            <div class="metric"><strong id="wordCount">0</strong><span>words</span></div>
+            <div class="metric"><strong id="charCount">0</strong><span>characters</span></div>
+            <div class="metric"><strong id="protectedCount">0</strong><span>protected-looking spans</span></div>
+            <div class="metric"><strong id="editCount">0</strong><span>input events</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Manual Review Checklist</h2>
+          <span>Use while testing</span>
+        </div>
+        <div class="body">
+          <ul class="checklist">
+            <li>Does a local issue underline quickly after typing?</li>
+            <li>Does the AI badge remain available when local finds nothing?</li>
+            <li>Does clicking the badge produce useful sentence-level fixes?</li>
+            <li>Do protected spans stay unchanged?</li>
+            <li>Does Accept apply the exact current range only?</li>
+            <li>Does Skip/Dismiss prevent repeated annoyance?</li>
+            <li>Does Polish/Formal/Casual stay inside the viewport?</li>
+            <li>Does native browser spellcheck conflict with OGrammar?</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Snapshot</h2>
+          <span>Copy into issues/notes</span>
+        </div>
+        <div class="body">
+          <pre id="snapshotOutput">{}</pre>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const scenarios = {
+      forum: {
+        name: 'Forum reply - casual technical',
+        note: 'Tests informal voice, real-word spelling, capitalization after punctuation, slang, and protected technical shorthand.',
+        forumSubject: 'Re: intermittent issue after the latest update',
+        forumBody: `I'm not going to lie, My test setup will loose data if the cache gets cleared too early. When I saw that I was like there is no way this workflow is going to continue to run smooth. 3 weeks later MANY MANY test runs, and it's holding together just fine. So, I wouldn't say no it won't work I 'd say it's rough but not as bad as it looks...\n\n[quote=sample_user]Have you tried clearing the local cache first?[/quote]\n\nJust worth a try..`,
+        emailSubject: '',
+        emailBody: '',
+        richEditor: ''
+      },
+      email: {
+        name: 'Email compose - professional but natural',
+        note: 'Tests subject/body differences, greeting/signoff preservation, and quoted prior email avoidance.',
+        forumSubject: '',
+        forumBody: '',
+        emailSubject: 'Follow up on tommorow meeting',
+        emailBody: `Hi Jordan,\n\nJust wanted to checking if your available tomorrow for the review. I seen the updated draft and the numbers looks better then last week.\n\nCan you send me the final link when you get a chance?\n\nThanks,\nTester\n\nOn Mon, Jordan wrote:\n> The API key is sk-test-1234567890abcdef and the callback is https://example.com/oauth/callback`,
+        richEditor: ''
+      },
+      tech: {
+        name: 'Tech note - commands and protected spans',
+        note: 'Tests URLs, commands, paths, env vars, API-looking strings, and code blocks.',
+        forumSubject: '',
+        forumBody: '',
+        emailSubject: '',
+        emailBody: '',
+        richEditor: `I think the service is running but the extention still says disconnected.\n\nRun npm run buidl and then check http://localhost:8787/health.\n\nDo not change SAMPLE_API_KEY, /mnt/workspace/Keys/SampleKey.txt, or C:\\\\Program Files\\\\SampleApp\\\\app.exe.\n\nStack trace:\nTypeError: Cannot read properties of undefined (reading 'provider')\n    at src/background/index.ts:724:12`
+      },
+      slang: {
+        name: 'Slang / casual chat',
+        note: 'Tests whether the assistant respects voice instead of over-formalizing everything.',
+        forumSubject: 'Re: local model speed',
+        forumBody: `nah this ain't it fr. whadda you know lol, sample-model:4b was way faster then i expected but it still missed the easy stuff.\n\nI dont want it to rewrite my whole vibe, just catch the actual mistakes.`,
+        emailSubject: '',
+        emailBody: '',
+        richEditor: ''
+      },
+      protected: {
+        name: 'Mixed protected content',
+        note: 'Tests protected spans embedded inside normal prose.',
+        forumSubject: 'Provider and routing notes',
+        forumBody: `I recieved the response from sample-chat but the routing layer changed the URL which is bad.\n\nKeep these exact: example/project#42, user_id=abc_123, @sample_user, #testcase, https://forum.example.com/t/123, sample-model:4b.\n\nThe sentance around them should still be corrected.`,
+        emailSubject: '',
+        emailBody: '',
+        richEditor: ''
+      }
+    };
+
+    const fields = ['forumSubject', 'forumBody', 'emailTo', 'emailSubject', 'emailBody', 'richEditor'];
+    const select = document.getElementById('scenarioSelect');
+    const output = document.getElementById('snapshotOutput');
+    let editCount = 0;
+    let browserSpellcheck = true;
+
+    for (const [id, scenario] of Object.entries(scenarios)) {
+      const option = document.createElement('option');
+      option.value = id;
+      option.textContent = scenario.name;
+      select.appendChild(option);
+    }
+
+    function getValue(id) {
+      const el = document.getElementById(id);
+      return el.isContentEditable ? el.innerText : el.value;
+    }
+
+    function setValue(id, value) {
+      const el = document.getElementById(id);
+      if (el.isContentEditable) el.innerText = value || '';
+      else el.value = value || '';
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function allText() {
+      return fields.map(getValue).join('\n\n').trim();
+    }
+
+    function protectedLooks(text) {
+      const patterns = [
+        /https?:\/\/\S+/g,
+        /\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g,
+        /\b[A-Z_]{3,}\b/g,
+        /(?:^|\s)(?:npm|git|ssh|curl|node|python)\s+[^\n]+/g,
+        /(?:[A-Za-z]:\\|\/mnt\/|\/home\/|\.\/)\S+/g,
+        /@[A-Za-z0-9_.-]+|#[A-Za-z0-9_.-]+/g,
+        /\b[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+\b/g
+      ];
+      const matches = [];
+      for (const re of patterns) {
+        let match;
+        while ((match = re.exec(text))) matches.push(match[0].trim());
+      }
+      return [...new Set(matches)].filter(Boolean);
+    }
+
+    function refreshDiagnostics() {
+      const text = allText();
+      document.getElementById('wordCount').textContent = text ? String(text.split(/\s+/).filter(Boolean).length) : '0';
+      document.getElementById('charCount').textContent = String(text.length);
+      document.getElementById('protectedCount').textContent = String(protectedLooks(text).length);
+      document.getElementById('editCount').textContent = String(editCount);
+    }
+
+    function snapshot() {
+      const text = allText();
+      const active = document.activeElement?.dataset?.ogField || document.activeElement?.id || document.activeElement?.tagName;
+      const data = {
+        scenario: select.value,
+        activeField: active,
+        browserSpellcheck,
+        timestamp: new Date().toISOString(),
+        protectedLooks: protectedLooks(text),
+        fields: Object.fromEntries(fields.map((id) => [id, getValue(id)]))
+      };
+      output.textContent = JSON.stringify(data, null, 2);
+    }
+
+    function loadScenario() {
+      const s = scenarios[select.value];
+      document.getElementById('scenarioNote').textContent = s.note;
+      for (const id of fields) {
+        if (id === 'emailTo') continue;
+        setValue(id, s[id] || '');
+      }
+      editCount = 0;
+      refreshDiagnostics();
+      snapshot();
+    }
+
+    function setBrowserSpellcheck(enabled) {
+      browserSpellcheck = enabled;
+      for (const id of fields) {
+        const el = document.getElementById(id);
+        if (id === 'emailTo') continue;
+        el.setAttribute('spellcheck', enabled ? 'true' : 'false');
+      }
+      document.getElementById('toggleSpellcheck').textContent = `Browser Spellcheck: ${enabled ? 'On' : 'Off'}`;
+      snapshot();
+    }
+
+    for (const id of fields) {
+      const el = document.getElementById(id);
+      el.addEventListener('input', () => {
+        editCount++;
+        refreshDiagnostics();
+      });
+      el.addEventListener('focus', refreshDiagnostics);
+    }
+
+    document.getElementById('loadScenario').addEventListener('click', loadScenario);
+    document.getElementById('clearFields').addEventListener('click', () => {
+      for (const id of fields) {
+        if (id !== 'emailTo') setValue(id, '');
+      }
+      editCount = 0;
+      refreshDiagnostics();
+      snapshot();
+    });
+    document.getElementById('snapshot').addEventListener('click', snapshot);
+    document.getElementById('toggleSpellcheck').addEventListener('click', () => setBrowserSpellcheck(!browserSpellcheck));
+
+    select.value = 'forum';
+    loadScenario();
+  </script>
+</body>
+</html>

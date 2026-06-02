@@ -23,7 +23,21 @@ interface EditableElement {
   lastText: string;
   lastCheck?: number;
   lastIssues?: Issue[];
+  lastLocalIssues?: Issue[];
+  lastLlmText?: string;
+  lastLlmIssues?: Issue[];
+  llmSeq?: number;
 }
+
+interface LlmCorrection {
+  original?: string;
+  replacement?: string;
+  type?: 'spelling' | 'grammar' | 'punctuation' | 'capitalization' | 'word-form';
+  confidence?: 'high' | 'medium' | 'low';
+}
+
+const PROACTIVE_LLM_MIN_WORDS = 6;
+const PROACTIVE_LLM_MAX_CHARS = 3500;
 
 const activeElements = new Map<HTMLElement, EditableElement>();
 let currentFocusElement: HTMLElement | null = null;
@@ -445,17 +459,23 @@ function handleKeyDown(event: Event) {
  */
 function handleGrammarSuccess(element: HTMLElement, text: string, issues: Issue[]) {
   const editableElement = activeElements.get(element);
-  if (issues && issues.length > 0) {
-    if (editableElement) editableElement.lastIssues = issues;
-    void syncActiveContext(text, issues);
+  const localIssues = issues || [];
+  if (editableElement) {
+    editableElement.lastLocalIssues = localIssues;
+    if (editableElement.lastLlmText !== text) editableElement.lastLlmIssues = [];
+  }
+  const visibleIssues = mergeLlmIssues(localIssues, editableElement?.lastLlmIssues || []);
+  if (visibleIssues.length > 0) {
+    if (editableElement) editableElement.lastIssues = visibleIssues;
+    void syncActiveContext(text, visibleIssues);
     // Don't tear down the review panel mid-batch: accepting a sentence
     // dispatches `input` → re-analysis, and re-highlighting would wipe the
     // open panel before the user finishes the remaining sentences. Defer
     // the underline refresh until the panel is closed.
-    if (!isUIActive()) highlightIssues(element, issues);
+    if (!isUIActive()) highlightIssues(element, visibleIssues);
 
     const statsPerType = { grammar: 0, spelling: 0, clarity: 0, style: 0 };
-    for (const issue of issues) {
+    for (const issue of visibleIssues) {
       if (issue.type in statsPerType) statsPerType[issue.type as keyof typeof statsPerType]++;
     }
     void chrome.storage.local.set({
@@ -463,22 +483,22 @@ function handleGrammarSuccess(element: HTMLElement, text: string, issues: Issue[
         grammar: statsPerType.grammar + statsPerType.spelling,
         style: statsPerType.style,
         clarity: statsPerType.clarity,
-        total: issues.length,
+        total: visibleIssues.length,
       },
     });
 
-    void chrome.runtime.sendMessage({ type: 'UPDATE_BADGE_COUNT', count: issues.length });
+    void chrome.runtime.sendMessage({ type: 'UPDATE_BADGE_COUNT', count: visibleIssues.length });
 
     const wordCount = text.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
     const errorTypes: Record<string, number> = {};
-    for (const issue of issues) {
+    for (const issue of visibleIssues) {
       errorTypes[issue.type] = (errorTypes[issue.type] || 0) + 1;
     }
-    const issuesPerHundred = wordCount > 0 ? (issues.length / wordCount) * 100 : 0;
+    const issuesPerHundred = wordCount > 0 ? (visibleIssues.length / wordCount) * 100 : 0;
     const writingScore = Math.round(Math.max(0, Math.min(100, 100 - issuesPerHundred * 10)));
     void chrome.runtime.sendMessage({
       type: 'SAVE_WRITING_SESSION',
-      payload: { wordsChecked: wordCount, issuesFound: issues.length, issuesFixed: 0, writingScore, errorTypes },
+      payload: { wordsChecked: wordCount, issuesFound: visibleIssues.length, issuesFixed: 0, writingScore, errorTypes },
     });
   } else {
     if (editableElement) editableElement.lastIssues = [];
@@ -493,7 +513,138 @@ function handleGrammarSuccess(element: HTMLElement, text: string, issues: Issue[
     }
     void chrome.runtime.sendMessage({ type: 'UPDATE_BADGE_COUNT', count: 0 });
   }
+
+  scheduleProactiveLlmReview(element);
 }
+
+
+function rangesOverlap(a: { offset: number; length: number }, b: { offset: number; length: number }): boolean {
+  return a.offset < b.offset + b.length && b.offset < a.offset + a.length;
+}
+
+function mergeLlmIssues(localIssues: Issue[], llmIssues: Issue[]): Issue[] {
+  if (llmIssues.length === 0) return localIssues;
+  const filtered = llmIssues.filter((llm) => !localIssues.some((local) => rangesOverlap(local, llm)));
+  return [...localIssues, ...filtered];
+}
+
+function llmTypeToIssueType(type: LlmCorrection['type']): Issue['type'] {
+  return type === 'spelling' || type === 'word-form' ? 'spelling' : 'grammar';
+}
+
+function confidenceScore(confidence: LlmCorrection['confidence']): number {
+  if (confidence === 'high') return 0.95;
+  if (confidence === 'medium') return 0.78;
+  return 0.55;
+}
+
+function isWordBoundary(text: string, index: number): boolean {
+  if (index < 0 || index >= text.length) return true;
+  return !/[A-Za-z0-9_]/.test(text[index] || '');
+}
+
+function findCorrectionOffset(text: string, original: string, used: Array<{ start: number; end: number }>): number {
+  const wordish = /^[A-Za-z0-9']+$/.test(original);
+  let from = 0;
+  while (from <= text.length) {
+    const index = text.indexOf(original, from);
+    if (index < 0) return -1;
+    const end = index + original.length;
+    const boundaryOk = !wordish || (isWordBoundary(text, index - 1) && isWordBoundary(text, end));
+    const unused = !used.some((span) => index < span.end && end > span.start);
+    if (boundaryOk && unused) return index;
+    from = index + Math.max(1, original.length);
+  }
+  return -1;
+}
+
+function buildLlmIssues(text: string, corrections: LlmCorrection[] | undefined): Issue[] {
+  if (!Array.isArray(corrections) || corrections.length === 0) return [];
+  const used: Array<{ start: number; end: number }> = [];
+  const issues: Issue[] = [];
+
+  for (const correction of corrections) {
+    if (correction.confidence === 'low') continue;
+    const original = (correction.original || '').trim();
+    const suggestion = (correction.replacement || '').trim();
+    if (!original || !suggestion || original === suggestion) continue;
+    const offset = findCorrectionOffset(text, original, used);
+    if (offset < 0) continue;
+    const end = offset + original.length;
+    used.push({ start: offset, end });
+    issues.push({
+      id: `llm-${offset}-${original}-${suggestion}`,
+      type: llmTypeToIssueType(correction.type),
+      original,
+      suggestion,
+      offset,
+      length: original.length,
+      reason: `Sentence review suggests ${original} -> ${suggestion}.`,
+      confidence: confidenceScore(correction.confidence),
+      priority: 2,
+      source: 'llm',
+      route: 'quick-fix',
+      routeReason: 'Proactive sentence-level review after typing paused.',
+    });
+  }
+
+  return issues;
+}
+
+function shouldRunProactiveLlm(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 20 || trimmed.length > PROACTIVE_LLM_MAX_CHARS) return false;
+  const words = trimmed.split(/\s+/).filter(Boolean).length;
+  return words >= PROACTIVE_LLM_MIN_WORDS;
+}
+
+async function runProactiveLlmReview(element: HTMLElement) {
+  if (!checkContext() || !activeElements.has(element) || isUIActive()) return;
+
+  const editableElement = activeElements.get(element)!;
+  const text = stripQuotedBBCode(extractText(element));
+  if (!shouldRunProactiveLlm(text)) return;
+
+  const inputType =
+    element.tagName === 'INPUT'
+      ? ((element as HTMLInputElement).type || '').toLowerCase()
+      : '';
+  if (NON_PROSE_INPUT_TYPES.has(inputType) || looksNonProse(text)) return;
+  if (editableElement.lastLlmText === text) return;
+
+  const seq = (editableElement.llmSeq || 0) + 1;
+  editableElement.llmSeq = seq;
+
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'CORRECT_TEXT', text });
+    if (!activeElements.has(element)) return;
+    const currentState = activeElements.get(element)!;
+    const currentText = stripQuotedBBCode(extractText(element));
+    if (currentState.llmSeq !== seq || currentText !== text || isUIActive()) return;
+
+    currentState.lastLlmText = text;
+    if (!response?.llm || response.shouldShow === false || !response.corrected || response.corrected.trim() === text.trim()) {
+      currentState.lastLlmIssues = [];
+      return;
+    }
+
+    const llmIssues = buildLlmIssues(text, response.corrections);
+    currentState.lastLlmIssues = llmIssues;
+    if (llmIssues.length === 0) return;
+
+    const merged = mergeLlmIssues(currentState.lastLocalIssues || [], llmIssues);
+    currentState.lastIssues = merged;
+    void syncActiveContext(text, merged);
+    highlightIssues(element, merged);
+    void chrome.runtime.sendMessage({ type: 'UPDATE_BADGE_COUNT', count: merged.length });
+  } catch (err) {
+    console.debug('[OpenGrammar] Proactive LLM review skipped:', err);
+  }
+}
+
+const scheduleProactiveLlmReview = debounce((element: HTMLElement) => {
+  void runProactiveLlmReview(element);
+}, 1600);
 
 /**
  * A field holds no prose to proofread when it's a single token that's a
