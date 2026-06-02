@@ -11,7 +11,7 @@
 <div align="center">
   <img src="logo.svg" alt="OpenGrammar Logo" width="120" height="120">
   
-  # 🪶 OpenGrammar 2.0
+  # 🪶 OGrammar
 
   **Your privacy-first, open-source writing assistant.**  
   *The completely free, zero-compromise Grammarly alternative you can host yourself.*
