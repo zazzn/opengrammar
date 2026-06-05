@@ -21,6 +21,16 @@
 import type { Issue } from '../types';
 import { applyFix } from './editorAdapter';
 
+/** The deeply-focused element, descending through open Shadow DOM, so the focus
+ *  guard below also works for editable fields inside web components (Play
+ *  Console, Lit/Angular Material, etc.) where document.activeElement is only the
+ *  shadow host. Mirrors the content script's helper. */
+function deepActiveElement(): Element | null {
+  let el: Element | null = document.activeElement;
+  while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement;
+  return el;
+}
+
 const REJECTED_STORAGE_KEY = 'autocorrectRejected';
 
 /** Recent auto-applies are remembered for this long for revert-learning. */
@@ -230,7 +240,7 @@ export function maybeAutocorrect(
   // that the field is still focused.
   const applyEligible = () => {
     pendingTimer = null;
-    if (document.activeElement !== element) return;
+    if (deepActiveElement() !== element) return;
     let appliedAny = false;
     for (const issue of eligible) {
       const ok = applyFix(element, {
