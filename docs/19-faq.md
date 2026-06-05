@@ -1,473 +1,234 @@
-# ❓ Frequently Asked Questions (FAQ)
+# Frequently Asked Questions
 
-Common questions about OpenGrammar answered.
-
----
-
-## 📖 Table of Contents
-
-1. [General Questions](#general-questions)
-2. [Installation & Setup](#installation--setup)
-3. [Features & Usage](#features--usage)
-4. [Privacy & Security](#privacy--security)
-5. [AI Providers](#ai-providers)
-6. [Troubleshooting](#troubleshooting)
-7. [Contributing](#contributing)
+Common questions about OGrammar.
 
 ---
 
-## 🎯 General Questions
+## General
 
-### What is OpenGrammar?
+### What is OGrammar?
 
-OpenGrammar is a free, open-source browser extension that helps you write clearly and confidently. It's a privacy-first alternative to Grammarly that runs in your browser and can work completely offline.
+OGrammar is a free, open-source, privacy-first writing assistant. It ships as **two
+products** that share one engine:
 
-### Is OpenGrammar really free?
+- a **browser extension** for Chromium browsers (Chrome / Brave / Edge), and
+- a **Windows desktop app** that works OS-wide in any text field.
 
-**Yes!** OpenGrammar is 100% free and open-source. You can:
-- Use the on-device grammar checker for free (offline, no key)
-- Bring your own API key for AI features (pay only what you use)
-- Run AI fully locally for free with Ollama
-- Modify and distribute the code
+It's a local-first, bring-your-own-key alternative to premium grammar tools.
 
-### How is OpenGrammar different from Grammarly?
+### Is it really free?
 
-| Feature | Grammarly | OpenGrammar |
-|---------|-----------|-------------|
-| **Cost** | $12/month for premium | Free |
-| **Privacy** | Sends data to servers | Your data stays local |
-| **Open Source** | No | Yes |
-| **Offline Mode** | Limited | Full offline support |
-| **AI Providers** | Only Grammarly's AI | Choose from 6+ providers |
-| **Local AI (Ollama)** | No | Yes |
+Yes — 100% free and open-source (Apache 2.0). The local **Harper** engine works with no
+key and no network. AI features are bring-your-own-key (pay only your provider's usage),
+or fully free and offline with local Ollama.
 
-### What browsers are supported?
+### How is it different from Grammarly?
 
-OpenGrammar works on all Chromium-based browsers:
-- ✅ Google Chrome (88+)
-- ✅ Brave (1.20+)
-- ✅ Microsoft Edge (88+)
-- ✅ Opera (74+)
-- ✅ Vivaldi (3.6+)
+| | Grammarly | OGrammar |
+|---|---|---|
+| **Cost** | Paid premium | Free |
+| **Privacy** | Sends text to its servers | Local-first; no OGrammar backend |
+| **Open source** | No | Yes (Apache 2.0) |
+| **Offline** | Limited | Full (Harper local engine) |
+| **AI** | Grammarly's only | Your choice of provider, or local Ollama |
+| **Coverage** | Browser + apps | Browser extension **and** OS-wide Windows app |
 
-Firefox support is available but temporary (must reload each session).
+### What browsers does the extension support?
 
-### Is OpenGrammar open-source?
+Chromium browsers — Chrome (88+), Brave (1.20+), Edge (88+). Other Chromium browsers
+(Opera, Vivaldi) should work via "Load unpacked" but are untested. **Firefox/Safari**
+ports are on the [roadmap](../ROADMAP.md).
 
-**Yes!** The entire codebase is open-source under the Apache 2.0 license. You can:
-- View the source code on GitHub
-- Contribute improvements
-- Fork and modify
-- Self-host your own version
+### Does OGrammar work outside the browser?
+
+Yes — that's the **desktop app**. On Windows it checks native apps (Notepad, Word, Slack
+desktop, chat boxes, IDE fields) via UI Automation. It excludes browsers by default, so
+the extension owns the browser and the desktop app owns everything else. See
+[31-desktop-app.md](31-desktop-app.md). macOS/Linux are not built yet.
 
 ---
 
-## 📥 Installation & Setup
+## Installation & setup
 
-### How do I install OpenGrammar?
+### How do I install it?
 
-1. Clone the repository or download the release
-2. Build the extension: `bun run build`
-3. Load unpacked in your browser
-4. Configure settings
-
-See [Browser Extension Setup](04-browser-extension-setup.md) for detailed instructions.
+- **Extension:** build it and load `dist/` unpacked — see
+  [04-browser-extension-setup.md](04-browser-extension-setup.md).
+- **Desktop:** build the Rust app and run it — see [31-desktop-app.md](31-desktop-app.md).
 
 ### Do I need to deploy a backend?
 
-**No.** There is no backend to deploy. The extension calls your chosen AI provider
-directly with your own API key (or your local Ollama server). You have options:
+**No.** There is no backend. The extension (and desktop app) call your chosen AI provider
+directly with your own key, or talk to your local Ollama server. Three ways to run:
 
-**Option 1: On-device only**
-- Harper-based grammar/spelling/punctuation
-- No key, works offline
-- Basic checking only
-
-**Option 2: Bring your own provider key**
-- Add a Groq/OpenAI/etc. key in Settings
-- Extension talks to the provider directly
-- Pay only what you use
-
-**Option 3: Local LLM (Ollama)**
-- Run models on your own machine
-- No key, fully offline AI
-
-### Is technical knowledge required?
-
-**Basic setup:** Minimal technical knowledge needed
-- Follow step-by-step guides
-- Copy-paste commands
-- Configure in UI
-
-**Advanced setup:** Some technical knowledge helpful
-- Running a local Ollama server
-- Configuring API keys
+1. **On-device only** — Harper grammar/spelling/punctuation, no key, offline.
+2. **Bring your own key** — add a Groq/OpenAI/etc. key for the LLM tier.
+3. **Local LLM (Ollama)** — free, offline AI.
 
 ### How long does setup take?
 
-- **Quick setup:** 5-10 minutes
-- **With local LLM:** 30 minutes
+About 5–10 minutes for the extension. Add ~15–30 minutes if you set up local Ollama.
 
 ---
 
-## 🎨 Features & Usage
+## Features & usage
 
-### What features are included?
+### What does it check?
 
-**Grammar Checking:**
-- 40+ grammar rules
-- Spelling correction
-- Punctuation checks
-- Style suggestions
+A **two-tier engine**:
 
-**AI Features:**
-- Advanced grammar checking
-- Tone rewriting (8 tones)
-- Context understanding
-- Writing statistics
+- **Harper (local):** spelling, grammar, punctuation, capitalization, and style —
+  on-device, no key.
+- **LLM tier (optional, BYOK):** context/sentence-level review and tone rewriting.
 
-**Privacy Features:**
-- Local, on-device checking (Harper)
-- Optional local AI via Ollama
-- No data retention
-- Bring your own API key
+LLM findings are merged with Harper's and de-duplicated (Harper wins on overlap). There's
+no built-in rule file — Harper replaced the old rule-based engine. See
+[GRAMMAR_RULES.md](../GRAMMAR_RULES.md).
 
 ### Does it work offline?
 
-**Yes!** The rule-based grammar checker works completely offline without any internet connection. AI features require internet for cloud providers, but you can use local LLMs (Ollama) for offline AI.
+Yes. Harper runs fully offline. Cloud AI providers need internet, but local Ollama gives
+you offline AI too.
 
-### What websites does it work on?
+### What websites does the extension work on?
 
-OpenGrammar works on most websites with text inputs:
-- ✅ Gmail
-- ✅ Google Docs
-- ✅ Notion
-- ✅ Twitter/X
-- ✅ Facebook
-- ✅ LinkedIn
-- ✅ Reddit
-- ✅ Any custom text box
-
-Some sites may need to be manually enabled in settings.
+Most sites with editable text: Gmail, Google Docs, Notion, Reddit, X, LinkedIn, and
+generic text boxes. Some sites with custom/canvas inputs may not be supported. You can
+disable specific sites in Options → Site settings.
 
 ### Can I use it on mobile?
 
-Currently, OpenGrammar is designed for **desktop browsers only**. Mobile browser extensions have limited support. We're working on mobile support in future releases.
-
-### How do I disable it on certain sites?
-
-1. Click extension icon
-2. Toggle "Enable on this site" OFF
-3. Or go to Options → Site-Specific Settings
-4. Add domains to disable list
+No — OGrammar targets **desktop**. Mobile browser extensions are too limited.
 
 ### Can I add custom words?
 
-**Yes!** Use the Custom Dictionary:
-1. Right-click extension → Options
-2. Go to Custom Dictionary
-3. Add your words
-4. Words won't be flagged as errors
+Yes — Options → Custom dictionary (or **Add to dictionary** from any suggestion card).
 
 ---
 
-## 🔒 Privacy & Security
+## Privacy & security
 
 ### Is my data safe?
 
-**Yes!** OpenGrammar is designed with privacy in mind:
-
-**Rule-Based Checking:**
-- 100% local in your browser
-- No data leaves your computer
-- Works offline
-
-**AI Checking:**
-- Text sent directly to your chosen provider
-- No intermediary server — there is no OpenGrammar backend
-- No databases or user accounts
-- API keys stored locally in browser
+- **Harper checking:** 100% local; nothing leaves your machine.
+- **LLM tier:** your text goes **directly** to the provider you chose — there is no
+  OGrammar intermediary server, no database, and no account.
 
 ### Do you store my API keys?
 
-**No.** API keys are:
-- Stored in your browser's local storage (encrypted by Chrome)
-- Never sent to OpenGrammar servers
-- Only used to authenticate with AI providers
-- Under your complete control
-
-### What data is sent to AI providers?
-
-When using AI features:
-- Your text is sent to the provider (OpenAI, Groq, etc.)
-- Provider processes the text
-- Returns suggestions
-- Text is **not stored** by the provider (check their policies)
+No. Keys are stored locally and encrypted at rest — `chrome.storage` for the extension,
+Windows DPAPI (`%APPDATA%\OGrammar`) for the desktop app. They're only used to
+authenticate with your provider.
 
 ### Can I run everything locally?
 
-**Yes!** Complete local setup:
-1. Use Harper for on-device grammar checking
-2. Use Ollama for local LLM (AI features)
-3. Everything stays on your computer
-4. 100% offline, 100% private
+Yes: Harper for grammar + Ollama for the LLM tier = 100% offline, 100% private.
 
 ### Is the code auditable?
 
-**Yes!** Being open-source means:
-- Anyone can review the code
-- Security researchers can audit
-- Community can verify privacy claims
-- Transparent development
+Yes — it's open-source under Apache 2.0.
 
 ---
 
-## 🤖 AI Providers
+## AI providers
 
-### Which AI provider should I use?
+### Which provider should I use?
 
-**For free usage:** Groq
-- 100 requests/day free
-- Fast inference
-- Good quality (Llama 3.1 70B)
+- **Free & fast:** Groq.
+- **Best quality:** OpenAI.
+- **Cheapest capable:** DeepSeek.
+- **Most privacy:** Ollama (local).
+- **Most variety:** OpenRouter.
 
-**For best quality:** OpenAI
-- GPT-4o-mini model
-- Highest accuracy
-- Low cost (~$0.15/1K requests)
-
-**For privacy:** Ollama
-- Run models locally
-- No API calls
-- Complete privacy
-
-**For variety:** OpenRouter
-- Access to 100+ models
-- Claude, Llama, Mistral, etc.
-- Pay-per-use
+See [07-ai-providers.md](07-ai-providers.md) for setup and current model picks.
 
 ### Do I need an API key?
 
-**For rule-based checking:** No API key needed
-
-**For AI features:** Yes, but you have options:
-- Get free Groq key (100/day free)
-- Use your existing OpenAI key
-- Run Ollama locally (no key needed)
-
-### How much does it cost?
-
-**Free options:**
-- Groq: 100 requests/day free
-- Ollama: Free (your hardware)
-- Rule-based: Completely free
-
-**Paid options:**
-- OpenAI GPT-4o-mini: ~$0.15 per 1K requests
-- Typical user: $0.50-2/month
-- Heavy user: $5-10/month
+Not for Harper checking. For the LLM tier, yes — or run Ollama locally (no key).
 
 ### Can I switch providers?
 
-**Yes!** You can switch providers anytime:
-1. Click extension → Settings
-2. Change provider dropdown
-3. Enter new API key (if needed)
-4. Save settings
-
-### What if I hit rate limits?
-
-**Groq free tier:** 100 requests/day
-- Wait 24 hours for reset
-- Or upgrade to paid plan
-
-**Other providers:** Check their limits
-- Most have free tiers
-- Upgrade if needed
-- Use rule-based as fallback
+Anytime — change the provider/model (and key) in Options (extension) or Settings
+(desktop).
 
 ---
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Why isn't it working?
 
-**Most common issues:**
-
-1. **Extension not enabled**
-   - Check chrome://extensions/
-   - Enable OpenGrammar
-
-2. **Site disabled**
-   - Check Options → Site-Specific Settings
-   - Enable current site
-
-3. **No / invalid API key**
-   - Add or fix your API key in Settings
-   - Or use on-device checking only
-
-See [Troubleshooting Guide](18-troubleshooting.md) for detailed help.
-
-### Why is it slow?
-
-**Possible causes:**
-- AI provider latency (try Groq for speed)
-- Long text (check in chunks)
-- Slow internet connection
-- Local Ollama model too large for your hardware
+Usual suspects: extension disabled, site disabled, or a missing/invalid API key (for the
+LLM tier only). See [18-troubleshooting.md](18-troubleshooting.md).
 
 ### Why are there false positives?
 
-**Reasons:**
-- Technical terms not in dictionary
-- Proper nouns (names, places)
-- Industry jargon
-- Made-up words
-
-**Solution:** Add words to Custom Dictionary
+Usually out-of-dictionary names, proper nouns, or jargon. Add them to your custom
+dictionary. Residual FP work is tracked in the
+[false-positive audit](24-og-rewrite-false-positive-audit.md).
 
 ### How do I report a bug?
 
-1. Go to [GitHub Issues](https://github.com/swadhinbiswas/opengrammar/issues)
-2. Search for similar issues
-3. Create new issue with:
-   - Description
-   - Steps to reproduce
-   - Expected behavior
-   - Screenshots (if helpful)
-   - Debug information
+Open a [GitHub issue](https://github.com/swadhinbiswas/opengrammar/issues) with a
+description, repro steps, expected behavior, and any console errors.
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-### How can I contribute?
+### How can I help?
 
-**Non-developers:**
-- Report bugs
-- Suggest features
-- Improve documentation
-- Share with others
-
-**Developers:**
-- Fix bugs
-- Add features
-- Improve performance
-- Add grammar rules
-- Write tests
-
-### Do I need to be an expert?
-
-**No!** All skill levels welcome:
-- Beginners: Fix typos, improve docs
-- Intermediate: Add grammar rules
-- Advanced: New features, optimizations
+Report bugs, suggest features, improve docs, or contribute code. See
+[CONTRIBUTING.md](../CONTRIBUTING.md) and the [roadmap](../ROADMAP.md).
 
 ### How do I add grammar rules?
 
-See [GRAMMAR_RULES.md](../GRAMMAR_RULES.md). Grammar/spelling is handled by the on-device
-Harper engine plus the LLM tier; the extension's logic lives in
-`opengrammar/extension/src/background/` (`harperEngine.ts`, `issuePolicy.ts`, `llmClient.ts`).
-Make your change, test, and submit a PR.
-
-### Is there a reward for contributing?
-
-**Intrinsic rewards:**
-- Help thousands of users
-- Improve your coding skills
-- Build your portfolio
-- Join open-source community
-
-**No monetary rewards** - this is a community project
+See [GRAMMAR_RULES.md](../GRAMMAR_RULES.md). Grammar/spelling is handled by Harper plus the
+LLM tier; the extension's logic lives in `opengrammar/extension/src/background/`
+(`harperEngine.ts`, `issuePolicy.ts`, `llmClient.ts`). Mirror LLM prompt/routing changes
+in the desktop engine (`desktop/ograms-engine/src/llm.rs`) to keep parity.
 
 ---
 
-## 📊 Technical Questions
+## Technical
 
-### What technology stack is used?
+### What's the tech stack?
 
-**Extension:**
-- React + TypeScript
-- Vite (bundler)
-- Manifest V3
-- Harper (on-device grammar engine)
-- Calls AI providers directly via their OpenAI-compatible APIs
+- **Extension:** React + TypeScript + Vite, Manifest V3, Harper (WASM); calls AI providers
+  directly via OpenAI-compatible APIs.
+- **Desktop:** Rust (Win32 + UI Automation), sharing the Harper + LLM logic with the
+  extension (`ograms-engine` is a Rust port of the extension's LLM core).
 
-**Desktop app:**
-- Rust (Win32 + UI Automation)
-- Shares the Harper + LLM logic with the extension
+See [13-architecture.md](13-architecture.md).
 
-**Infrastructure:**
-- GitHub Actions for CI
-- GitHub Pages for docs
+### Is there a hosted API?
 
-### Can I use it programmatically?
-
-OpenGrammar ships as a **browser extension** and a **Windows desktop app** — there is no
-hosted HTTP API. The grammar/LLM logic is reusable in the codebase: the desktop
-`ograms-engine` Rust crate exposes a CLI, and the extension's modules live in
-`opengrammar/extension/src/background/`.
-
-### Can I integrate with other tools?
-
-**Yes!** Options include:
-- VS Code extension (future)
-- The desktop `ograms-engine` CLI
-- Reusing the extension's TypeScript modules
+No. OGrammar is a browser extension and a Windows desktop app — there's no hosted HTTP
+API. The desktop `ograms-engine` Rust crate does expose a CLI, and the extension's modules
+are reusable in the codebase.
 
 ### What's the roadmap?
 
-See [ROADMAP.md](../ROADMAP.md):
-- ✅ v2.1: Tone rewriting, statistics
-- 🚧 v3.0: Firefox support, autocomplete
-- 📋 v4.0: Desktop apps, Developer API
+See [ROADMAP.md](../ROADMAP.md). In short: the shared engine, extension, and Windows
+desktop app are shipping; planned work includes Firefox/Safari ports, deeper desktop
+capture for Electron apps, selection-scoped rewrite, and packaging/installers.
 
 ---
 
-## 💰 Cost Questions
+## Cost
 
 ### Is there a premium version?
 
-**No!** OpenGrammar is completely free. No premium tier, no subscriptions, no hidden costs.
-
-### How do you make money?
-
-**We don't.** This is a community open-source project:
-- Built by volunteers
-- Funded by users (API costs)
-- Free to use forever
+No premium tier, no subscriptions, no hidden costs. Your only spend is your own AI
+provider's usage (zero if you use Harper-only or local Ollama).
 
 ### Will it stay free?
 
-**Yes!** The project is committed to staying free:
-- Apache 2.0 license
-- Community-driven
-- No monetization plans
+Yes — Apache 2.0, community-driven, no monetization plans.
 
 ---
 
-## 📚 More Questions?
+## More questions?
 
-### Where can I find more information?
-
-**Documentation:**
-- [Quick Start](01-quick-start.md)
-- [User Guide](09-using-opengrammar.md)
-- [Troubleshooting](18-troubleshooting.md)
-
-**Community:**
+- Docs index: [00-index.md](00-index.md)
 - [GitHub Discussions](https://github.com/swadhinbiswas/opengrammar/discussions)
 - [GitHub Issues](https://github.com/swadhinbiswas/opengrammar/issues)
-- [Discord Server](link-to-discord)
-
-### Still have questions?
-
-**Ask in GitHub Discussions!**
-- Community is friendly
-- Developers respond quickly
-- Others may have same questions
-
----
-
-**Last Updated:** March 2026  
-**Version:** 2.1.0

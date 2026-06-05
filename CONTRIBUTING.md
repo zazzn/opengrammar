@@ -1,6 +1,6 @@
-# Contributing to OpenGrammar
+# Contributing to OGrammar
 
-First off, thank you for considering contributing to OpenGrammar! It's people like you that make OpenGrammar such a great tool.
+First off, thank you for considering contributing to OGrammar! It's people like you that make OGrammar such a great tool.
 
 ## Code of Conduct
 

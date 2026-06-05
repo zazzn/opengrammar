@@ -1,743 +1,181 @@
-# 📖 Using OpenGrammar - Complete User Guide
+# Using OGrammar — User Guide
 
-Master OpenGrammar with this comprehensive guide to all features and functionality.
-
----
-
-## 📋 Table of Contents
-
-1. [Getting Started](#getting-started)
-2. [Grammar Checking](#grammar-checking)
-3. [Tone Rewriting](#tone-rewriting)
-4. [Writing Statistics](#writing-statistics)
-5. [Custom Dictionary](#custom-dictionary)
-6. [Site-Specific Settings](#site-specific-settings)
-7. [Keyboard Shortcuts](#keyboard-shortcuts)
-8. [Tips & Best Practices](#tips--best-practices)
+A complete guide to the **OGrammar browser extension's** features. For OS-wide use on
+Windows, see [OGrammar Desktop](31-desktop-app.md); both products share the same engine.
 
 ---
 
-## 🚀 Getting Started
+## Contents
 
-### First Time Setup
-
-1. **Install the Extension**
-   - See [Browser Extension Setup](04-browser-extension-setup.md)
-   
-2. **Set Up AI Provider**
-   - Click extension icon → Settings
-   - Choose provider (Groq recommended for free tier)
-   - Enter API key
-   - Select model
-   
-3. **Test It Out**
-   - Open any text box
-   - Type: `me and him went to store`
-   - You should see red underline
+1. [Getting started](#getting-started)
+2. [How checking works](#how-checking-works)
+3. [Reviewing and applying fixes](#reviewing-and-applying-fixes)
+4. [Autocorrect](#autocorrect)
+5. [Tone rewriting](#tone-rewriting)
+6. [Writing statistics](#writing-statistics)
+7. [Custom dictionary](#custom-dictionary)
+8. [Writing preferences](#writing-preferences)
+9. [Site-specific settings](#site-specific-settings)
+10. [Tips](#tips)
 
 ---
 
-## ✍️ Grammar Checking
+## Getting started
 
-### How It Works
+1. **Install the extension** — see [04-browser-extension-setup.md](04-browser-extension-setup.md).
+2. **(Optional) add an AI key** — Options → choose a provider, paste your key, pick a
+   model. Skip this to use the local engine only.
+3. **Test it** — open a text box and type `i recieved teh package`. A red underline
+   appears under the mistakes.
 
-OpenGrammar uses a **dual-engine approach**:
+---
 
-1. **Rule-Based Engine** (Free, Offline)
-   - 40+ grammar rules
-   - Instant checking
-   - No API required
-   
-2. **AI-Powered Engine** (Advanced)
-   - Context understanding
-   - Complex grammar
-   - Requires API key
+## How checking works
 
-### Color-Coded Underlines
+OGrammar uses a **two-tier engine**:
 
-| Color | Meaning | Example |
-|-------|---------|---------|
-| **Red** | Spelling/Grammar | "teh" → "the" |
-| **Amber** | Clarity | Long sentences |
-| **Blue** | Style | Passive voice |
+1. **Harper (local, instant).** The on-device [Harper](https://writewithharper.com)
+   engine checks spelling, grammar, punctuation, capitalization, and style. It runs
+   100% in your browser — no network, no key.
+2. **LLM tier (optional, bring-your-own-key).** If you add a provider key, OGrammar also
+   runs context/sentence-level review. Its findings are **merged with Harper's and
+   de-duplicated — Harper wins on overlap** — and shown as a separate layer.
 
-### Using Grammar Checking
+There is **no backend** and no built-in rule file; Harper replaced the old rule-based
+engine. See [GRAMMAR_RULES.md](../GRAMMAR_RULES.md) for the rule philosophy.
 
-#### Step 1: Start Typing
-Open any text input:
-- Gmail compose
-- Google Docs
-- Notion
-- Any text box on the web
+### Underline colors
 
-#### Step 2: Watch for Underlines
-As you type, OpenGrammar automatically checks:
-- After you stop typing (800ms delay)
-- Only text with 5+ characters
-- Works in real-time
+| Color | Source | Meaning |
+|-------|--------|---------|
+| **Red (solid)** | Harper (local) | Spelling / grammar / punctuation / capitalization / style |
+| **Blue (dotted)** | LLM tier (optional) | Context / sentence-level suggestions |
 
-#### Step 3: Review Suggestions
-Click any underlined text to see:
+### When it checks
+
+As you type, OGrammar checks shortly after you pause (a brief debounce), in inputs,
+textareas, and rich/contenteditable editors — Gmail, Google Docs, Notion, and most web
+text boxes. It does not run on non-editable text, PDFs, or images.
+
+---
+
+## Reviewing and applying fixes
+
+Click any underlined text to open its card:
+
 ```
 ┌─────────────────────────────┐
-│ 🔴 Grammar Error            │
+│ 🔴 Spelling                 │
 │                             │
-│ Original: me and him        │
-│ Suggestion: he and I        │
+│ recieved → received         │
 │                             │
-│ Subject pronoun error.      │
-│ Use subject pronouns for    │
-│ the subject of a sentence.  │
+│ Common misspelling.         │
 │                             │
-│ [Apply] [Ignore] [Dictionary]│
+│ [Apply] [Ignore] [+ Dict]   │
 └─────────────────────────────┘
 ```
 
-#### Step 4: Apply Changes
-- **Apply** - Replace text with suggestion
-- **Ignore** - Dismiss this instance
-- **Add to Dictionary** - Never flag this word again
+- **Apply** — replace the text with the suggestion.
+- **Ignore** — dismiss this instance.
+- **Add to dictionary** — never flag this word again (see [Custom dictionary](#custom-dictionary)).
 
-### Grammar Rules Included
-
-#### Spelling (100+ rules)
-- Common misspellings: teh → the
-- Missing apostrophes: dont → don't
-- Wrong word: alot → a lot
-
-#### Basic Grammar (35+ rules)
-- Pronoun errors: me and him → he and I
-- Irregular verbs: buyed → bought
-- Their/there/they're confusion
-- Your/you're confusion
-- Its/it's confusion
-
-#### Style (50+ rules)
-- Passive voice detection
-- Weak words: very good → excellent
-- Redundant phrases: absolutely essential → essential
-- Clichés: think outside the box
-
-#### Clarity
-- Long sentences (>35 words)
-- Complex sentence structure
-- Hard to read passages
-
-### Examples
-
-#### Example 1: Basic Grammar
-```
-Input:  "me and him went to the store"
-Output: "he and I went to the store"
-         ^^^^^^^^
-         Grammar error detected
-```
-
-#### Example 2: Spelling
-```
-Input:  "I dont belive in teh supernatural"
-Output: "I don't believe in the supernatural"
-         ^^^^  ^^^^^^^    ^^
-         3 spelling errors detected
-```
-
-#### Example 3: Style
-```
-Input:  "The report was written by John yesterday"
-Output: "John wrote the report yesterday"
-         ^^^^^^^^^^^^^^^
-         Passive voice detected
-```
+High-confidence mechanical fixes (capitalization, punctuation, small-edit spelling) are
+offered as one-click **quick-fixes**. Contextual changes from the LLM tier are shown as
+non-destructive suggestions you review before applying.
 
 ---
 
-## 🎨 Tone Rewriting
+## Autocorrect
 
-### Overview
+*(Opt-in — off by default.)* When enabled in Options, OGrammar auto-applies **only
+high-confidence** fixes to text you've **just typed** (caret at the end) — never the word
+you're mid-typing, never older text. Grammar, style, and multi-option fixes are never
+auto-applied.
 
-Rewrite any text in 8 different tones:
-
-| Tone | Use Case | Example |
-|------|----------|---------|
-| **Formal** 🎩** | Business, academic | "Hey" → "Greetings" |
-| **Casual** 😊 | Friends, chat | "Greetings" → "Hey" |
-| **Professional** 💼 | Work emails | "wanna" → "would like to" |
-| **Friendly** 🤗 | Social media | "Hello" → "Hey there!" |
-| **Concise** ⚡ | Quick messages | "In order to" → "To" |
-| **Detailed** 📚 | Explanations | "Go" → "Proceed forward" |
-| **Persuasive** 💪 | Sales, pitches | "Try this" → "Experience this" |
-| **Neutral** 😐 | General use | Balanced tone |
-
-### How to Use Tone Rewriting
-
-#### Method 1: Right-Click Menu
-1. Select any text on a webpage
-2. Right-click
-3. Choose **"Rewrite with OpenGrammar"**
-4. Rewrite popup opens
-
-#### Method 2: Keyboard Shortcut
-1. Select text
-2. Press `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
-3. Rewrite popup opens
-
-#### Method 3: Extension Menu
-1. Click extension icon
-2. Click **"Rewrite Text"**
-3. Paste or type text
-4. Click rewrite
-
-### Using the Rewrite Popup
-
-```
-┌───────────────────────────────────────┐
-│ Rewrite with OpenGrammar          [X] │
-├───────────────────────────────────────┤
-│                                       │
-│ Original Text:                        │
-│ ┌─────────────────────────────────┐   │
-│ │ hey whats up can we talk        │   │
-│ │                                 │   │
-│ └─────────────────────────────────┘   │
-│                                       │
-│ Choose Tone:                          │
-│ [Formal] [Casual] [Professional]      │
-│ [Friendly] [Concise] [Detailed]       │
-│ [Persuasive] [Neutral]                │
-│                                       │
-│ ┌─────────────────────────────────┐   │
-│ │ Rewritten Text:                 │   │
-│ │ Hello, how are you? May we      │   │
-│ │ have a conversation?            │   │
-│ └─────────────────────────────────┘   │
-│                                       │
-│ [Apply] [Copy] [Close]                │
-└───────────────────────────────────────┘
-```
-
-### Step-by-Step Example
-
-**Original Text:**
-```
-hey whats up can we talk bout the project
-```
-
-**Step 1: Select Tone**
-Click **Professional** 💼
-
-**Step 2: Click Rewrite**
-Wait for AI to process (~1-2 seconds)
-
-**Step 3: Review Result**
-```
-Hello, how are you? May we discuss the project?
-```
-
-**Step 4: Apply or Copy**
-- **Apply** - Replaces original text
-- **Copy** - Copies to clipboard
-
-### Tips for Tone Rewriting
-
-✅ **Do:**
-- Select complete sentences
-- Use appropriate tone for context
-- Review before applying
-- Try different tones for variety
-
-❌ **Don't:**
-- Rewrite single words (select phrases)
-- Use formal tone for casual chats
-- Apply without reviewing
-- Overuse rewriting
+**Revert-learning:** if you undo an autocorrect, that exact `word → correction` is added
+to a persistent "never autocorrect this" list (stored via `chrome.storage.sync`, so it
+follows you across signed-in profiles).
 
 ---
 
-## 📊 Writing Statistics
+## Tone rewriting
 
-### Overview
+Rewrite selected text in a different tone (formal, casual, professional, concise, and
+more). Requires an AI provider.
 
-Get detailed insights into your writing:
+1. Select text in an editable field on any page.
+2. A small **rewrite bubble** appears near the selection — click it.
+3. Choose a tone, review the result, then **Apply**.
 
-### Metrics Available
-
-#### Basic Counts
-- **Words** - Total word count
-- **Characters** - Total characters (with/without spaces)
-- **Sentences** - Number of sentences
-- **Paragraphs** - Number of paragraphs
-- **Syllables** - Total syllable count
-
-#### Readability Scores
-
-**Flesch Reading Ease** (0-100)
-```
-90-100: Very Easy (5th grade)
-80-89: Easy (6th grade)
-70-79: Fairly Easy (7th grade)
-60-69: Standard (8th-9th grade)
-50-59: Fairly Difficult (10th-12th grade)
-30-49: Difficult (College)
-0-29: Very Difficult (College Graduate+)
-```
-
-**Flesch-Kincaid Grade Level**
-```
-1-6: Elementary
-7-9: Middle School
-10-12: High School
-13-16: College
-17+: Graduate
-```
-
-**Automated Readability Index (ARI)**
-```
-1-6: Ages 5-12
-7-9: Ages 12-15
-10-12: Ages 15-18
-13+: Ages 18+
-```
-
-#### Time Estimates
-- **Reading Time** - Based on 200 words per minute
-- **Speaking Time** - Based on 150 words per minute
-
-#### Vocabulary Analysis
-- **Unique Words** - Number of different words
-- **Vocabulary Diversity** - Percentage of unique words
-- **Average Word Length** - Mean characters per word
-
-### Accessing Statistics
-
-#### Method 1: Extension Popup
-1. Click extension icon
-2. Click **Statistics** tab
-3. View real-time stats
-
-#### Method 2: Options Page
-1. Right-click extension icon
-2. Choose **Options**
-3. Navigate to **Statistics** section
-
-#### Method 3: Keyboard Shortcut
-(If configured)
-1. Press shortcut
-2. Statistics popup appears
-
-### Example Statistics Report
-
-```
-┌─────────────────────────────────────┐
-│ Writing Statistics                  │
-├─────────────────────────────────────┤
-│                                     │
-│ Basic Counts                        │
-│ ─────────────────────────────────── │
-│ Words:          1,248               │
-│ Characters:     6,542               │
-│ Sentences:      87                  │
-│ Paragraphs:     12                  │
-│                                     │
-│ Readability                         │
-│ ─────────────────────────────────── │
-│ Flesch Ease:    78 (Excellent)      │
-│ Grade Level:    8.5 (Good)          │
-│ ARI:            9 (Good)            │
-│                                     │
-│ Time Estimates                      │
-│ ─────────────────────────────────── │
-│ Reading Time:   4 minutes           │
-│ Speaking Time:  6 minutes           │
-│                                     │
-│ Vocabulary                          │
-│ ─────────────────────────────────── │
-│ Unique Words:   542                 │
-│ Diversity:      43% (Good)          │
-│ Avg Word Length: 4.8 characters     │
-│                                     │
-│ Issue Breakdown                     │
-│ ─────────────────────────────────── │
-│ Grammar:   3 issues  🔴             │
-│ Clarity:   5 issues  🟡             │
-│ Style:     7 issues  🔵             │
-└─────────────────────────────────────┘
-```
-
-### Improving Your Score
-
-**To Improve Readability:**
-1. Shorten long sentences
-2. Use simpler words
-3. Break up paragraphs
-4. Reduce passive voice
-
-**To Improve Vocabulary:**
-1. Use synonyms for repeated words
-2. Vary sentence structure
-3. Learn new words
-4. Read diverse content
+See [10-tone-rewriting.md](10-tone-rewriting.md) for the full guide and examples.
 
 ---
 
-## 📚 Custom Dictionary
+## Writing statistics
 
-### Overview
+OGrammar computes readability and vocabulary metrics for your text — word/sentence/
+paragraph counts, Flesch Reading Ease, Flesch-Kincaid grade, reading/speaking time, and
+vocabulary diversity. View them from the popup or Options.
 
-Add words that OpenGrammar should never flag as errors:
-- Proper nouns (names, places)
-- Technical terms
-- Industry jargon
-- Made-up words
-
-### Managing Your Dictionary
-
-#### Add Words
-
-**Method 1: From Suggestion Popup**
-1. Click underlined word
-2. Click **Add to Dictionary**
-3. Word is saved
-
-**Method 2: Options Page**
-1. Right-click extension → Options
-2. Go to **Custom Dictionary**
-3. Click **Add Word**
-4. Enter word
-5. Click **Save**
-
-**Method 3: Bulk Import**
-1. Options → Custom Dictionary
-2. Click **Import**
-3. Upload text file (one word per line)
-4. Words are added
-
-#### Remove Words
-
-1. Options → Custom Dictionary
-2. Find word in list
-3. Click **Remove** (trash icon)
-4. Confirm deletion
-
-#### Export Dictionary
-
-1. Options → Custom Dictionary
-2. Click **Export**
-3. Download JSON file
-4. Save for backup
-
-### Dictionary Tips
-
-✅ **Good Words to Add:**
-- Your name
-- Company names
-- Product names
-- Technical terminology
-- Common abbreviations you use
-
-❌ **Don't Add:**
-- Common misspellings
-- Offensive words
-- Temporary terms
-
-### Example Dictionary
-
-```
-My Custom Dictionary (127 words)
-─────────────────────────────────
-✓ opengrammar
-✓ typescript
-✓ javascript
-✓ swadhin
-✓ api
-✓ backend
-✓ frontend
-✓ devops
-✓ kubernetes
-✓ docker
-...
-
-[Add Word] [Import] [Export] [Clear All]
-```
+See [11-writing-statistics.md](11-writing-statistics.md) for what each metric means.
 
 ---
 
-## ⚙️ Rule Configuration (Preferences)
+## Custom dictionary
 
-### Overview
+Add words OGrammar should never flag — names, brands, technical terms, jargon.
 
-Sometimes you want OpenGrammar to focus only on typos, or maybe you want to disable strict Style & Tone rules entirely. OpenGrammar lets you disable specific rule categories globally.
-
-### Managing Rule Categories
-
-1. Right-click the extension icon → **Options**
-2. Scroll to **Writing Preferences**
-3. Toggle the categories you want active:
-   - **Grammar:** Subject-verb agreement, irregular verbs, pronouns
-   - **Spelling:** Typos, misspelled words, confused words
-   - **Punctuation:** Missing commas, incorrect hyphens
-   - **Style & Tone:** Formality, academic writing, business etiquette
-   - **Clarity:** Wordiness, redundant phrasing, readability
-
-If you disable "Style & Tone," OpenGrammar will instantly stop checking for passive voice or casual phrasing (like "gonna" or "btw") everywhere on the internet.
+- **From a card:** click an underlined word → **Add to dictionary**.
+- **In Options:** Options → **Custom dictionary** → add words, or **import** a list
+  (one word per line) and **export** for backup.
 
 ---
 
-## 🌐 Site-Specific Settings
+## Writing preferences
 
-### Overview
+Sometimes you only want typos caught, or you want to silence style nits. In Options →
+**Writing preferences**, toggle which categories are active:
 
-Control OpenGrammar behavior per website:
-- Disable on specific domains
-- Different settings per site
-- Automatic detection
+- **Grammar** — subject-verb agreement, pronouns, irregular verbs
+- **Spelling** — typos and confused words
+- **Punctuation** — commas, apostrophes, hyphens, spacing
+- **Style & tone** — passive voice, formality, wordy phrasing
+- **Clarity** — readability and redundancy
 
-### Disabling Sites
-
-#### Method 1: Quick Disable
-1. Click extension icon
-2. Toggle **Enable on this site**
-3. Site is added to disabled list
-
-#### Method 2: Options Page
-1. Right-click extension → Options
-2. Go to **Site-Specific Settings**
-3. Click **Add Domain**
-4. Enter domain (e.g., `twitter.com`)
-5. Toggle enabled/disabled
-6. Click **Save**
-
-### Managing Disabled Sites
-
-```
-Site-Specific Settings
-─────────────────────────────────────
-✓ gmail.com          [Disable] [Remove]
-✓ docs.google.com    [Disable] [Remove]
-✓ notion.so          [Disable] [Remove]
-✗ twitter.com        [Enable]  [Remove]
-✗ facebook.com       [Enable]  [Remove]
-
-[Add Domain] [Disable All] [Enable All]
-```
-
-### When to Disable
-
-**Good Candidates:**
-- Social media (casual writing)
-- Code editors (technical text)
-- Gaming sites (chat)
-- Sites with custom text inputs
-
-**Keep Enabled:**
-- Email clients
-- Document editors
-- Writing tools
-- Forms and applications
+Disabling a category stops those checks everywhere immediately.
 
 ---
 
-## ⌨️ Keyboard Shortcuts
+## Site-specific settings
 
-### Default Shortcuts
+Control OGrammar per website:
 
-| Action | Windows/Linux | Mac |
-|--------|---------------|-----|
-| **Rewrite Selected Text** | `Ctrl+Shift+R` | `Cmd+Shift+R` |
-| **Toggle Extension** | `Ctrl+Shift+E` | `Cmd+Shift+E` |
-| **Open Statistics** | `Ctrl+Shift+S` | `Cmd+Shift+S` |
-| **Open Settings** | `Ctrl+Shift+,` | `Cmd+Shift+,` |
+- **Quick disable:** click the icon → toggle **Enable on this site**.
+- **In Options:** Options → **Site settings** → add a domain (e.g. `twitter.com`) and
+  set it enabled/disabled.
 
-### Customizing Shortcuts
-
-#### Chrome/Brave/Edge
-1. Go to `chrome://extensions/shortcuts`
-2. Find OpenGrammar
-3. Click shortcut field
-4. Press new key combination
-5. Click **Save**
-
-#### Firefox
-1. Go to `about:addons`
-2. Click gear icon → **Manage Extension Shortcuts**
-3. Find OpenGrammar
-4. Set new shortcuts
-
-### Shortcut Tips
-
-✅ **Best Practices:**
-- Use memorable combinations
-- Avoid system shortcuts
-- Keep hands on home row
-- Practice muscle memory
-
-❌ **Avoid:**
-- `Ctrl+C`, `Ctrl+V` (copy/paste)
-- `Ctrl+Z` (undo)
-- `Ctrl+T` (new tab)
-- Browser-reserved shortcuts
+Good candidates to disable: code editors, sites with custom/canvas text inputs, or places
+where you write casually.
 
 ---
 
-## 💡 Tips & Best Practices
+## Tips
 
-### Daily Usage Tips
-
-#### 1. Start with Rule-Based Only
-- No API key needed
-- Works offline
-- Catches basic errors
-- Fast and free
-
-#### 2. Add AI for Complex Writing
-- Use for important emails
-- Enable for documents
-- Disable for casual chat
-- Choose right model
-
-#### 3. Build Your Dictionary
-- Add names early
-- Include technical terms
-- Import from other tools
-- Sync across devices
-
-#### 4. Use Tone Rewriting Wisely
-- Professional for work
-- Casual for friends
-- Concise for messages
-- Formal for documents
-
-#### 5. Check Statistics Regularly
-- Monitor readability
-- Track vocabulary
-- Set improvement goals
-- Compare documents
-
-### Workflow Integration
-
-#### For Email
-1. Compose in Gmail
-2. Wait for grammar check
-3. Review suggestions
-4. Apply important fixes
-5. Use tone rewriting for polish
-
-#### For Documents
-1. Write in Google Docs
-2. Enable full checking
-3. Review all suggestions
-4. Check statistics
-5. Rewrite key sections
-
-#### For Social Media
-1. Disable on casual sites
-2. Enable for professional posts
-3. Use concise tone
-4. Quick grammar check only
-
-#### For Coding/Technical
-1. Disable in code editors
-2. Enable for comments/docs
-3. Add technical terms to dictionary
-4. Use custom rules
-
-### Common Mistakes to Avoid
-
-❌ **Over-relying on AI**
-- Review all suggestions
-- Understand the changes
-- Learn from mistakes
-- Don't accept blindly
-
-❌ **Ignoring Context**
-- Consider your audience
-- Match tone to situation
-- Keep your voice
-- Don't over-edit
-
-❌ **Not Customizing**
-- Add domain-specific terms
-- Adjust settings per site
-- Configure shortcuts
-- Personalize dictionary
-
-❌ **Skipping Statistics**
-- Check readability
-- Monitor progress
-- Set goals
-- Track improvements
-
-### Advanced Tips
-
-#### 1. Hybrid Mode
-Use both engines:
-- Rules for basic errors (free, fast)
-- AI for complex issues (smart, contextual)
-
-#### 2. Batch Processing
-For long documents:
-- Write first draft
-- Enable checking
-- Review all at once
-- Apply in batches
-
-#### 3. Custom Prompts
-(If supported)
-- Create custom instructions
-- Save favorite tones
-- Set default styles
-- Automate common tasks
-
-#### 4. Export & Backup
-Regularly:
-- Export settings
-- Backup dictionary
-- Save statistics
-- Document custom rules
+- **Start key-free.** Harper alone catches spelling, grammar, and punctuation offline.
+  Add an AI key when you want context-level review or tone rewriting.
+- **Build your dictionary early.** Add names and technical terms so they stop getting
+  flagged.
+- **Use writing preferences** to match the site — strict for documents, typos-only for
+  chat.
+- **Want coverage outside the browser?** Install the [desktop app](31-desktop-app.md);
+  it checks native Windows apps and yields browser windows to this extension.
 
 ---
 
-## 🆘 Troubleshooting
+## Related
 
-### Common Issues
-
-**Problem:** No underlines appear
-
-**Solutions:**
-1. Check extension is enabled
-2. Verify site not disabled
-3. Check your provider/API key in Settings
-4. Reload page
-5. Check browser console
-
-**Problem:** Suggestions not applying
-
-**Solutions:**
-1. Click directly on suggestion
-2. Wait for popup to load
-3. Check permissions
-4. Try keyboard shortcut
-5. Restart browser
-
-**Problem:** Rewrite not working
-
-**Solutions:**
-1. Select text first
-2. Check API key valid
-3. Verify the selected provider/model
-4. Try different tone
-5. Check network connection
-
----
-
-## 📚 Related Documentation
-
-- [Browser Setup](04-browser-extension-setup.md) - Install on your browser
-- [AI Providers](07-ai-providers.md) - Configure AI
-- [Tone Rewriting](10-tone-rewriting.md) - Detailed rewriting guide
-- [Troubleshooting](18-troubleshooting.md) - Fix common issues
-
----
-
-**Happy Writing! ✨**
-
-OpenGrammar is your companion for clear, confident writing. Use it wisely, customize it to your needs, and watch your writing improve!
+- [Browser setup](04-browser-extension-setup.md)
+- [AI providers](07-ai-providers.md)
+- [Tone rewriting](10-tone-rewriting.md)
+- [Writing statistics](11-writing-statistics.md)
+- [Troubleshooting](18-troubleshooting.md)

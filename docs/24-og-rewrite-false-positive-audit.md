@@ -8,13 +8,10 @@ claim below was reproduced through the **shipped** inline pipeline; the handful
 of static-only findings (LLM-correction path, content-script labeling) cite
 exact `file:line`.
 
-It is a companion to:
-
-- [22-og-rewrite-ai-handoff.md](22-og-rewrite-ai-handoff.md) — project handoff.
-- [23-suggestion-testing-run.md](23-suggestion-testing-run.md) — the first
-  suggestion/ignore testing pass and the `npm run test:suggestions` assertion
-  harness (68 cases). New regression cases proposed here are meant to **extend**
-  that suite.
+It is a companion to two internal working notes (not part of this published docs set):
+the project handoff, and the first suggestion/ignore testing pass that established the
+`npm run test:suggestions` assertion harness (68 cases). New regression cases proposed
+here are meant to **extend** that suite.
 
 ---
 
@@ -140,8 +137,8 @@ reproduced exactly.
 > `harperEngine.ts` (it depends on `chrome.runtime`). They can silently drift:
 > the `test-suggestion-corpus.mjs` copy already carries a `teh→the`
 > `COMMON_SPELLING_OVERRIDES` entry that is **not** present in the current
-> `harperEngine.ts` (`{ adress: 'address' }` only), despite
-> [23-suggestion-testing-run.md](23-suggestion-testing-run.md) stating it was
+> `harperEngine.ts` (`{ adress: 'address' }` only), despite the
+> suggestion-testing-run note stating it was
 > added there. **Recommendation:** extract the chrome-free core of
 > `harperLint()` into a pure module (mirroring how `contextRankerCore.ts` was
 > split out) so both harnesses and the extension share one source of truth.
@@ -472,8 +469,7 @@ in `isHighConfidenceSpelling`. Do **not** add ambiguous English words
 
 ## 8. Proposed regression corpus lines
 
-These extend the existing `npm run test:suggestions` suite
-([23-suggestion-testing-run.md](23-suggestion-testing-run.md)) and the
+These extend the existing `npm run test:suggestions` suite and the
 `simulate:*` scripts. Where a case needs the dialect param, add it to
 `fp-harness.mjs` first (R2).
 

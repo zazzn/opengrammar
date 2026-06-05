@@ -1,21 +1,34 @@
 # 🤖 AI Provider Setup Guide
 
-Configure AI providers for advanced grammar checking and tone rewriting.
+Configure the optional **LLM tier** for context/sentence review and tone rewriting.
+This applies to **both products** — the browser extension and the desktop app set the
+provider the same way (extension: **Options**; desktop: tray → **Settings**).
+
+OGrammar is **bring-your-own-key**: it calls your chosen provider directly with your own
+key — there is no OGrammar backend. The local **Harper** engine always works without a
+key; a provider is only needed for the LLM tier.
 
 ---
 
 ## 📋 Overview
 
-OpenGrammar supports **6 AI providers**, giving you flexibility in cost, quality, and privacy.
+OGrammar supports these providers, giving you flexibility in cost, quality, and privacy.
 
 | Provider | Speed | Quality | Cost | Best For |
 |----------|-------|---------|------|----------|
 | **Groq** | ⚡⚡⚡ | ⭐⭐⭐⭐ | Free tier | Fast & free |
 | **OpenAI** | ⚡⚡ | ⭐⭐⭐⭐⭐ | $$ | Best quality |
+| **DeepSeek** | ⚡⚡ | ⭐⭐⭐⭐ | $ | Cheap, capable |
 | **OpenRouter** | ⚡⚡ | ⭐⭐⭐⭐⭐ | Varies | Model variety |
 | **Together AI** | ⚡⚡ | ⭐⭐⭐⭐ | $ | Open-source |
+| **Abacus RouteLLM** | ⚡⚡ | ⭐⭐⭐⭐ | Varies | Smart routing across top models |
 | **Ollama** | ⚡⚡⚡ | ⭐⭐⭐ | Free | Privacy, offline |
 | **Custom** | - | - | - | Your own API |
+
+All providers use an OpenAI-compatible API. **DeepSeek** and **Abacus RouteLLM** aren't
+covered in their own sections below, but they're configured exactly like the others —
+select the provider, paste your key, and pick a model (for DeepSeek, get a key at
+[platform.deepseek.com](https://platform.deepseek.com) and use `deepseek-chat`).
 
 ---
 
@@ -44,7 +57,7 @@ Follow the guide for your chosen provider below.
 
 ### Step 3: Configure Extension
 
-1. Click OpenGrammar icon
+1. Click OGrammar icon
 2. Click **Settings** (gear icon)
 3. Select **Provider** from dropdown
 4. Enter **API Key**
@@ -56,9 +69,9 @@ Follow the guide for your chosen provider below.
 ## ⚡ Groq (Recommended - Free)
 
 ### Overview
-- **Free Tier:** 100 requests/day
+- **Free Tier:** generous free quota (rate-limited; see Groq's current limits)
 - **Speed:** Fastest (LPU technology)
-- **Quality:** Excellent (Llama 3.1 70B)
+- **Quality:** Excellent (Llama 3.3 70B)
 - **Setup Time:** 2 minutes
 
 ### Step 1: Create Account
@@ -69,24 +82,27 @@ Follow the guide for your chosen provider below.
 ### Step 2: Get API Key
 1. Go to **API Keys** in left sidebar
 2. Click **Create API Key**
-3. Give it a name (e.g., "OpenGrammar")
+3. Give it a name (e.g., "OGrammar")
 4. Copy the key (starts with `gsk_`)
 5. ⚠️ **Save it now** - you can't see it again!
 
 ### Step 3: Configure in Extension
-1. Click OpenGrammar icon → Settings
+1. Click OGrammar icon → Settings
 2. Provider: **Groq**
 3. API Key: `gsk_xxx` (paste your key)
-4. Model: **llama-3.1-70b-versatile**
+4. Model: **llama-3.3-70b-versatile**
 5. Click **Save**
+
+> Groq rotates its hosted models periodically. If a model name is rejected, check the
+> current list at [console.groq.com/docs/models](https://console.groq.com/docs/models)
+> and pick the closest equivalent.
 
 ### Available Models
 | Model | Speed | Quality | Best For |
 |-------|-------|---------|----------|
-| `llama-3.1-70b-versatile` | ⚡⚡⚡ | ⭐⭐⭐⭐⭐ | **Recommended** |
+| `llama-3.3-70b-versatile` | ⚡⚡⚡ | ⭐⭐⭐⭐⭐ | **Recommended** |
 | `llama-3.1-8b-instant` | ⚡⚡⚡⚡ | ⭐⭐⭐⭐ | Fast checks |
 | `gemma2-9b-it` | ⚡⚡⚡ | ⭐⭐⭐⭐ | Balanced |
-| `mixtral-8x7b-32768` | ⚡⚡ | ⭐⭐⭐⭐⭐ | Complex writing |
 
 ### Testing
 ```bash
@@ -95,7 +111,7 @@ curl https://api.groq.com/openai/v1/chat/completions \
   -H "Authorization: Bearer gsk_xxx" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "llama-3.1-70b-versatile",
+    "model": "llama-3.3-70b-versatile",
     "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
@@ -129,12 +145,12 @@ curl https://api.groq.com/openai/v1/chat/completions \
 ### Step 3: Get API Key
 1. Go to **API Keys** section
 2. Click **Create new secret key**
-3. Give it a name (e.g., "OpenGrammar")
+3. Give it a name (e.g., "OGrammar")
 4. Copy the key (starts with `sk-`)
 5. ⚠️ **Save it now** - can't see it again!
 
 ### Step 4: Configure in Extension
-1. Click OpenGrammar icon → Settings
+1. Click OGrammar icon → Settings
 2. Provider: **OpenAI**
 3. API Key: `sk-xxx` (paste your key)
 4. Model: **gpt-4o-mini** (recommended)
@@ -191,7 +207,7 @@ curl https://api.openai.com/v1/chat/completions \
 3. Choose payment method
 
 ### Step 4: Configure in Extension
-1. Click OpenGrammar icon → Settings
+1. Click OGrammar icon → Settings
 2. Provider: **OpenRouter**
 3. API Key: (paste your key)
 4. Model: **anthropic/claude-3.5-sonnet** (recommended)
@@ -243,7 +259,7 @@ curl https://openrouter.ai/api/v1/chat/completions \
 3. Get $25 free credit on signup
 
 ### Step 4: Configure in Extension
-1. Click OpenGrammar icon → Settings
+1. Click OGrammar icon → Settings
 2. Provider: **Together AI**
 3. API Key: (paste your key)
 4. Model: **meta-llama/Meta-Llama-3.1-70B-Instruct**
@@ -320,7 +336,7 @@ Expected output:
 ```
 
 ### Step 5: Configure in Extension
-1. Click OpenGrammar icon → Settings
+1. Click OGrammar icon → Settings
 2. Provider: **Ollama (Local)**
 3. Base URL: `http://localhost:11434/v1`
 4. Model: `qwen2.5:1.5b` (or your chosen model)
@@ -362,7 +378,7 @@ ollama run llama3.2:7b
 Use your own API endpoint or any OpenAI-compatible API.
 
 ### Configuration
-1. Click OpenGrammar icon → Settings
+1. Click OGrammar icon → Settings
 2. Provider: **Custom**
 3. Base URL: `https://your-api.com/v1`
 4. API Key: (your API key)
@@ -461,7 +477,7 @@ OpenRouter (Claude)     $3.00
 
 You can switch providers anytime:
 
-1. Click OpenGrammar icon
+1. Click OGrammar icon
 2. Click **Settings**
 3. Change **Provider** dropdown
 4. Enter new API key (if required)
@@ -474,6 +490,8 @@ Your settings are saved automatically.
 
 ## 📚 Related Documentation
 
+- [Browser extension setup](04-browser-extension-setup.md) - Install & configure the extension
+- [OGrammar Desktop](31-desktop-app.md) - Set the provider for the Windows app
 - [Troubleshooting](18-troubleshooting.md) - Common issues
 
 ---

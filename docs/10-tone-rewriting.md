@@ -1,6 +1,6 @@
 # 🎨 Tone Rewriting Guide
 
-Master the art of rewriting text in different tones with OpenGrammar.
+Master the art of rewriting text in different tones with OGrammar.
 
 ---
 
@@ -206,41 +206,21 @@ Output: "It is recommended to do this"
 
 ## 🚀 How to Use
 
-### Method 1: Right-Click Menu
+### In the browser extension
 
-1. **Select Text**
-   - Highlight the text you want to rewrite
-   - Any text on any webpage
+1. **Select text** in an editable field on any page.
+2. A small **rewrite bubble** appears near your selection — click it.
+3. **Choose a tone** and review the proposed rewrite.
+4. **Apply** to replace the text (or revert to the original if you change your mind).
 
-2. **Right-Click**
-   - Open context menu
-   - Choose "Rewrite with OpenGrammar"
+Tone rewriting requires an AI provider — set one in **Options** (see
+[07-ai-providers.md](07-ai-providers.md)).
 
-3. **Choose Tone**
-   - Click on desired tone button
-   - See preview instantly
+### In the desktop app (Windows)
 
-4. **Apply or Copy**
-   - Click "Apply" to replace
-   - Click "Copy" to clipboard
-
-### Method 2: Keyboard Shortcut
-
-1. **Select Text**
-2. **Press Shortcut**
-   - Windows/Linux: `Ctrl+Shift+R`
-   - Mac: `Cmd+Shift+R`
-
-3. **Choose Tone**
-4. **Apply Changes**
-
-### Method 3: Extension Popup
-
-1. **Click Extension Icon**
-2. **Select "Rewrite Text"**
-3. **Enter or Paste Text**
-4. **Choose Tone**
-5. **Get Result**
+The desktop app surfaces rewriting as a **Rewrite pill** at the focused field's corner
+(Polish / Formalize / Casual), with a preview before it applies anything. See
+[31-desktop-app.md](31-desktop-app.md).
 
 ---
 
@@ -427,9 +407,9 @@ Keep a list of good rewrites:
 
 ## 📚 Related Documentation
 
-- [Using OpenGrammar](09-using-opengrammar.md) - Complete user guide
+- [Using OGrammar](09-using-opengrammar.md) - Complete user guide
 - [AI Providers](07-ai-providers.md) - Configure AI
-- [Keyboard Shortcuts](12-keyboard-shortcuts.md) - All shortcuts
+- [OGrammar Desktop](31-desktop-app.md) - Rewriting outside the browser
 
 ---
 
