@@ -38,8 +38,6 @@ OGrammar is **two products** — see **[docs/13-architecture.md](docs/13-archite
 cd opengrammar/extension
 bun install
 bun run dev        # or: bun run build ; bun x tsc --noEmit
-# Optional backend:
-cd ../backend && bun install && bun dev
 ```
 
 **Desktop app** (Rust, Windows):

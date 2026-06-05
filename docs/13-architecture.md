@@ -18,7 +18,6 @@ to how everything fits together. For the product-level "what", see
 │  │     ├─ popup/        toolbar popup
 │  │     ├─ shared/       apiKeyStore, protectedText, ollama models
 │  │     └─ types.ts      shared data model (Issue, Settings, …)
-│  └─ backend/            optional self-hosted Hono edge API (LLM routing)
 ├─ desktop/               PRODUCT 2 — Windows desktop app (Rust workspace)
 │  ├─ ograms-engine/      grammar + LLM engine (library + CLI)
 │  └─ ograms-hotkey/      the Windows app (monitor, overlay, tray, settings, …)

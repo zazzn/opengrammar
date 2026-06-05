@@ -6,7 +6,7 @@ How to build, run, and test both products, and where to pick up. Pair this with
 
 ## Prerequisites
 
-- **Extension / backend:** Node 18+ (or **Bun**, the project's preferred runtime/PM).
+- **Extension:** Node 18+ (or **Bun**, the project's preferred runtime/PM).
 - **Desktop app:** Rust (stable) + Cargo, on **Windows** (it uses Win32 + UI Automation).
 - An AI provider key (OpenAI / DeepSeek / Groq / OpenRouter / Together) or local Ollama —
   only needed to exercise the LLM tier.
@@ -29,7 +29,8 @@ Key files (see [13-architecture.md](13-architecture.md) for the map):
 `src/content/highlighter.ts`, `src/background/{harperEngine,llmClient,issuePolicy}.ts`,
 `src/options/`, `src/types.ts`.
 
-Optional backend: `cd opengrammar/backend && bun install && bun dev`.
+The extension is bring-your-own-key and calls the selected LLM provider directly —
+there is no backend service to run.
 
 ## Product 2 — Desktop app (Windows)
 

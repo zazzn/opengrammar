@@ -20,7 +20,8 @@ the upstream work, including but not limited to:
     local engine (offline, on-device), replacing the prior inline path.
   - A local n-gram context re-ranker for spelling candidate selection.
   - Grammar/tone moved to an explicit, non-inline button (whole-text LLM
-    review via the backend /correct and /rewrite routes).
+    review sent directly to the user's configured provider; the upstream
+    self-hosted backend dependency was removed).
   - Additional LLM providers (e.g. Abacus RouteLLM), encrypted API-key
     storage, Ollama idle-unload controls, and assorted UX fixes.
 

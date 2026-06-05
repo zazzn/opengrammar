@@ -108,13 +108,6 @@ ssh -L 11434:localhost:11434 your-ollama-host
 Cloud providers need none of this (they're public HTTPS and don't have
 Ollama's origin restriction).
 
-## Optional self-hosted proxy
-
-The `backend/` directory and its Docker image are **retained but
-unused by the extension** — only useful if you want a self-hosted
-OpenAI-compatible proxy (e.g. to keep API keys off client machines).
-See [`backend/DOCKER.md`](backend/DOCKER.md). Not required.
-
 ## Privacy
 
 - Inline mechanical checks are 100% local — text never leaves the device.

@@ -38,7 +38,7 @@ body:
     id: context
     attributes:
       label: Environment Context
-      description: Browser, OS, Backend version, etc.
+      description: Browser, OS, extension version, etc.
       placeholder: |
         - OS: [e.g. Windows, macOS, Linux]
         - Browser: [e.g. Chrome, Brave]

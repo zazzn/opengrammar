@@ -25,9 +25,9 @@ OpenGrammar is a free, open-source browser extension that helps you write clearl
 ### Is OpenGrammar really free?
 
 **Yes!** OpenGrammar is 100% free and open-source. You can:
-- Use the rule-based grammar checker for free (offline)
+- Use the on-device grammar checker for free (offline, no key)
 - Bring your own API key for AI features (pay only what you use)
-- Self-host the backend for free
+- Run AI fully locally for free with Ollama
 - Modify and distribute the code
 
 ### How is OpenGrammar different from Grammarly?
@@ -39,7 +39,7 @@ OpenGrammar is a free, open-source browser extension that helps you write clearl
 | **Open Source** | No | Yes |
 | **Offline Mode** | Limited | Full offline support |
 | **AI Providers** | Only Grammarly's AI | Choose from 6+ providers |
-| **Self-Hosting** | No | Yes |
+| **Local AI (Ollama)** | No | Yes |
 
 ### What browsers are supported?
 
@@ -75,22 +75,22 @@ See [Browser Extension Setup](04-browser-extension-setup.md) for detailed instru
 
 ### Do I need to deploy a backend?
 
-**No, but it's recommended.** You have options:
+**No.** There is no backend to deploy. The extension calls your chosen AI provider
+directly with your own API key (or your local Ollama server). You have options:
 
-**Option 1: Local Backend (Recommended for testing)**
-- Run backend on your computer
-- Free, full control
-- Requires Node.js
+**Option 1: On-device only**
+- Harper-based grammar/spelling/punctuation
+- No key, works offline
+- Basic checking only
 
-**Option 2: Cloud Backend (Recommended for production)**
-- Deploy to Cloudflare Workers, Vercel, etc.
-- Free tiers available
-- Access from anywhere
+**Option 2: Bring your own provider key**
+- Add a Groq/OpenAI/etc. key in Settings
+- Extension talks to the provider directly
+- Pay only what you use
 
-**Option 3: Rule-Based Only**
-- No backend needed
-- Works offline
-- Basic grammar checking only
+**Option 3: Local LLM (Ollama)**
+- Run models on your own machine
+- No key, fully offline AI
 
 ### Is technical knowledge required?
 
@@ -100,14 +100,12 @@ See [Browser Extension Setup](04-browser-extension-setup.md) for detailed instru
 - Configure in UI
 
 **Advanced setup:** Some technical knowledge helpful
-- Deploying to cloud platforms
-- Running local servers
+- Running a local Ollama server
 - Configuring API keys
 
 ### How long does setup take?
 
 - **Quick setup:** 5-10 minutes
-- **With cloud deployment:** 15-20 minutes
 - **With local LLM:** 30 minutes
 
 ---
@@ -129,8 +127,8 @@ See [Browser Extension Setup](04-browser-extension-setup.md) for detailed instru
 - Writing statistics
 
 **Privacy Features:**
-- Local rule-based checking
-- Self-hostable backend
+- Local, on-device checking (Harper)
+- Optional local AI via Ollama
 - No data retention
 - Bring your own API key
 
@@ -186,7 +184,7 @@ Currently, OpenGrammar is designed for **desktop browsers only**. Mobile browser
 
 **AI Checking:**
 - Text sent directly to your chosen provider
-- Backend is stateless (doesn't store data)
+- No intermediary server — there is no OpenGrammar backend
 - No databases or user accounts
 - API keys stored locally in browser
 
@@ -209,8 +207,8 @@ When using AI features:
 ### Can I run everything locally?
 
 **Yes!** Complete local setup:
-1. Run backend locally (Docker or Node.js)
-2. Use Ollama for local LLM
+1. Use Harper for on-device grammar checking
+2. Use Ollama for local LLM (AI features)
 3. Everything stays on your computer
 4. 100% offline, 100% private
 
@@ -300,17 +298,13 @@ When using AI features:
    - Check chrome://extensions/
    - Enable OpenGrammar
 
-2. **Backend not running**
-   - Start backend: `bun run dev`
-   - Check health: `curl localhost:8787/health`
-
-3. **Site disabled**
+2. **Site disabled**
    - Check Options → Site-Specific Settings
    - Enable current site
 
-4. **No API key**
-   - Add API key in Settings
-   - Or use rule-based only
+3. **No / invalid API key**
+   - Add or fix your API key in Settings
+   - Or use on-device checking only
 
 See [Troubleshooting Guide](18-troubleshooting.md) for detailed help.
 
@@ -320,7 +314,7 @@ See [Troubleshooting Guide](18-troubleshooting.md) for detailed help.
 - AI provider latency (try Groq for speed)
 - Long text (check in chunks)
 - Slow internet connection
-- Backend on free tier (upgrade or self-host)
+- Local Ollama model too large for your hardware
 
 ### Why are there false positives?
 
@@ -371,11 +365,10 @@ See [Troubleshooting Guide](18-troubleshooting.md) for detailed help.
 
 ### How do I add grammar rules?
 
-See [Grammar Rules Guide](16-grammar-rules.md):
-1. Open `backend/src/analyzer-simple.ts`
-2. Add regex pattern
-3. Add suggestion and reason
-4. Test and submit PR
+See [GRAMMAR_RULES.md](../GRAMMAR_RULES.md). Grammar/spelling is handled by the on-device
+Harper engine plus the LLM tier; the extension's logic lives in
+`opengrammar/extension/src/background/` (`harperEngine.ts`, `issuePolicy.ts`, `llmClient.ts`).
+Make your change, test, and submit a PR.
 
 ### Is there a reward for contributing?
 
@@ -397,37 +390,30 @@ See [Grammar Rules Guide](16-grammar-rules.md):
 - React + TypeScript
 - Vite (bundler)
 - Manifest V3
-- Tailwind CSS
+- Harper (on-device grammar engine)
+- Calls AI providers directly via their OpenAI-compatible APIs
 
-**Backend:**
-- Hono (web framework)
-- TypeScript
-- Cloudflare Workers / Node.js
-- OpenAI SDK
+**Desktop app:**
+- Rust (Win32 + UI Automation)
+- Shares the Harper + LLM logic with the extension
 
 **Infrastructure:**
-- Docker for self-hosting
-- GitHub Actions for CI/CD
+- GitHub Actions for CI
 - GitHub Pages for docs
 
 ### Can I use it programmatically?
 
-**Yes!** The backend provides a REST API:
-```bash
-curl -X POST http://localhost:8787/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"text": "your text"}'
-```
-
-See [API Reference](15-api-reference.md) for details.
+OpenGrammar ships as a **browser extension** and a **Windows desktop app** — there is no
+hosted HTTP API. The grammar/LLM logic is reusable in the codebase: the desktop
+`ograms-engine` Rust crate exposes a CLI, and the extension's modules live in
+`opengrammar/extension/src/background/`.
 
 ### Can I integrate with other tools?
 
 **Yes!** Options include:
 - VS Code extension (future)
-- Desktop app (Electron)
-- Mobile app (React Native)
-- API integration in your apps
+- The desktop `ograms-engine` CLI
+- Reusing the extension's TypeScript modules
 
 ### What's the roadmap?
 
@@ -467,7 +453,6 @@ See [ROADMAP.md](../ROADMAP.md):
 **Documentation:**
 - [Quick Start](01-quick-start.md)
 - [User Guide](09-using-opengrammar.md)
-- [API Reference](15-api-reference.md)
 - [Troubleshooting](18-troubleshooting.md)
 
 **Community:**

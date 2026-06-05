@@ -1,6 +1,6 @@
 /**
- * Inline-engine regression harness — the Harper + local context re-ranker
- * counterpart to backend/simulate.mjs. Runs the SAME shipped logic
+ * Inline-engine regression harness for the Harper + local context re-ranker.
+ * Runs the SAME shipped logic
  * (src/background/contextRankerCore.ts) against the SAME committed model
  * (public/ngram/model.bin) with real Harper, so it can't drift from what the
  * extension actually does. No server needed.

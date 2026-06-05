@@ -24,16 +24,13 @@ Master OpenGrammar with this comprehensive guide to all features and functionali
 1. **Install the Extension**
    - See [Browser Extension Setup](04-browser-extension-setup.md)
    
-2. **Configure Backend**
+2. **Set Up AI Provider**
    - Click extension icon → Settings
-   - Enter Backend URL (local or deployed)
-   
-3. **Set Up AI Provider**
    - Choose provider (Groq recommended for free tier)
    - Enter API key
    - Select model
    
-4. **Test It Out**
+3. **Test It Out**
    - Open any text box
    - Type: `me and him went to store`
    - You should see red underline
@@ -708,7 +705,7 @@ Regularly:
 **Solutions:**
 1. Check extension is enabled
 2. Verify site not disabled
-3. Test backend connection
+3. Check your provider/API key in Settings
 4. Reload page
 5. Check browser console
 
@@ -726,7 +723,7 @@ Regularly:
 **Solutions:**
 1. Select text first
 2. Check API key valid
-3. Verify backend running
+3. Verify the selected provider/model
 4. Try different tone
 5. Check network connection
 

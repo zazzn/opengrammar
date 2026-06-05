@@ -33,7 +33,7 @@ living document.
 - [x] Writing statistics; custom dictionary; per-site disable.
 - [x] **Autocorrect** *(opt-in)* — high-confidence auto-apply with revert-learning
   (persisted via `chrome.storage.sync`).
-- [x] Options page; multi-provider; optional self-hosted backend (Hono edge) + Docker.
+- [x] Options page; multi-provider; calls LLM providers directly (no backend).
 
 **In progress / planned**
 - [ ] Robustness in complex contenteditable editors (ongoing).
