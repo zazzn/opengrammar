@@ -1192,15 +1192,6 @@ async function trackAnalyticsEvent(
   await chrome.storage.sync.set({ analyticsSummary: summary });
 }
 
-function getDomainFromUrl(url?: string): string | undefined {
-  if (!url) return undefined;
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return undefined;
-  }
-}
-
 // ─── D1: Badge ───────────────────────────────────────────────────────────────
 
 async function updateBadge(issueCount: number, tabId?: number): Promise<void> {

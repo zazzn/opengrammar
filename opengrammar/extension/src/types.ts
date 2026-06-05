@@ -21,8 +21,8 @@ export interface ProviderConfig {
 // correction (strong instruction-following + low latency, cost-effective).
 // When an API key is set these are refined by the provider's live /models
 // list; obsolete/decommissioned models have been removed.
-// Kept in sync with backend/src/shared-types.ts (the extension now calls
-// providers directly, so this client copy is the source of truth here).
+// The extension calls LLM providers directly (no backend), so this client
+// copy is the source of truth for provider/model configuration.
 export const PROVIDERS: ProviderConfig[] = [
   {
     id: 'openai',
@@ -179,12 +179,6 @@ export interface AnalyzeResponse {
   message?: string;
 }
 
-export interface HighlightData {
-  issue: Issue;
-  element: HTMLElement;
-  range: Range;
-}
-
 export interface RewriteRequest {
   text: string;
   tone:
@@ -234,12 +228,6 @@ export interface AutocompleteResponse {
 export interface EditorContext {
   text: string;
   issues: Issue[];
-  sourceTabId?: number;
-  capturedAt: number;
-}
-
-export interface RewriteContext {
-  selectedText: string;
   sourceTabId?: number;
   capturedAt: number;
 }

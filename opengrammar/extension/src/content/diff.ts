@@ -15,23 +15,6 @@ function tokenize(s: string): string[] {
   return s.match(/\s+|[A-Za-z0-9]+(?:'[A-Za-z0-9]+)*|[^\sA-Za-z0-9]/g) || [];
 }
 
-/** Normalize for "is this actually different?" — ignores cosmetic-only deltas. */
-export function normalizeForCompare(s: string): string {
-  return (s || '')
-    .normalize('NFC')
-    .replace(/[‘’‚‛]/g, "'")
-    .replace(/[“”„‟]/g, '"')
-    .replace(/[–—−]/g, '-')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/** True only if the suggestion is a real, actionable change. */
-export function hasMeaningfulDiff(original: string, suggestion: string): boolean {
-  if (suggestion == null || suggestion === '') return false;
-  return normalizeForCompare(original) !== normalizeForCompare(suggestion);
-}
-
 /** LCS over a token array → diff ops. */
 function lcsDiff(a: string[], b: string[]): DiffOp[] {
   const n = a.length;

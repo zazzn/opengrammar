@@ -24,12 +24,10 @@ jobs:
         run: |
           echo "🔍 SARAS AI is analyzing the architecture..."
           echo "" > errors.log
-          
-          cd opengrammar/shared && bun install >> /dev/null 2>&1
 
-          cd ../extension && bun install >> /dev/null 2>&1
+          cd opengrammar/extension && bun install >> /dev/null 2>&1
           bun x tsc --noEmit > ../../extension_errors.log 2>&1 || echo "EXTENSION_FAILED" >> ../../errors.log
-          
+
           cd ../..
           if grep -q "FAILED" errors.log; then
             echo "status=failed" >> $GITHUB_OUTPUT
