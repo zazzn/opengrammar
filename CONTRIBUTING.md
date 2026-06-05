@@ -20,26 +20,33 @@ By participating in this project, you are expected to uphold our Code of Conduct
 
 ### Pull Requests
 
-1. **Fork the repository** and create your branch from `main`.
-2. **Install dependencies** using Bun: `bun install`.
-3. **Make your changes**.
-4. **Ensure the code passes all checks**: Run `bun x tsc` in the relevant directories.
-5. **Issue a Pull Request** with a clear description of your changes.
+1. **Fork the repository** and create your branch.
+2. **Make your changes** in the relevant product (see below).
+3. **Ensure checks pass**: extension → `bun x tsc --noEmit`; desktop → `cargo build` + `cargo test`.
+4. **Keep the engine at parity** — if you change the LLM prompt/routing/protected-text rules,
+   mirror the change in *both* the extension (`background/llmClient.ts`, `issuePolicy.ts`,
+   `shared/protectedText.ts`) and the desktop engine (`ograms-engine/src/llm.rs`).
+5. **Issue a Pull Request** with a clear description.
 
 ## Development Setup
 
-We use **Bun** as our primary runtime and package manager.
+OGrammar is **two products** — see **[docs/13-architecture.md](docs/13-architecture.md)** and
+**[docs/14-development.md](docs/14-development.md)** for the full guide.
 
+**Browser extension** (TypeScript; we use **Bun**):
 ```bash
-# Backend
-cd opengrammar/backend
-bun install
-bun dev
-
-# Extension
 cd opengrammar/extension
 bun install
-bun run dev
+bun run dev        # or: bun run build ; bun x tsc --noEmit
+# Optional backend:
+cd ../backend && bun install && bun dev
+```
+
+**Desktop app** (Rust, Windows):
+```powershell
+cd desktop
+cargo build --release -p ograms-hotkey
+cargo test -p ograms-engine -p ograms-hotkey
 ```
 
 ## Community
