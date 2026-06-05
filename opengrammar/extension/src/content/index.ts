@@ -21,7 +21,6 @@ import {
   extractText,
   getCaretPosition,
   getElementFromTarget,
-  setCaretPosition,
   stripQuotedBBCode,
 } from './textExtractor';
 import { debounce } from './utils';

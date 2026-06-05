@@ -177,12 +177,6 @@ body {
   color: var(--og-text-1); margin-bottom: 2px;
 }
 .ai-card-left span { font-size: 11px; color: var(--og-text-2); }
-.backend-dot {
-  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
-  transition: background 0.3s;
-}
-.backend-dot.ok  { background: #22C55E; box-shadow: 0 0 0 2px #BBF7D0; }
-.backend-dot.err { background: var(--c-grammar); box-shadow: 0 0 0 2px #FECACA; }
 
 /* ─── Quick actions ─── */
 .quick-actions {

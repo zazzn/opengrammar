@@ -18,11 +18,6 @@ jobs:
       with:
         bun-version: latest
 
-    - name: Install and Build Shared
-      run: |
-        cd opengrammar/shared
-        bun install
-
     - name: Install and Check Extension
       run: |
         cd opengrammar/extension

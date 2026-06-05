@@ -1878,45 +1878,6 @@ function getFullText(element: HTMLElement): string {
   return element.textContent || '';
 }
 
-/**
- * Apply an arbitrary set of issues to the element atomically. Fixes are applied
- * in reverse offset order so that earlier character positions stay valid while
- * later ones are rewritten. Used for "Accept Sentence" and "Fix All".
- */
-function applyIssueSet(element: HTMLElement, issues: Issue[]) {
-  const toFix = [...issues]
-    .filter(i => !i.ignored && i.suggestion !== i.original)
-    .sort((a, b) => b.offset - a.offset);
-  if (toFix.length === 0) return;
-
-  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-    const input = element as HTMLInputElement | HTMLTextAreaElement;
-    let text = input.value;
-    for (const issue of toFix) {
-      const span = resolveInString(text, issue.offset, issue.length, issue.original);
-      if (!span) continue; // stale — skip rather than corrupt
-      text = text.substring(0, span.start) + issue.suggestion + text.substring(span.end);
-    }
-    input.value = text;
-    input.focus();
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-  } else if (element.isContentEditable) {
-    // Build the map ONCE; apply highest-offset first so earlier text nodes
-    // (and therefore the snapshot map) stay valid for the remaining fixes.
-    const map = buildTextMap(element);
-    for (const issue of toFix) {
-      const span = resolveSpan(map, issue.offset, issue.length, issue.original);
-      if (!span) continue; // text changed since analysis — skip, don't corrupt
-      const range = offsetToRange(map, span.start, span.end);
-      if (!range) continue;
-      range.deleteContents();
-      range.insertNode(document.createTextNode(issue.suggestion));
-    }
-    element.normalize();
-    element.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-}
-
 interface SentenceGroup {
   start: number;
   end: number;

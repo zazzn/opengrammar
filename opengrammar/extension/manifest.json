@@ -19,7 +19,7 @@
       "48": "icon-48.png",
       "128": "icon-128.png"
     },
-    "default_title": "OpenGrammar"
+    "default_title": "OGrammar"
   },
   "options_ui": {
     "page": "src/options/index.html",
