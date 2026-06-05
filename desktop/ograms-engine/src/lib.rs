@@ -2,6 +2,7 @@ pub mod cli;
 pub mod context;
 pub mod harper_engine;
 pub mod llm;
+pub mod ollama;
 pub mod protected;
 pub mod symspell;
 

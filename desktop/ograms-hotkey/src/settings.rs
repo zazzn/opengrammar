@@ -111,7 +111,7 @@ fn models_for(provider: &str) -> &'static [&'static str] {
         "openrouter" => &["openai/gpt-4o-mini", "anthropic/claude-3.5-sonnet"],
         "together" => &["meta-llama/Llama-3.3-70B-Instruct-Turbo"],
         "abacus" => &["route-llm"],
-        "ollama" => &["llama3.1:8b"],
+        "ollama" => ograms_engine::ollama::RECOMMENDED,
         _ => &[],
     }
 }
@@ -426,17 +426,24 @@ unsafe fn combo_set_sel(h: HWND, i: i32) {
     }
 }
 
-unsafe fn fill_models(combo: HWND, provider: &str, current: &str) {
+unsafe fn fill_models(combo: HWND, provider: &str, current: &str, ollama_url: &str) {
     unsafe {
         SendMessageW(combo, CB_RESETCONTENT, None, None);
-        let models = models_for(provider);
-        for m in models {
-            combo_add(combo, m);
+        // Ollama: query the local server for the user's installed writing models
+        // (best first), then recommended-to-pull — parity with the extension.
+        // Other providers use the static curated list. The box stays editable.
+        let models: Vec<String> = if provider == "ollama" {
+            ograms_engine::ollama::dropdown_models(ollama_url)
+        } else {
+            models_for(provider).iter().map(|s| (*s).to_string()).collect()
+        };
+        for m in &models {
+            combo_add(combo, m.as_str());
         }
         if !current.is_empty() {
             set_text(combo, current);
         } else if let Some(first) = models.first() {
-            set_text(combo, first);
+            set_text(combo, first.as_str());
         }
     }
 }
@@ -589,7 +596,7 @@ unsafe fn create_controls(hwnd: HWND, skin: &Skin) {
             }
         }
         combo_set_sel(provider_combo, psel);
-        fill_models(dlg(hwnd, ID_MODEL), &cfg.provider, &cfg.model);
+        fill_models(dlg(hwnd, ID_MODEL), &cfg.provider, &cfg.model, &cfg.ollama_url);
 
         let running = running_apps();
         let running_combo = dlg(hwnd, ID_RUNNING);
@@ -779,7 +786,10 @@ unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam:
                     ID_PROVIDER if notify == CBN_SELCHANGE => {
                         let pi = combo_sel(dlg(hwnd, ID_PROVIDER));
                         if pi >= 0 && (pi as usize) < PROVIDER_IDS.len() {
-                            fill_models(dlg(hwnd, ID_MODEL), PROVIDER_IDS[pi as usize], "");
+                            // Reload config for the current Ollama URL (so the
+                            // model list can query the local server).
+                            let ourl = Config::load().ollama_url;
+                            fill_models(dlg(hwnd, ID_MODEL), PROVIDER_IDS[pi as usize], "", &ourl);
                         }
                     }
                     ID_ADD => on_add(hwnd),
