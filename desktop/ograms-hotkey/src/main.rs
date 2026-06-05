@@ -1,3 +1,8 @@
+// Release builds use the Windows (GUI) subsystem so launching the app never
+// spawns a console window. Debug builds stay on the console subsystem so dev
+// logging (eprintln!) remains visible while developing.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 #[cfg(windows)]
 mod autocorrect;
 #[cfg(windows)]
@@ -18,7 +23,11 @@ mod windows_app;
 #[cfg(windows)]
 fn main() {
     if let Err(error) = windows_app::run() {
-        eprintln!("ograms-hotkey failed to start: {error}");
+        // A release (windows-subsystem) build has no console, so a bare eprintln!
+        // would vanish — surface fatal startup errors in a dialog as well.
+        let msg = format!("ograms-hotkey failed to start: {error}");
+        eprintln!("{msg}");
+        windows_app::fatal_error(&msg);
     }
 }
 

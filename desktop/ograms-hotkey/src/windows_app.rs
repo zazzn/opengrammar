@@ -42,7 +42,8 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, EVENT_OBJECT_FOCUS, GetForegroundWindow, GetMessageW, GetWindowRect, KillTimer,
-    MB_ICONINFORMATION, MB_OK, MSG, MessageBoxW, PostThreadMessageW, SetTimer, TranslateMessage,
+    MB_ICONERROR, MB_ICONINFORMATION, MB_OK, MSG, MessageBoxW, PostThreadMessageW, SetTimer,
+    TranslateMessage,
     WINEVENT_OUTOFCONTEXT, WM_APP, WM_HOTKEY, WM_TIMER,
 };
 use windows::Win32::UI::HiDpi::{
@@ -65,6 +66,16 @@ const WM_LLM_RESULT: u32 = WM_APP + 3;
 const WM_REWRITE_RESULT: u32 = WM_APP + 4;
 const POLL_INTERVAL: Duration = Duration::from_millis(450);
 const DEBOUNCE_DELAY: Duration = Duration::from_millis(600);
+/// Autocorrect waits for a deliberate pause, measured from the last edit, before
+/// auto-applying — far longer than the fast underline pass. This guarantees it
+/// never fires while the user is still typing (which moved the caret back onto
+/// the corrected word and let the next keystrokes overwrite it).
+///
+/// Matched to the browser extension's autocorrect feel. (The extension's grammar
+/// debounce is 800ms, but its `execCommand` apply is caret-safe at that speed;
+/// the desktop inserts via the clipboard/UIA, so it needs the user fully stopped,
+/// hence the longer, deliberate window here.)
+const AUTOCORRECT_IDLE: Duration = Duration::from_millis(3000);
 static MAIN_THREAD_ID: AtomicU32 = AtomicU32::new(0);
 // Monotonic generation for proactive LLM requests; a worker's result is dropped
 // if the counter moved on (text changed / focus changed) while it was in flight.
@@ -213,6 +224,15 @@ struct TrackedTarget {
     /// Foreground-window rect at last draw, to detect the window moving.
     last_window_rect: Option<(i32, i32, i32, i32)>,
     dirty_since: Option<Instant>,
+    /// Wall-clock of the last detected edit. Autocorrect only fires once this is
+    /// `AUTOCORRECT_IDLE` old (a deliberate pause), so it never applies a fix
+    /// mid-keystroke and yanks the caret onto the corrected word.
+    last_edit_at: Option<Instant>,
+    /// When `Some`, autocorrect is "armed": high-confidence fixes for the current
+    /// `drawn` set are pending and will be applied by the deferred pass once the
+    /// user goes idle. Holds the previously-linted text — the diff baseline that
+    /// tells autocorrect which span is freshly typed. Cleared on apply or new edit.
+    autocorrect_baseline: Option<String>,
     text_event: Option<TextEventSubscription>,
 }
 
@@ -516,13 +536,18 @@ impl<'a> MonitorState<'a> {
             last_pill_anchor: None,
             last_window_rect: None,
             dirty_since: Some(Instant::now()),
+            last_edit_at: None,
+            autocorrect_baseline: None,
             text_event,
         });
     }
 
     fn mark_dirty(&mut self) {
         if let Some(target) = &mut self.target {
-            target.dirty_since = Some(Instant::now());
+            let now = Instant::now();
+            target.dirty_since = Some(now);
+            target.last_edit_at = Some(now);
+            target.autocorrect_baseline = None; // new edit → disarm; the re-lint re-arms
         }
     }
 
@@ -598,7 +623,33 @@ impl<'a> MonitorState<'a> {
         if text != target.last_snapshot {
             target.last_snapshot = text;
             target.dirty_since = Some(Instant::now());
+            target.last_edit_at = Some(Instant::now());
+            target.autocorrect_baseline = None; // new edit → disarm; the re-lint re-arms
             return;
+        }
+
+        // Deferred autocorrect (opt-in): the field has been stable since the last
+        // edit. Only now — after a deliberate pause (AUTOCORRECT_IDLE), longer than
+        // the underline debounce — do we silently apply the high-confidence fixes
+        // armed by the last lint. Because this never runs at the fast debounce, the
+        // user has genuinely stopped typing, so moving and restoring the caret
+        // can't collide with their keystrokes. If a fix lands, skip the rest.
+        if self.config.autocorrect_enabled
+            && target.autocorrect_baseline.is_some()
+            && target
+                .last_edit_at
+                .is_some_and(|t| t.elapsed() >= AUTOCORRECT_IDLE)
+        {
+            let baseline = target.autocorrect_baseline.take();
+            let drawn = target.drawn.clone();
+            if try_autocorrect(
+                &mut self.autocorrect_ledger,
+                target,
+                baseline.as_deref(),
+                &drawn,
+            ) {
+                return;
+            }
         }
 
         let Some(dirty_since) = target.dirty_since else {
@@ -647,19 +698,17 @@ impl<'a> MonitorState<'a> {
             }
         }
 
-        // Autocorrect tier (opt-in): silently apply high-confidence fixes to the
-        // freshly-typed text. If it changes the field, skip drawing this cycle —
-        // the next poll re-lints the corrected text and draws the remainder.
-        if self.config.autocorrect_enabled
-            && try_autocorrect(
-                &mut self.autocorrect_ledger,
-                target,
-                prev_linted.as_deref(),
-                &drawn,
-            )
-        {
-            return;
-        }
+        // Arm autocorrect: stash the diff baseline (the previously-linted text) so
+        // the deferred pass — which runs on a later poll, only after the user has
+        // paused for AUTOCORRECT_IDLE — can silently apply the high-confidence
+        // fixes in `drawn`. We deliberately do NOT apply here at the fast underline
+        // debounce: that fired while the user was still typing and moved the caret
+        // onto the corrected word, letting the next keystrokes overwrite it.
+        target.autocorrect_baseline = if self.config.autocorrect_enabled {
+            prev_linted
+        } else {
+            None
+        };
 
         target.drawn = drawn;
         target.last_rects = rects;
@@ -1892,6 +1941,21 @@ fn feedback(message: &str) {
             PCWSTR(wide_message.as_ptr()),
             PCWSTR(wide_title.as_ptr()),
             MB_OK | MB_ICONINFORMATION,
+        );
+    }
+}
+
+/// Show a fatal-error dialog. Used for startup failures: a release build runs on
+/// the windows subsystem with no console, so `eprintln!` alone would be invisible.
+pub fn fatal_error(message: &str) {
+    let wide_message = to_wide(message);
+    let wide_title = to_wide("OGrammar");
+    unsafe {
+        MessageBoxW(
+            None,
+            PCWSTR(wide_message.as_ptr()),
+            PCWSTR(wide_title.as_ptr()),
+            MB_OK | MB_ICONERROR,
         );
     }
 }
