@@ -31,6 +31,11 @@ pub struct LlmConfig {
     pub api_key: String,
     pub model: String,
     pub timeout_ms: u64,
+    /// Use Ollama's native `/api/chat` path (`think:false`, `format:json`,
+    /// pinned `num_ctx`) instead of the OpenAI-compatible `/v1/chat/completions`
+    /// path. Required for Qwen "thinking" tags (qwen3.5:*, qwen3:latest), which
+    /// return empty `message.content` over `/v1`. Set for the Ollama provider.
+    pub ollama_native: bool,
 }
 
 /// A single proactive-LLM issue, ready to merge with Harper issues and draw as
@@ -703,7 +708,13 @@ pub fn chat_completion(
 ) -> Result<String, LlmError> {
     use std::time::Duration;
 
-    // Qwen3 thinking-suppression (withQwenNoThink).
+    // Ollama uses the native /api/chat path (think:false suppresses reasoning, so
+    // no /no_think prefix is needed) — required for Qwen "thinking" tags.
+    if cfg.ollama_native {
+        return native_ollama_chat(cfg, system, user, max_tokens);
+    }
+
+    // Qwen3 thinking-suppression for the OpenAI-compatible /v1 path (withQwenNoThink).
     let system_owned;
     let system_final: &str = if regex::Regex::new(r"(?i)\bqwen3\b")
         .unwrap()
@@ -757,6 +768,67 @@ pub fn chat_completion(
     let v: Value = serde_json::from_str(&text).map_err(|e| LlmError(format!("parse: {e}")))?;
     let content = v
         .pointer("/choices/0/message/content")
+        .and_then(|c| c.as_str())
+        .unwrap_or("");
+    Ok(strip_reasoning(content))
+}
+
+/// Ollama's native `/api/chat` completion (vs the OpenAI-compatible `/v1` path).
+/// Sends `think:false` + `format:json` + a pinned `num_ctx`, and reads
+/// `message.content` — mirrors the extension's `nativeOllamaChatCompletion`, and
+/// is what makes Qwen "thinking" tags return usable content. Network feature only.
+#[cfg(feature = "net")]
+fn native_ollama_chat(
+    cfg: &LlmConfig,
+    system: &str,
+    user: &str,
+    max_tokens: usize,
+) -> Result<String, LlmError> {
+    use std::time::Duration;
+    // The native API lives at the server root, not the OpenAI-compatible /v1 base.
+    let base = cfg.base_url.trim_end_matches('/');
+    let base = base.strip_suffix("/v1").unwrap_or(base);
+    let url = format!("{base}/api/chat");
+
+    let body = serde_json::json!({
+        "model": cfg.model,
+        "messages": [
+            { "role": "system", "content": system },
+            { "role": "user", "content": user },
+        ],
+        "stream": false,
+        "think": false,
+        "format": "json",
+        "options": {
+            "temperature": 0,
+            "num_ctx": 4096,
+            "num_predict": max_tokens,
+        },
+    })
+    .to_string();
+
+    let agent = ureq::AgentBuilder::new()
+        .timeout(Duration::from_millis(cfg.timeout_ms))
+        .build();
+    let resp = agent
+        .post(&url)
+        .set("Content-Type", "application/json")
+        .send_string(&body);
+
+    let text = match resp {
+        Ok(r) => r
+            .into_string()
+            .map_err(|e| LlmError(format!("read body: {e}")))?,
+        Err(ureq::Error::Status(code, r)) => {
+            let detail: String = r.into_string().unwrap_or_default().chars().take(200).collect();
+            return Err(LlmError(format!("Ollama HTTP {code}: {detail}")));
+        }
+        Err(e) => return Err(LlmError(format!("Ollama request failed: {e}"))),
+    };
+
+    let v: Value = serde_json::from_str(&text).map_err(|e| LlmError(format!("parse: {e}")))?;
+    let content = v
+        .pointer("/message/content")
         .and_then(|c| c.as_str())
         .unwrap_or("");
     Ok(strip_reasoning(content))

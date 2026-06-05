@@ -163,6 +163,7 @@ impl Config {
             api_key,
             model: self.model.clone(),
             timeout_ms: DEFAULT_TIMEOUT_MS,
+            ollama_native: self.provider == "ollama",
         })
     }
 

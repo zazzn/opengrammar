@@ -24,6 +24,7 @@ fn main() {
         api_key: key,
         model: model.clone(),
         timeout_ms: DEFAULT_TIMEOUT_MS,
+        ollama_native: false,
     };
 
     println!("model={model}  text={text:?}");
