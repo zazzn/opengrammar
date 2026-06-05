@@ -448,7 +448,9 @@ unsafe fn fill_models(parent: HWND, combo: HWND, provider: &str, current: &str, 
                 set_text(combo, first);
             }
             let hwnd_val = parent.0 as isize;
-            let url = ollama_url.to_string();
+            // Force IPv4: on Windows "localhost" resolves to ::1 first, which a
+            // WSL (mirrored-networking) Ollama doesn't answer; 127.0.0.1 does.
+            let url = ollama_url.replace("localhost", "127.0.0.1");
             std::thread::spawn(move || {
                 let models = ograms_engine::ollama::dropdown_models(&url);
                 let boxed = Box::into_raw(Box::new(models));

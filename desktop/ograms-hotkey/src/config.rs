@@ -61,7 +61,7 @@ impl Default for Config {
             provider: "openai".to_string(),
             model: "gpt-4o-mini".to_string(),
             custom_base_url: String::new(),
-            ollama_url: "http://localhost:11434".to_string(),
+            ollama_url: "http://127.0.0.1:11434".to_string(),
             harper_dialect: "American".to_string(),
             excluded_apps: default_excluded_apps(),
         }
@@ -135,9 +135,13 @@ impl Config {
             "together" => "https://api.together.xyz/v1".to_string(),
             "abacus" => "https://routellm.abacus.ai/v1".to_string(),
             "ollama" => {
-                let b = self.ollama_url.trim_end_matches('/');
+                // Windows resolves `localhost` to IPv6 `::1` first, which the WSL
+                // mirrored-networking loopback does not carry — force IPv4
+                // `127.0.0.1` so a WSL-hosted Ollama is reachable. (127.0.0.1 also
+                // works for a native-Windows Ollama, so this is always safe.)
+                let b = self.ollama_url.trim_end_matches('/').replace("localhost", "127.0.0.1");
                 if b.ends_with("/v1") {
-                    b.to_string()
+                    b
                 } else {
                     format!("{b}/v1")
                 }
