@@ -12,7 +12,7 @@ body:
     attributes:
       label: Your Question
       description: What would you like to know?
-      placeholder: Ex. How do I change the default backend URL?
+      placeholder: Ex. How do I set up my AI provider API key?
     validations:
       required: true
   - type: textarea

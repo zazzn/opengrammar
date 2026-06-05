@@ -115,17 +115,9 @@ bun run dev
 
 ```
 opengrammar/
-├── backend/              # Serverless API
-│   ├── src/
-│   │   ├── index.ts     # Main API file
-│   │   ├── analyzer.ts  # Grammar analyzer
-│   │   └── analyzer-simple.ts  # Rule-based rules
-│   ├── package.json
-│   └── wrangler.toml
-│
 ├── extension/            # Browser extension
 │   ├── src/
-│   │   ├── background/  # Service worker
+│   │   ├── background/  # Service worker (Harper engine, LLM client, issue policy)
 │   │   ├── content/     # Content scripts
 │   │   ├── popup/       # Popup UI
 │   │   └── options/     # Settings page
@@ -136,28 +128,11 @@ opengrammar/
 └── docs/                # Documentation
 ```
 
+> The extension is bring-your-own-key and calls AI providers directly — there is no
+> backend service. The Windows desktop app lives in `desktop/` (see
+> [13-architecture.md](13-architecture.md)).
+
 ### Development Commands
-
-#### Backend
-
-```bash
-cd opengrammar/backend
-
-# Install dependencies
-bun install
-
-# Start development server
-bun run dev
-
-# Type check
-bun x tsc --noEmit
-
-# Build for production
-bun run build
-
-# Deploy to Cloudflare
-bun x wrangler deploy
-```
 
 #### Extension
 
@@ -412,94 +387,25 @@ export const MyComponent: React.FC<Props> = ({ title, onSave }) => {
 
 ### Where Rules Live
 
-Rules are in `backend/src/analyzer-simple.ts`
+Grammar, spelling, and punctuation are handled by the on-device **Harper** engine plus an
+optional **LLM tier** — there is no rule file in a backend. The extension's logic lives in
+`opengrammar/extension/src/background/`:
 
-### Rule Structure
+- `harperEngine.ts` — wraps the Harper WASM engine (local checks)
+- `issuePolicy.ts` — routes/filters issues (`quick-fix` vs `sentence-review` vs `suppress`)
+- `llmClient.ts` — the LLM prompt/normalisation logic
 
-```typescript
-{
-  pattern: /\bteh\b/gi,
-  suggestion: 'the',
-  reason: 'Misspelled word. The correct spelling is "the".',
-  type: 'spelling',
-  severity: 'error'
-}
-```
+See [GRAMMAR_RULES.md](../GRAMMAR_RULES.md) for the project's rule philosophy, and
+[13-architecture.md](13-architecture.md) for how the two-tier engine fits together. When you
+change prompt/routing/protected-text behaviour, mirror it in the desktop engine
+(`desktop/ograms-engine/src/llm.rs`) to keep parity.
 
-### Adding a New Rule
+### Testing Changes
 
-**Example: Add "alot" → "a lot"**
-
-```typescript
-// In analyzer-simple.ts
-checkCommonMisspellings(text: string): GrammarIssue[] {
-  const issues: GrammarIssue[] = [];
-  
-  const rules = [
-    {
-      pattern: /\balot\b/gi,
-      suggestion: 'a lot',
-      reason: '"Alot" is not a word. Use "a lot" (two words).',
-      type: 'spelling',
-      severity: 'error'
-    },
-    // Add more rules here
-  ];
-  
-  // Rule checking logic
-  return issues;
-}
-```
-
-### Testing Rules
-
-```typescript
-// Test the rule
-const text = "I have alot of work";
-const issues = checkCommonMisspellings(text);
-console.log(issues); // Should detect "alot"
-```
-
-### Rule Categories
-
-**1. Spelling**
-```typescript
-{
-  pattern: /\brecieve\b/gi,
-  suggestion: 'receive',
-  reason: 'Misspelled word',
-  type: 'spelling'
-}
-```
-
-**2. Grammar**
-```typescript
-{
-  pattern: /\bme and [a-z]+\b/gi,
-  suggestion: 'I and [name]',
-  reason: 'Use subject pronoun',
-  type: 'grammar'
-}
-```
-
-**3. Style**
-```typescript
-{
-  pattern: /\bvery good\b/gi,
-  suggestion: 'excellent',
-  reason: 'Consider a stronger word',
-  type: 'style'
-}
-```
-
-**4. Clarity**
-```typescript
-{
-  pattern: /.{35,}/g,  // Sentences > 35 chars
-  suggestion: 'Shorten sentence',
-  reason: 'Sentence may be hard to read',
-  type: 'clarity'
-}
+```bash
+cd opengrammar/extension
+bun x tsc --noEmit   # typecheck
+bun run build        # build, then load unpacked and test in the browser
 ```
 
 ---
@@ -513,14 +419,11 @@ docs/
 ├── 00-index.md           # Documentation index
 ├── 01-quick-start.md     # Quick start guide
 ├── 04-browser-extension-setup.md
-├── 05-backend-deployment.md
-├── 06-docker-self-hosting.md
 ├── 07-ai-providers.md
 ├── 09-using-opengrammar.md
 ├── 10-tone-rewriting.md
 ├── 11-writing-statistics.md
 ├── 12-keyboard-shortcuts.md
-├── 15-api-reference.md
 ├── 18-troubleshooting.md
 ├── 19-faq.md
 └── 21-contributing.md    # This file

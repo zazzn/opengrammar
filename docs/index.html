@@ -59,18 +59,6 @@
                     </svg>
                     Browser Extension
                 </a>
-                <a href="#backend-deployment" class="nav-link" data-page="backend-deployment">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                    </svg>
-                    Backend Deployment
-                </a>
-                <a href="#docker-self-hosting" class="nav-link" data-page="docker-self-hosting">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"/>
-                    </svg>
-                    Docker Self-Hosting
-                </a>
             </div>
 
             <div class="nav-section">
@@ -130,12 +118,6 @@
                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
                     </svg>
                     FAQ
-                </a>
-                <a href="#api-reference" class="nav-link" data-page="api-reference">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                    </svg>
-                    API Reference
                 </a>
             </div>
         </nav>
@@ -316,7 +298,6 @@ bun run build</code></pre>
                         <li>Enter your API key (from Step 1)</li>
                         <li>Select Provider: <strong>Groq</strong></li>
                         <li>Select Model: <strong>llama-3.1-70b-versatile</strong></li>
-                        <li>Backend URL: <code>http://localhost:8787</code> (for local testing)</li>
                     </ol>
 
                     <h2 id="step-5-start-writing">Step 5: Start Writing!</h2>
@@ -333,7 +314,6 @@ bun run build</code></pre>
                             <div class="feature-icon"><i data-lucide="library" class="icon-inline"></i></div>
                             <h4>Read Next</h4>
                             <ul class="link-list">
-                                <li><a href="#backend-deployment">Backend Deployment</a></li>
                                 <li><a href="#ai-providers">AI Provider Setup</a></li>
                                 <li><a href="#using-opengrammar">Using OpenGrammar</a></li>
                             </ul>
@@ -342,12 +322,9 @@ bun run build</code></pre>
                             <div class="feature-icon">⌨️</div>
                             <h4>Quick Commands</h4>
                             <div class="code-block small">
-                                <pre><code># Start local backend
-cd opengrammar/opengrammar/backend
-bun run dev
-
-# Test backend
-curl http://localhost:8787/health</code></pre>
+                                <pre><code># Build the extension
+cd opengrammar/opengrammar/extension
+bun run build</code></pre>
                             </div>
                         </div>
                     </div>
@@ -478,18 +455,8 @@ bun run build</code></pre>
                         <li>Click the <strong>Settings</strong> (gear) icon</li>
                     </ol>
 
-                    <h3>Step 2: Configure Backend URL</h3>
-                    <p>Enter your backend URL based on your deployment:</p>
-                    <ul>
-                        <li>Local: <code>http://localhost:8787</code></li>
-                        <li>Cloudflare: <code>https://opengrammar.yourname.workers.dev</code></li>
-                        <li>Vercel: <code>https://opengrammar-backend.vercel.app</code></li>
-                        <li>Railway: <code>https://your-app.railway.app</code></li>
-                        <li>Render: <code>https://opengrammar-backend.onrender.com</code></li>
-                        <li>Docker: <code>http://localhost:8787</code></li>
-                    </ul>
-
-                    <h3>Step 3: Configure AI Provider</h3>
+                    <h3>Step 2: Configure AI Provider</h3>
+                    <p>The extension calls your chosen provider directly with your own key — there is no backend to configure.</p>
                     <div class="provider-cards">
                         <div class="provider-card">
                             <div class="provider-icon"><i data-lucide="zap" class="icon-inline"></i></div>
@@ -545,7 +512,7 @@ bun run build</code></pre>
                             </svg>
                             <span>Previous</span>
                         </a>
-                        <a href="#backend-deployment" class="next-link">
+                        <a href="#ai-providers" class="next-link">
                             <span>Next</span>
                             <svg viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
@@ -593,12 +560,12 @@ bun run build</code></pre>
                         <div class="feature-box">
                             <div class="feature-box-icon"><i data-lucide="shield" class="icon-inline"></i></div>
                             <h3>Absolute Privacy</h3>
-                            <p>We don't have a database. We don't have user accounts. Your API key never leaves your browser. If you use the AI features, your text is sent securely to a stateless edge function, processed, and immediately forgotten.</p>
+                            <p>We don't have a database, servers, or user accounts. Your API key never leaves your browser. If you use the AI features, your text is sent directly to the provider you chose — there is no OpenGrammar backend in between.</p>
                         </div>
                         <div class="feature-box">
                             <div class="feature-box-icon"><i data-lucide="package" class="icon-inline"></i></div>
-                            <h3>Open Source & Self-Hosted</h3>
-                            <p>You can deploy the backend to Cloudflare Workers or Vercel Edge for free in one command. You own the infrastructure.</p>
+                            <h3>Open Source & Local-First</h3>
+                            <p>On-device grammar runs with no key or network. For AI, bring your own provider key or run a local model with Ollama — you stay in control.</p>
                         </div>
                     </div>
 
@@ -655,317 +622,6 @@ bun run build</code></pre>
                             <span>Previous</span>
                         </a>
                         <a href="#browser-setup" class="next-link">
-                            <span>Next</span>
-                            <svg viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                        </a>
-                    </div>
-                </div>
-            </article>
-
-            <!-- Placeholder sections for other docs -->
-            <article id="backend-deployment" class="content-section">
-                <div class="section-header">
-                    <nav class="breadcrumb">
-                        <a href="#">Docs</a>
-                        <span class="breadcrumb-sep">/</span>
-                        <span>Installation</span>
-                        <span class="breadcrumb-sep">/</span>
-                        <span class="current">Backend Deployment</span>
-                    </nav>
-                    <h1><i data-lucide="globe" class="icon-inline"></i> Backend Deployment</h1>
-                    <p class="section-description">Deploy OpenGrammar backend to production with any of these platforms.</p>
-                </div>
-                <div class="content-body">
-                    <div class="callout callout-info">
-                        <div class="callout-icon"><i data-lucide="clipboard-list" class="icon-inline"></i></div>
-                        <div class="callout-content">
-                            <strong>Deployment Options Comparison</strong>
-                            <p>Choose the platform that best fits your needs.</p>
-                        </div>
-                    </div>
-
-                    <div class="table-wrapper">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Platform</th>
-                                    <th>Free Tier</th>
-                                    <th>Setup Time</th>
-                                    <th>Best For</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><strong>Cloudflare Workers</strong></td>
-                                    <td>100K req/day</td>
-                                    <td>5 min</td>
-                                    <td>Production, global CDN</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Vercel</strong></td>
-                                    <td>100GB-hours/mo</td>
-                                    <td>5 min</td>
-                                    <td>Easy deployment</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Railway</strong></td>
-                                    <td>$5 credit</td>
-                                    <td>10 min</td>
-                                    <td>Always-on, no sleep</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Render</strong></td>
-                                    <td>750 hours/mo</td>
-                                    <td>10 min</td>
-                                    <td>Simple web service</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Docker</strong></td>
-                                    <td>Free</td>
-                                    <td>15 min</td>
-                                    <td>Self-hosting, full control</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <h2><i data-lucide="cloud" class="icon-inline"></i> Cloudflare Workers (Recommended)</h2>
-                    
-                    <h3>Prerequisites</h3>
-                    <ul>
-                        <li>Cloudflare account (free)</li>
-                        <li>Node.js 18+</li>
-                    </ul>
-
-                    <h3>Step 1: Install Wrangler CLI</h3>
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span class="code-lang">bash</span>
-                            <button class="copy-btn" onclick="copyCode(this)">
-                                <svg viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
-                                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
-                                </svg>
-                                Copy
-                            </button>
-                        </div>
-                        <pre><code class="language-bash">npm install -g wrangler</code></pre>
-                    </div>
-
-                    <h3>Step 2: Login to Cloudflare</h3>
-                    <div class="code-block">
-                        <pre><code class="language-bash">wrangler login</code></pre>
-                    </div>
-
-                    <h3>Step 3: Configure Environment</h3>
-                    <div class="code-block">
-                        <pre><code class="language-bash">cd opengrammar/opengrammar/backend
-
-# Create .dev.vars for local development
-cat > .dev.vars << EOF
-DEBUG=true
-GROQ_API_KEY=your_groq_key
-OPENAI_API_KEY=your_openai_key
-EOF</code></pre>
-                    </div>
-
-                    <h3>Step 4: Deploy</h3>
-                    <div class="code-block">
-                        <pre><code class="language-bash"># Deploy to production
-wrangler deploy --env production</code></pre>
-                    </div>
-
-                    <h3>Step 5: Get Your URL</h3>
-                    <p>After deployment, you'll see:</p>
-                    <div class="code-block">
-                        <pre><code>Deployed https://opengrammar.yourname.workers.dev</code></pre>
-                    </div>
-
-                    <h2><i data-lucide="triangle" class="icon-inline"></i> Vercel</h2>
-                    
-                    <h3>Step 1: Install Vercel CLI</h3>
-                    <div class="code-block">
-                        <pre><code class="language-bash">npm install -g vercel</code></pre>
-                    </div>
-
-                    <h3>Step 2: Deploy</h3>
-                    <div class="code-block">
-                        <pre><code class="language-bash">cd opengrammar/opengrammar/backend
-vercel --prod</code></pre>
-                    </div>
-
-                    <h2><i data-lucide="container" class="icon-inline"></i> Docker Self-Hosting</h2>
-                    
-                    <h3>Option 1: Docker Compose</h3>
-                    <div class="code-block">
-                        <pre><code class="language-bash">cd opengrammar/opengrammar
-
-# Start backend only
-docker-compose up -d opengrammar-backend
-
-# Start with Ollama (local LLM)
-docker-compose --profile local-llm up -d</code></pre>
-                    </div>
-
-                    <div class="section-nav">
-                        <a href="#browser-setup" class="prev-link">
-                            <svg viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                            <span>Previous</span>
-                        </a>
-                        <a href="#docker-self-hosting" class="next-link">
-                            <span>Next</span>
-                            <svg viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                        </a>
-                    </div>
-                </div>
-            </article>
-
-            <article id="docker-self-hosting" class="content-section">
-                <div class="section-header">
-                    <nav class="breadcrumb">
-                        <a href="#">Docs</a>
-                        <span class="breadcrumb-sep">/</span>
-                        <span>Installation</span>
-                        <span class="breadcrumb-sep">/</span>
-                        <span class="current">Docker Self-Hosting</span>
-                    </nav>
-                    <h1><i data-lucide="container" class="icon-inline"></i> Docker Self-Hosting</h1>
-                    <p class="section-description">Run OpenGrammar locally with Docker and optional local LLM support (Ollama).</p>
-                </div>
-                <div class="content-body">
-                    <div class="callout callout-primary">
-                        <div class="callout-icon"><i data-lucide="target" class="icon-inline"></i></div>
-                        <div class="callout-content">
-                            <strong>Why Self-Host with Docker?</strong>
-                            <ul>
-                                <li><strong>Complete Privacy:</strong> All data stays on your machine</li>
-                                <li><strong>Free:</strong> No API costs (with local LLM)</li>
-                                <li><strong>Offline:</strong> Works without internet</li>
-                                <li><strong>Full Control:</strong> Customize everything</li>
-                                <li><strong>No Rate Limits:</strong> Use as much as you want</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <h2><i data-lucide="rocket" class="icon-inline"></i> Quick Start</h2>
-                    
-                    <h3>Option 1: Backend Only (Use Cloud APIs)</h3>
-                    <div class="code-block">
-                        <pre><code class="language-bash">cd opengrammar/opengrammar
-
-# Create environment file
-cat > .env << EOF
-PORT=8787
-NODE_ENV=production
-GROQ_API_KEY=your_groq_key
-OPENAI_API_KEY=your_openai_key
-EOF
-
-# Start backend
-docker-compose up -d opengrammar-backend
-
-# Check status
-docker-compose ps
-
-# View logs
-docker-compose logs -f opengrammar-backend</code></pre>
-                    </div>
-
-                    <h3>Option 2: Backend + Ollama (Local LLM)</h3>
-                    <div class="code-block">
-                        <pre><code class="language-bash">cd opengrammar/opengrammar
-
-# Start everything (requires NVIDIA GPU)
-docker-compose --profile local-llm up -d</code></pre>
-                    </div>
-
-                    <h2><i data-lucide="cpu" class="icon-inline"></i> Local LLM Setup with Ollama</h2>
-                    
-                    <h3>Step 1: Start Ollama Container</h3>
-                    <div class="code-block">
-                        <pre><code class="language-bash">docker-compose --profile local-llm up -d ollama</code></pre>
-                    </div>
-
-                    <h3>Step 2: Pull Grammar-Focused Models</h3>
-                    <div class="code-block">
-                        <pre><code class="language-bash"># Enter Ollama container
-docker exec -it opengrammar-ollama bash
-
-# Pull models (inside container)
-ollama pull qwen2.5:0.5b      # Ultra fast, 400MB
-ollama pull qwen2.5:1.5b      # Balanced, 1GB
-ollama pull phi4-mini:3.8b    # Great quality, 2.5GB
-ollama pull llama3.2:3b       # Good all-rounder, 2GB
-
-# Exit container
-exit</code></pre>
-                    </div>
-
-                    <h2><i data-lucide="target" class="icon-inline"></i> Model Recommendations</h2>
-                    
-                    <div class="table-wrapper">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Model</th>
-                                    <th>Size</th>
-                                    <th>RAM</th>
-                                    <th>Speed</th>
-                                    <th>Quality</th>
-                                    <th>Best For</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><strong>qwen2.5:0.5b</strong></td>
-                                    <td>400MB</td>
-                                    <td>1GB</td>
-                                    <td><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i></td>
-                                    <td>⭐⭐⭐</td>
-                                    <td>Fast basic checks</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>qwen2.5:1.5b</strong></td>
-                                    <td>1GB</td>
-                                    <td>2GB</td>
-                                    <td><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i></td>
-                                    <td>⭐⭐⭐⭐</td>
-                                    <td>Balanced</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>phi4-mini:3.8b</strong></td>
-                                    <td>2.5GB</td>
-                                    <td>4GB</td>
-                                    <td><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i></td>
-                                    <td>⭐⭐⭐⭐⭐</td>
-                                    <td>Best quality</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>llama3.2:3b</strong></td>
-                                    <td>2GB</td>
-                                    <td>3GB</td>
-                                    <td><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i></td>
-                                    <td>⭐⭐⭐⭐</td>
-                                    <td>Good balance</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="section-nav">
-                        <a href="#backend-deployment" class="prev-link">
-                            <svg viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                            <span>Previous</span>
-                        </a>
-                        <a href="#ai-providers" class="next-link">
                             <span>Next</span>
                             <svg viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
@@ -1057,7 +713,7 @@ exit</code></pre>
                     </ol>
 
                     <div class="section-nav">
-                        <a href="#docker-self-hosting" class="prev-link">
+                        <a href="#browser-setup" class="prev-link">
                             <svg viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
                             </svg>
@@ -1455,26 +1111,23 @@ exit</code></pre>
                         <ol>
                             <li>Check extension is enabled</li>
                             <li>Verify site is not in disabled domains</li>
-                            <li>Test backend: <code>curl http://localhost:8787/health</code></li>
                             <li>Reload the page</li>
                             <li>Check browser console (F12) for errors</li>
                         </ol>
                     </div>
 
-                    <h3>Backend Connection Failed</h3>
+                    <h3>Provider Connection Failed</h3>
                     <div class="troubleshoot-card">
                         <h4>Symptoms</h4>
                         <ul>
                             <li>Red status indicator in extension</li>
-                            <li>"Cannot connect to backend" error</li>
+                            <li>"Cannot connect to provider" error</li>
                             <li>No AI suggestions</li>
                         </ul>
                         <h4>Solutions</h4>
                         <ol>
-                            <li>Verify Backend URL in settings</li>
-                            <li>Test backend: <code>curl your-backend-url/health</code></li>
-                            <li>Check CORS configuration</li>
-                            <li>Restart backend service</li>
+                            <li>Verify the selected provider, model, and API key in settings</li>
+                            <li>For Ollama/Custom, check the base URL is reachable</li>
                             <li>Check firewall settings</li>
                         </ol>
                     </div>
@@ -1591,163 +1244,6 @@ exit</code></pre>
 
                     <div class="section-nav">
                         <a href="#troubleshooting" class="prev-link">
-                            <svg viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                            <span>Previous</span>
-                        </a>
-                        <a href="#api-reference" class="next-link">
-                            <span>Next</span>
-                            <svg viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                        </a>
-                    </div>
-                </div>
-            </article>
-
-            <article id="api-reference" class="content-section">
-                <div class="section-header">
-                    <nav class="breadcrumb">
-                        <a href="#">Docs</a>
-                        <span class="breadcrumb-sep">/</span>
-                        <span>Support</span>
-                        <span class="breadcrumb-sep">/</span>
-                        <span class="current">API Reference</span>
-                    </nav>
-                    <h1><i data-lucide="library" class="icon-inline"></i> API Reference</h1>
-                    <p class="section-description">Backend API documentation for developers.</p>
-                </div>
-                <div class="content-body">
-                    <h2>Endpoints</h2>
-                    
-                    <h3>Health Check</h3>
-                    <div class="api-endpoint">
-                        <div class="api-method get">GET</div>
-                        <code class="api-path">/health</code>
-                    </div>
-                    <p>Returns the health status of the backend service.</p>
-                    
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span class="code-lang">bash</span>
-                            <button class="copy-btn" onclick="copyCode(this)">
-                                <svg viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
-                                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
-                                </svg>
-                                Copy
-                            </button>
-                        </div>
-                        <pre><code class="language-bash">curl http://localhost:8787/health</code></pre>
-                    </div>
-
-                    <h4>Response</h4>
-                    <div class="code-block">
-                        <pre><code class="language-json">{
-  "status": "healthy",
-  "timestamp": "2026-03-20T12:00:00.000Z",
-  "environment": "production",
-  "version": "2.0.0"
-}</code></pre>
-                    </div>
-
-                    <h3>Analyze Text</h3>
-                    <div class="api-endpoint">
-                        <div class="api-method post">POST</div>
-                        <code class="api-path">/analyze</code>
-                    </div>
-                    <p>Analyze text for grammar, spelling, clarity, and style issues.</p>
-                    
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span class="code-lang">bash</span>
-                            <button class="copy-btn" onclick="copyCode(this)">
-                                <svg viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
-                                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
-                                </svg>
-                                Copy
-                            </button>
-                        </div>
-                        <pre><code class="language-bash">curl -X POST http://localhost:8787/analyze \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "me and him went to store",
-    "apiKey": "your-api-key",
-    "provider": "groq",
-    "model": "llama-3.1-70b-versatile"
-  }'</code></pre>
-                    </div>
-
-                    <h4>Request Body</h4>
-                    <div class="table-wrapper">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Field</th>
-                                    <th>Type</th>
-                                    <th>Required</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>text</code></td>
-                                    <td>string</td>
-                                    <td>Yes</td>
-                                    <td>Text to analyze (max 50,000 chars)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>apiKey</code></td>
-                                    <td>string</td>
-                                    <td>No</td>
-                                    <td>AI provider API key</td>
-                                </tr>
-                                <tr>
-                                    <td><code>provider</code></td>
-                                    <td>string</td>
-                                    <td>No</td>
-                                    <td>AI provider (groq, openai, ollama, etc.)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>model</code></td>
-                                    <td>string</td>
-                                    <td>No</td>
-                                    <td>Model to use for AI analysis</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <h3>Rewrite Text</h3>
-                    <div class="api-endpoint">
-                        <div class="api-method post">POST</div>
-                        <code class="api-path">/rewrite</code>
-                    </div>
-                    <p>Rewrite text in different tones.</p>
-                    
-                    <div class="code-block">
-                        <pre><code class="language-bash">curl -X POST http://localhost:8787/rewrite \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "hey whats up",
-    "tone": "formal",
-    "apiKey": "your-api-key"
-  }'</code></pre>
-                    </div>
-
-                    <h4>Response</h4>
-                    <div class="code-block">
-                        <pre><code class="language-json">{
-  "original": "hey whats up",
-  "rewritten": "Greetings, how are you?",
-  "tone": "formal"
-}</code></pre>
-                    </div>
-
-                    <div class="section-nav">
-                        <a href="#faq" class="prev-link">
                             <svg viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
                             </svg>

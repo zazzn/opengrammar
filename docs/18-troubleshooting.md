@@ -18,8 +18,7 @@ chrome://extensions/ → Click reload icon on OpenGrammar
 # 2. Refresh the page
 Press F5 or Ctrl+R
 
-# 3. Check backend
-curl http://localhost:8787/health
+# 3. Check your provider/API key in Settings
 ```
 
 ---
@@ -48,69 +47,43 @@ curl http://localhost:8787/health
 3. Check if current site is disabled
 4. Enable if needed
 
-#### Cause 3: Backend Not Running
-**Solution:**
-```bash
-# Check backend status
-curl http://localhost:8787/health
-
-# Start backend
-cd opengrammar/opengrammar/backend
-bun run dev
-```
-
-#### Cause 4: Text Too Short
+#### Cause 3: Text Too Short
 **Solution:**
 - Extension only checks text with 5+ characters
 - Type more text to trigger checking
 
-#### Cause 5: Wrong Input Type
+#### Cause 4: Wrong Input Type
 **Solution:**
 - Extension works on: `<input>`, `<textarea>`, `[contenteditable]`
 - Doesn't work on: PDFs, images, non-editable text
 
 ---
 
-### Issue 2: Backend Connection Failed
+### Issue 2: Provider Connection Failed
 
 **Symptoms:**
 - Red status indicator in extension
-- "Cannot connect to backend" error
+- "Cannot connect to provider" error
 - No AI suggestions
 
 **Solutions:**
 
-#### Check Backend URL
+#### Check Provider & API Key
 1. Click extension → Settings
-2. Verify Backend URL:
-   - Local: `http://localhost:8787`
-   - Cloudflare: `https://yourname.workers.dev`
-   - Vercel: `https://yourapp.vercel.app`
-   - Railway: `https://yourapp.railway.app`
+2. Verify the selected **Provider** and **Model**
+3. Confirm your **API Key** is entered with no extra spaces
 
-#### Test Backend
+#### Check the Base URL (Ollama / Custom)
+- **Ollama:** `http://localhost:11434/v1` and Ollama is running (`ollama serve`)
+- **Custom:** your endpoint's OpenAI-compatible `/v1` base is reachable
+
+#### Test the Provider Key
 ```bash
-# Test health endpoint
-curl http://localhost:8787/health
-
-# Expected response:
-# {"status":"healthy","timestamp":"..."}
-```
-
-#### Check CORS
-If using custom backend:
-```typescript
-// Ensure CORS is configured
-app.use('*', cors({
-  origin: ['chrome-extension://*', 'moz-extension://*']
-}));
-```
-
-#### Restart Backend
-```bash
-# Stop backend (Ctrl+C)
-# Restart
-bun run dev
+# Example: test a Groq key directly
+curl https://api.groq.com/openai/v1/chat/completions \
+  -H "Authorization: Bearer gsk_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"llama-3.1-70b-versatile","messages":[{"role":"user","content":"test"}]}'
 ```
 
 ---
@@ -223,16 +196,8 @@ bun run build
 chrome://extensions/shortcuts
 ```
 
-#### Verify Backend
-```bash
-# Test rewrite endpoint
-curl -X POST http://localhost:8787/rewrite \
-  -H "Content-Type: application/json" \
-  -d '{"text":"hey","tone":"formal"}'
-```
-
 #### Check Provider
-- Rewrite requires AI provider
+- Rewrite requires an AI provider
 - Ensure API key is valid
 - Try different provider
 
@@ -340,18 +305,6 @@ chrome://settings/clearBrowserData
 
 ### Enable Debug Logging
 
-#### Backend Debug Mode
-```bash
-# Set DEBUG environment variable
-export DEBUG=true
-
-# Start backend
-bun run dev
-
-# Or with inline variable
-DEBUG=true bun run dev
-```
-
 #### Extension Debug Mode
 1. Open any webpage
 2. Press F12 → Open DevTools
@@ -363,7 +316,6 @@ DEBUG=true bun run dev
 | Message | Meaning | Action |
 |---------|---------|--------|
 | `Grammar check skipped` | Text too short or not editable | Normal, no action needed |
-| `Backend connection issue` | Can't reach backend | Check backend URL and status |
 | `LLM Analysis Error` | AI provider error | Check API key and provider |
 | `Settings saved` | Settings updated | Normal, success message |
 | `Rate limit exceeded` | Too many requests | Wait and retry |
@@ -381,10 +333,9 @@ Extension Installation
 ☐ Popup opens when clicking icon
 ☐ Options page loads
 
-Backend Connection
-☐ Backend health endpoint responds
+Provider Connection
 ☐ Status indicator shows green
-☐ Providers list loads
+☐ Provider list loads
 ☐ Models list loads
 
 Grammar Checking
@@ -433,21 +384,14 @@ Before asking for help, gather:
    chrome://settings/help → Copy version
    ```
 
-3. **Backend Logs**
-   ```bash
-   cd backend
-   bun run dev 2>&1 | tee backend.log
-   ```
-
-4. **Browser Console**
+3. **Browser Console**
    ```
    F12 → Console → Copy errors
    ```
 
-5. **Test Results**
-   ```bash
-   curl http://localhost:8787/health
-   curl http://localhost:8787/providers
+4. **Selected Provider & Model**
+   ```
+   Settings → note the Provider and Model (do NOT share your API key)
    ```
 
 ### Get Help

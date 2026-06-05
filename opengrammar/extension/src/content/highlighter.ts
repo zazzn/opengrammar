@@ -1850,7 +1850,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
     } catch (err) {
       content.innerHTML = `
         <div style="padding:16px;text-align:center;font-size:13px;color:#dc2626;">
-          Failed to get suggestions. Check your API key and backend connection.
+          Failed to get suggestions. Check your API key and connection.
         </div>
       `;
       repositionPanel();

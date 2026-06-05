@@ -506,7 +506,6 @@ Week 4: Maintain 85+ overall score
 **Solutions:**
 - Refresh the page
 - Check extension is enabled
-- Verify backend connection
 - Clear browser cache
 
 ### Problem: Metrics Inconsistent
@@ -523,7 +522,7 @@ Week 4: Maintain 85+ overall score
 
 - [Using OpenGrammar](09-using-opengrammar.md) - Complete user guide
 - [Tone Rewriting](10-tone-rewriting.md) - Improve writing style
-- [Grammar Rules](16-grammar-rules.md) - Understand errors
+- [Grammar & Style Rules](../GRAMMAR_RULES.md) - Understand errors
 
 ---
 

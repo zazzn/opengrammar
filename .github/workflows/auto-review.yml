@@ -26,9 +26,7 @@ jobs:
           echo "" > errors.log
           
           cd opengrammar/shared && bun install >> /dev/null 2>&1
-          cd ../backend && bun install >> /dev/null 2>&1
-          bun x tsc --noEmit > ../../backend_errors.log 2>&1 || echo "BACKEND_FAILED" >> ../../errors.log
-          
+
           cd ../extension && bun install >> /dev/null 2>&1
           bun x tsc --noEmit > ../../extension_errors.log 2>&1 || echo "EXTENSION_FAILED" >> ../../errors.log
           
@@ -83,17 +81,14 @@ jobs:
                 });
               }
             } else {
-              let backendErrors = fs.existsSync('backend_errors.log') ? fs.readFileSync('backend_errors.log', 'utf8') : '';
               let extensionErrors = fs.existsSync('extension_errors.log') ? fs.readFileSync('extension_errors.log', 'utf8') : '';
-              
-              backendErrors = backendErrors.split('\n').slice(0, 10).join('\n');
+
               extensionErrors = extensionErrors.split('\n').slice(0, 10).join('\n');
-              
+
               report = `### ❌ Changes Requested
-              
+
               Technical inconsistencies detected:
-              
-              ${backendErrors ? '#### 🖥️ Backend Errors:\n```\n' + backendErrors + '\n```' : ''}
+
               ${extensionErrors ? '#### 🧩 Extension Errors:\n```\n' + extensionErrors + '\n```' : ''}
               
               **Reviewer Profile:** swadhinbiswas <swadhinbiswas.cse@gmail.com>`;

@@ -165,17 +165,7 @@ bun run build
 1. Click the OpenGrammar icon in your toolbar
 2. Click the **Settings** (gear) icon
 
-### Step 2: Configure Backend URL
-1. Find **Backend URL** field
-2. Enter your backend URL:
-   - Local: `http://localhost:8787`
-   - Cloudflare: `https://opengrammar.yourname.workers.dev`
-   - Vercel: `https://opengrammar-backend.vercel.app`
-   - Railway: `https://your-app.railway.app`
-   - Render: `https://opengrammar-backend.onrender.com`
-   - Docker: `http://localhost:8787`
-
-### Step 3: Configure AI Provider
+### Step 2: Configure AI Provider
 1. Select **Provider** from dropdown:
    - **Groq** (Recommended - Free tier)
    - **OpenAI** (Best quality)
@@ -187,12 +177,15 @@ bun run build
 2. Enter your **API Key** (if required)
 3. Select **Model** from dropdown
 
-### Step 4: Test Connection
+The extension calls your chosen provider directly with your key — there is no backend
+to configure. For **Ollama** or **Custom**, set the base URL of your local/own endpoint.
+
+### Step 3: Test Connection
 1. Look for the **status indicator**
 2. 🟢 Green = Connected
 3. 🔴 Red = Not connected
 
-### Step 5: Save Settings
+### Step 4: Save Settings
 Click **Save** to apply changes.
 
 ---
@@ -215,7 +208,7 @@ Click **Save** to apply changes.
 **Provider:** Ollama (Local)
 - **API Key:** (none required)
 - **Model:** `qwen2.5:1.5b`
-- **Setup:** See [Docker Self-Hosting](06-docker-self-hosting.md)
+- **Setup:** See [AI Providers → Ollama](07-ai-providers.md#ollama-local)
 
 ### For Model Variety
 **Provider:** OpenRouter
@@ -237,7 +230,7 @@ Click **Save** to apply changes.
 2. Type: `me and him went to store`
 3. You should see a **red underline** under "me and him"
 
-### Test 3: Check Backend Connection
+### Test 3: Check Provider Connection
 1. Click extension icon
 2. Look for status indicator
 3. Should be green with "Connected"
@@ -258,7 +251,7 @@ Accessed by clicking the toolbar icon:
 - **Error Count** - Shows detected issues
 - **Settings** - Open settings page
 - **Statistics** - View writing stats
-- **Backend Status** - Connection indicator
+- **Provider Status** - Connection indicator
 
 ### Settings Page
 Right-click extension icon → **Options**:
@@ -274,7 +267,7 @@ Right-click extension icon → **Options**:
 - API key management
 - Model selection
 - Custom base URL
-- Backend health check
+- Provider connection check
 
 #### Site-Specific Settings
 - Disable on specific domains
@@ -361,19 +354,17 @@ Since this is a locally-loaded extension, it won't auto-update. You need to:
 **Solution:**
 1. Check extension is enabled (icon badge visible)
 2. Verify site is not in disabled domains
-3. Check backend is running: `curl http://localhost:8787/health`
-4. Reload the page
-5. Check browser console (F12) for errors
+3. Reload the page
+4. Check browser console (F12) for errors
 
-### Backend Not Connecting
+### Provider Not Connecting
 **Problem:** Red status indicator, "Not connected" error
 
 **Solution:**
-1. Verify backend URL in settings
-2. Test backend: `curl your-backend-url/health`
-3. Check CORS configuration
-4. Restart backend service
-5. Check firewall settings
+1. Verify your API key in settings
+2. Confirm the selected provider/model is correct
+3. For Ollama/Custom, check the base URL is reachable
+4. Check firewall settings
 
 ### Extension Crashes
 **Problem:** Extension closes or stops working
@@ -444,7 +435,6 @@ Since this is a locally-loaded extension, it won't auto-update. You need to:
 ## 📚 Related Documentation
 
 - [Quick Start](01-quick-start.md) - Get started in 5 minutes
-- [Backend Deployment](05-backend-deployment.md) - Deploy your backend
 - [AI Provider Setup](07-ai-providers.md) - Configure AI providers
 - [Using OpenGrammar](09-using-opengrammar.md) - Daily usage guide
 

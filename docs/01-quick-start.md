@@ -54,7 +54,6 @@ bun run build
 3. Enter your API key (from Step 1)
 4. Select Provider: **Groq**
 5. Select Model: **llama-3.1-70b-versatile**
-6. Backend URL: `http://localhost:8787` (for local testing)
 
 ### Step 5: Start Writing!
 
@@ -70,7 +69,6 @@ bun run build
 
 | I want to... | Do this... |
 |--------------|------------|
-| Deploy to production | Read [Backend Deployment](05-backend-deployment.md) |
 | Use local AI (offline) | Read [Ollama Setup](07-ai-providers.md#ollama-local) |
 | Rewrite text in different tones | Read [Tone Rewriting](10-tone-rewriting.md) |
 | See all features | Read [Using OpenGrammar](09-using-opengrammar.md) |
@@ -79,23 +77,10 @@ bun run build
 
 ## 🛠️ Quick Commands
 
-### Start Local Backend
-```bash
-cd opengrammar/opengrammar/backend
-bun install
-bun run dev
-# Runs on http://localhost:8787
-```
-
 ### Build Extension
 ```bash
 cd opengrammar/opengrammar/extension
 bun run build
-```
-
-### Test Backend
-```bash
-curl http://localhost:8787/health
 ```
 
 ---

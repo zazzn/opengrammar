@@ -474,8 +474,6 @@ Your settings are saved automatically.
 
 ## 📚 Related Documentation
 
-- [Backend Deployment](05-backend-deployment.md) - Deploy your backend
-- [Docker Self-Hosting](06-docker-self-hosting.md) - Run locally
 - [Troubleshooting](18-troubleshooting.md) - Common issues
 
 ---

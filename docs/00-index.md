@@ -34,12 +34,9 @@ that share one Harper + LLM engine.
 - [**Development guide**](14-development.md) — build / run / test both products; where to pick up
 - [**Contributing**](21-contributing.md) · [**Roadmap**](../ROADMAP.md)
 
-## AI, backend & configuration
+## AI & configuration
 
 - [**AI providers**](07-ai-providers.md) — OpenAI, DeepSeek, Groq, OpenRouter, Together, Ollama
-- [**Backend deployment**](05-backend-deployment.md) (optional, extension)
-- [**Docker self-hosting**](06-docker-self-hosting.md) (optional, extension)
-- [**API reference**](15-api-reference.md)
 
 ## Help
 

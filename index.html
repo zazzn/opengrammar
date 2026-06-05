@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenGrammar — The Free, Privacy-First Writing Assistant</title>
-    <meta name="description" content="OpenGrammar is a powerful, open-source browser extension for grammar, spelling, and tone adjustments. Complete privacy. Zero monthly fees. Self-hostable.">
+    <meta name="description" content="OpenGrammar is a powerful, open-source browser extension for grammar, spelling, and tone adjustments. Complete privacy. Zero monthly fees. Local-first, bring your own AI key.">
     <meta name="keywords" content="OpenGrammar, Grammarly alternative, open source grammar checker, privacy writing assistant, AI grammar">
     <meta name="author" content="Swadhin Biswas">
     <meta property="og:title" content="OpenGrammar — Privacy-First Writing Assistant">
@@ -364,8 +364,8 @@ section{padding:100px 0}
                 </div>
                 <div class="feature-card fade-in">
                     <div class="feature-icon self-host"><i data-lucide="shield" class="icon-inline"></i></div>
-                    <h3>Self-Hostable Backend</h3>
-                    <p>Deploy to Cloudflare Workers, Vercel Edge, Railway, Render, or Docker. One command. You own the infrastructure.</p>
+                    <h3>Local-First, No Backend</h3>
+                    <p>On-device grammar needs no key or network. For AI, your key talks straight to the provider — or run a local model with Ollama. There is no server in between.</p>
                 </div>
                 <div class="feature-card fade-in">
                     <div class="feature-icon rules"><i data-lucide="file-text" class="icon-inline"></i></div>
@@ -472,7 +472,7 @@ section{padding:100px 0}
                     <tbody>
                         <tr><td><strong>Price</strong></td><td>$12/mo</td><td class="highlight-col yes">Free</td><td>$4.99/mo</td></tr>
                         <tr><td><strong>Open Source</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i> Apache 2.0</td><td>Partial</td></tr>
-                        <tr><td><strong>Self-Hostable</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i> Docker / CF Workers</td><td class="no"><i data-lucide="x" class="icon-inline"></i></td></tr>
+                        <tr><td><strong>Local AI (Ollama)</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i> Run models locally</td><td class="no"><i data-lucide="x" class="icon-inline"></i></td></tr>
                         <tr><td><strong>Offline Mode</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i> 40+ rules</td><td>Partial</td></tr>
                         <tr><td><strong>BYOK (Own AI Key)</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i> 6 providers</td><td class="no"><i data-lucide="x" class="icon-inline"></i></td></tr>
                         <tr><td><strong>Local LLM (Ollama)</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td></tr>
@@ -502,10 +502,7 @@ section{padding:100px 0}
 <span class="cmd">bun install</span> && <span class="cmd">bun run build</span>
 
 <span class="comment"># 3. Load in chrome://extensions → Load Unpacked → dist/</span>
-
-<span class="comment"># 4. (Optional) Start local backend</span>
-<span class="cmd">cd</span> ../backend && <span class="cmd">bun run dev</span>
-<span class="comment"># <i data-lucide="check" class="icon-inline"></i> Running at http://localhost:8787</span></pre>
+<span class="comment"># <i data-lucide="check" class="icon-inline"></i> Set your provider + API key in the popup. No backend needed.</span></pre>
             </div>
             <div class="cta-buttons fade-in">
                 <a href="docs/index.html#quick-start" class="btn btn-primary" style="padding:16px 32px;font-size:16px;border-radius:12px">
@@ -532,9 +529,7 @@ section{padding:100px 0}
                     <h4>Documentation</h4>
                     <a href="docs/index.html#quick-start">Quick Start</a>
                     <a href="docs/index.html#browser-setup">Browser Setup</a>
-                    <a href="docs/index.html#backend-deployment">Deployment</a>
                     <a href="docs/index.html#ai-providers">AI Providers</a>
-                    <a href="docs/index.html#api-reference">API Reference</a>
                 </div>
                 <div class="footer-col">
                     <h4>Guides</h4>

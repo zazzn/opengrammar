@@ -23,15 +23,6 @@ jobs:
         cd opengrammar/shared
         bun install
 
-    - name: Install and Check Backend
-      run: |
-        cd opengrammar/backend
-        bun install
-        echo "Running Type Check..."
-        bun x tsc
-        echo "Running Build..."
-        bun run build
-
     - name: Install and Check Extension
       run: |
         cd opengrammar/extension
