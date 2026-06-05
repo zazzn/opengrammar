@@ -111,20 +111,60 @@ function applyToFormField(
   return true;
 }
 
+/**
+ * Did the replacement actually land? Re-reads the field's current text and
+ * confirms `replacement` is present at the offset we targeted (tolerating the
+ * fact that frameworks may renormalize whitespace/nodes around it). This is
+ * how we distinguish a real apply from one a framework silently reverted.
+ */
+function replacementLanded(el: HTMLElement, span: { start: number }, fix: Fix): boolean {
+  if (fix.replacement === '') {
+    // Deletion: success means the original text is no longer sitting at `start`.
+    const now = buildTextMap(el).text;
+    return now.slice(span.start, span.start + fix.original.length) !== fix.original;
+  }
+  const now = buildTextMap(el).text;
+  // Primary check: the replacement sits exactly where we inserted it.
+  if (now.slice(span.start, span.start + fix.replacement.length) === fix.replacement) {
+    return true;
+  }
+  // Tolerant check: some editors re-wrap or shift by a character (e.g. a
+  // leading/trailing space normalization). Accept if the replacement appears in
+  // a small window around the target AND the original no longer occupies it.
+  const windowStart = Math.max(0, span.start - 2);
+  const windowEnd = span.start + fix.replacement.length + 2;
+  const around = now.slice(windowStart, windowEnd);
+  const stillOriginal =
+    fix.original !== fix.replacement &&
+    now.slice(span.start, span.start + fix.original.length) === fix.original;
+  return around.includes(fix.replacement) && !stillOriginal;
+}
+
 /** contenteditable + framework editors: select the span, drive
  *  execCommand('insertText'); fall back to a minimal, caret-preserving
- *  DOM splice (never normalize()). Draft needs a post-tick. */
+ *  DOM splice (never normalize()). After applying we VERIFY the insert
+ *  actually landed (frameworks like Draft/Gmail/Lexical can silently revert
+ *  it on their next reconcile tick) and retry once before giving up. */
 function applyToRichEditor(el: HTMLElement, fix: Fix, kind: EditorKind): boolean {
   const map = buildTextMap(el);
   const span = resolveSpan(map, fix.offset, fix.length, fix.original);
   if (!span) return false;
-  const range = offsetToRange(map, span.start, span.end);
-  if (!range) return false;
 
-  const run = () => {
+  // Perform one insert attempt. Re-resolves the span each time so a retry works
+  // against the editor's current DOM (a partial/reverted first attempt may have
+  // shifted nodes). Returns whether the insert verifiably landed.
+  const attempt = (): boolean => {
+    const liveMap = buildTextMap(el);
+    const liveSpan = resolveSpan(liveMap, fix.offset, fix.length, fix.original);
+    // If the original span is already gone, the change may have landed on a
+    // prior tick — verify against the offset we originally targeted.
+    if (!liveSpan) return replacementLanded(el, span, fix);
+    const range = offsetToRange(liveMap, liveSpan.start, liveSpan.end);
+    if (!range) return false;
+
     el.focus();
     const sel = window.getSelection();
-    if (!sel) return;
+    if (!sel) return false;
     sel.removeAllRanges();
     sel.addRange(range);
 
@@ -146,19 +186,42 @@ function applyToRichEditor(el: HTMLElement, fix: Fix, kind: EditorKind): boolean
         sel.removeAllRanges();
         sel.addRange(after);
       } catch {
-        return;
+        return false;
       }
     }
     fireInput(el, fix.replacement);
+    return replacementLanded(el, liveSpan, fix);
   };
 
-  // Draft.js (and Gmail's compose editor) reconcile their state on a tick;
-  // replacing synchronously inside the same frame races the reconciler and
-  // gets reverted. Defer to the next tick so the insert sticks. execCommand
-  // ('insertText') is still the primary apply for both — only the timing differs.
-  if (kind === 'draft' || kind === 'gmail') setTimeout(run, 0);
-  else run();
-  return true;
+  // Synchronous first attempt for everything. Draft.js / Gmail reconcile their
+  // state on a tick, so a same-frame insert can race the reconciler — for those
+  // we ALSO schedule a verify+retry on the next tick. For all other editors we
+  // verify immediately and only retry-on-tick if the synchronous insert didn't
+  // verify (covers any framework that silently reverts).
+  if (kind === 'draft' || kind === 'gmail') {
+    // These editors are known to revert synchronous inserts; the authoritative
+    // apply is the deferred one. We can't report the deferred result back
+    // synchronously, so do a best-effort sync insert, then re-apply + verify on
+    // the next tick, and report optimistic success (the field is editable and
+    // the span matched). The caller's own re-analysis will re-flag if it fails.
+    attempt();
+    setTimeout(() => {
+      if (!replacementLanded(el, span, fix)) attempt();
+    }, 0);
+    return true;
+  }
+
+  if (attempt()) return true;
+  // The synchronous insert did not verify. It may be a framework that applies
+  // on a microtask/tick; retry ONCE on the next tick as a best-effort so the
+  // user's text still gets corrected. We can't block to report that deferred
+  // result, so the synchronous return below stays false — the caller treats it
+  // as a failed apply (keeps the underline/card), and the field's own
+  // re-analysis will clear it if the retry did land.
+  setTimeout(() => {
+    if (!replacementLanded(el, span, fix)) attempt();
+  }, 0);
+  return false;
 }
 
 /**
