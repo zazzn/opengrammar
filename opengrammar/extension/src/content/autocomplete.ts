@@ -108,14 +108,19 @@ export class AutocompletePopup {
       input.dispatchEvent(new Event('input', { bubbles: true }));
     } else {
       const before = text.slice(0, replaceStart);
-      const after = text.slice(replaceEnd);
       const paddedSuggestion =
         before.endsWith(' ') || suggestion.startsWith(' ') || suggestion.startsWith('.')
           ? suggestion
           : ' ' + suggestion;
 
-      element.textContent = `${before}${paddedSuggestion}${after}`;
-      setCaretPosition(element, replaceStart + paddedSuggestion.length);
+      // INSERT at the caret via the browser's real editing pipeline rather than
+      // clobbering element.textContent (which destroys the editor's node
+      // structure + undo stack and breaks framework editors). The completion is
+      // an append at the caret (replaceStart === replaceEnd in every producer),
+      // so this is an insert, not a span replacement. execCommand('insertText')
+      // fires genuine beforeinput/input so React/ProseMirror/Lexical/etc. all
+      // observe it and undo is preserved; a minimal DOM splice is the fallback.
+      this.insertAtCaretContentEditable(element, replaceStart, replaceEnd, paddedSuggestion);
       element.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
@@ -147,6 +152,105 @@ export class AutocompletePopup {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  /**
+   * Insert `value` into a contenteditable at the [start, end) plain-text offset
+   * (collapsed at the caret for completions, since start === end). Selects the
+   * span, then drives execCommand('insertText') so the browser's real editing
+   * pipeline runs — preserving framework state and the undo stack. Falls back to
+   * a minimal Range splice if execCommand is unavailable. NEVER reassigns
+   * textContent (which would flatten the editor's DOM).
+   */
+  private insertAtCaretContentEditable(
+    element: HTMLElement,
+    start: number,
+    end: number,
+    value: string,
+  ): void {
+    element.focus();
+    const range = this.rangeForOffsets(element, start, end);
+    const selection = window.getSelection();
+    if (range && selection) {
+      selection.removeAllRanges();
+      selection.addRange(range);
+      let ok = false;
+      try {
+        ok = document.execCommand('insertText', false, value);
+      } catch {
+        ok = false;
+      }
+      if (ok) return;
+      // execCommand unavailable/blocked: minimal splice that still avoids
+      // clobbering the whole subtree, caret placed AFTER the inserted text.
+      try {
+        range.deleteContents();
+        const tn = document.createTextNode(value);
+        range.insertNode(tn);
+        const after = document.createRange();
+        after.setStartAfter(tn);
+        after.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(after);
+        return;
+      } catch {
+        /* fall through to the last-resort caret placement below */
+      }
+    }
+    // Last resort (no resolvable range): place the caret and try once more.
+    setCaretPosition(element, Math.min(end, extractText(element).length));
+    try {
+      document.execCommand('insertText', false, value);
+    } catch {
+      /* give up silently — the input event below still fires for re-analysis */
+    }
+  }
+
+  /**
+   * Build a DOM Range spanning the [start, end) plain-text offsets within a
+   * contenteditable, walking its text nodes (same traversal as
+   * textExtractor.setCaretPosition). Returns null if the offsets can't be
+   * resolved.
+   */
+  private rangeForOffsets(element: HTMLElement, start: number, end: number): Range | null {
+    const range = document.createRange();
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let pos = 0;
+    let startSet = false;
+    let endSet = false;
+    let node: Node | null = walker.nextNode();
+    let lastNode: Node | null = null;
+    let lastLen = 0;
+    while (node) {
+      const len = node.textContent?.length || 0;
+      if (!startSet && pos + len >= start) {
+        range.setStart(node, start - pos);
+        startSet = true;
+      }
+      if (!endSet && pos + len >= end) {
+        range.setEnd(node, end - pos);
+        endSet = true;
+      }
+      if (startSet && endSet) return range;
+      lastNode = node;
+      lastLen = len;
+      pos += len;
+      node = walker.nextNode();
+    }
+    // Offsets past the end of content (typical for an append): anchor to the end
+    // of the last text node, or the element itself when it has no text nodes.
+    if (lastNode) {
+      if (!startSet) range.setStart(lastNode, lastLen);
+      if (!endSet) range.setEnd(lastNode, lastLen);
+      return range;
+    }
+    try {
+      range.selectNodeContents(element);
+      range.collapse(false);
+      return range;
+    } catch {
+      return null;
+    }
   }
 }
 

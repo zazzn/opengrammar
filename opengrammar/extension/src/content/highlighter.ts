@@ -1379,8 +1379,12 @@ function showInlineReviewCard(anchor: HTMLElement, issue: Issue, element: HTMLEl
     // span (text moved/changed since analysis) keeps its underline.
     if (applySuggestion(element, issue, anchor)) {
       removeIssueUnderline(issue, element);
+      hideTooltip();
+      return;
     }
-    hideTooltip();
+    // Apply failed (stale span / framework reverted the insert). Keep the card
+    // open and surface why, instead of closing as if it worked.
+    flashApplyFailure(card);
   };
 
   const applyBox = card.querySelector('.og-rv-apply-box') as HTMLElement | null;
@@ -2543,14 +2547,19 @@ function showSentenceReview(
   const acceptSentence = () => {
     const apply = currentText;
     const ok = replaceSentence(element, origText, group.start, apply);
+    // A stale span (text edited since analysis) or a framework that reverted the
+    // insert returns false. Don't advance/close as if it worked — keep the card
+    // open and surface the failure so it isn't silent.
+    if (!ok) {
+      flashApplyFailure(card);
+      return;
+    }
     // Shift later groups by the length delta so their spans stay anchored.
-    if (ok) {
-      const delta = apply.length - origText.length;
-      if (delta !== 0) {
-        for (let g = idx + 1; g < groups.length; g++) {
-          groups[g]!.start += delta;
-          groups[g]!.end += delta;
-        }
+    const delta = apply.length - origText.length;
+    if (delta !== 0) {
+      for (let g = idx + 1; g < groups.length; g++) {
+        groups[g]!.start += delta;
+        groups[g]!.end += delta;
       }
     }
     groups.splice(idx, 1);
@@ -2595,10 +2604,32 @@ function showSentenceReview(
       e.stopPropagation();
       // Apply highest-offset first so earlier spans stay valid.
       const ordered = [...groups].sort((a, b) => b.start - a.start);
+      const total = ordered.length;
+      const failed: typeof groups = [];
       for (const g of ordered) {
-        replaceSentence(element, (g.origText ?? '').trim(), g.start, (g.corrText ?? '').trim());
+        const ok = replaceSentence(element, (g.origText ?? '').trim(), g.start, (g.corrText ?? '').trim());
+        // A stale span / silently-reverted insert returns false. Collect it so
+        // we don't close the card claiming every sentence was fixed.
+        if (!ok) failed.push(g);
       }
-      hideTooltip();
+      if (failed.length === 0) {
+        hideTooltip();
+        return;
+      }
+      // Some (or all) sentences didn't land. Keep the card open showing only the
+      // ones that failed, and surface why instead of closing silently.
+      const allFailed = failed.length === total;
+      groups.splice(0, groups.length, ...failed.sort((a, b) => a.start - b.start));
+      showSentenceReview(allIssues, element, 0, groups);
+      const liveCard = currentTooltip;
+      if (liveCard) {
+        flashApplyFailure(
+          liveCard,
+          allFailed
+            ? "Couldn't apply here — text changed"
+            : "Couldn't apply some — text changed",
+        );
+      }
     });
     fixAllBtn.addEventListener('mouseenter', () => { fixAllBtn.style.background = '#f0f0ff'; });
     fixAllBtn.addEventListener('mouseleave', () => { fixAllBtn.style.background = 'white'; });
@@ -2808,6 +2839,41 @@ function destroyInputMirror() {
 function hideTooltip() {
   currentTooltip?.remove(); currentTooltip = null;
   uiActive = false;
+}
+
+/**
+ * Surface a failed apply on the suggestion card itself. The apply primitive
+ * returns false when the span is stale or a framework silently reverted the
+ * insert; without this the card would close as if it succeeded and the failure
+ * would be invisible. Shows a small inline message at the bottom of the card
+ * (idempotent — reuses/refreshes one), so the user knows nothing changed and the
+ * card stays open for them to retry or dismiss.
+ */
+function flashApplyFailure(card: HTMLElement, message = "Couldn't apply here — text changed"): void {
+  let note = card.querySelector('.og-apply-failure') as HTMLElement | null;
+  if (!note) {
+    note = document.createElement('div');
+    note.className = 'og-apply-failure';
+    note.style.cssText = `
+      padding:8px 14px; font-size:12px; font-weight:600; color:#b91c1c;
+      background:#fef2f2; border-top:1px solid #fecaca; line-height:1.4;
+      display:flex; align-items:center; gap:6px;
+    `;
+    card.appendChild(note);
+  }
+  note.innerHTML = `
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#b91c1c" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+      <circle cx="8" cy="8" r="6.25"/><path d="M8 5v3.5"/><path d="M8 10.6h.01"/>
+    </svg>
+    <span>${escapeHtml(message)}</span>
+  `;
+  const existing = Number(note.dataset.timer || '0');
+  if (existing) window.clearTimeout(existing);
+  note.dataset.timer = String(
+    window.setTimeout(() => {
+      note?.remove();
+    }, 4000),
+  );
 }
 
 function applySuggestion(element: HTMLElement, issue: Issue, highlightEl: HTMLElement): boolean {

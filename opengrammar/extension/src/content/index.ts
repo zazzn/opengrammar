@@ -1010,7 +1010,11 @@ const checkGrammar = async (element: HTMLElement) => {
     });
 
     if (response?.error) {
-      showNotification('Grammar check failed: ' + response.error, 'error');
+      // The assistant bubble was set to 'analyzing-local' above; returning here
+      // without resetting it leaves the bubble spinning forever. Reset to a
+      // resting state (mirrors runProactiveLlmReview's catch).
+      console.error('[OpenGrammar] Grammar check failed:', response.error);
+      resetAssistantAfterError(element);
       return;
     }
 
@@ -1023,12 +1027,29 @@ const checkGrammar = async (element: HTMLElement) => {
     }
 
     console.error('[OpenGrammar] Grammar check failed:', err);
-    showNotification(
-      'Grammar check failed. Try reloading the page.',
-      'error',
-    );
+    // Same reason as above: don't leave the bubble stuck spinning on a thrown error.
+    resetAssistantAfterError(element);
   }
 };
+
+/**
+ * Stop the assistant bubble spinner after a failed grammar check. Falls back to
+ * the issues we already know about (so a prior result isn't lost): 'has-issues'
+ * when some exist, otherwise 'clean'. No-op while a UI panel is open (we never
+ * change the bubble out from under an open card).
+ */
+function resetAssistantAfterError(element: HTMLElement) {
+  if (!activeElements.has(element) || isUIActive()) return;
+  const editableElement = activeElements.get(element)!;
+  const localIssues = editableElement.lastLocalIssues || [];
+  const visibleIssues = mergeLlmIssues(localIssues, editableElement.lastLlmIssues || []);
+  setAssistantState(element, {
+    localCount: localIssues.length,
+    llmCount: editableElement.lastLlmIssues ? editableElement.lastLlmIssues.length : null,
+    phase: visibleIssues.length > 0 ? 'has-issues' : 'clean',
+    issues: visibleIssues,
+  });
+}
 
 const debouncedCheck = debounce(checkGrammar, 800);
 
@@ -1066,16 +1087,6 @@ function isEditable(el: HTMLElement): boolean {
   }
 
   return false;
-}
-
-/**
- * Show a notification to the user
- */
-// Toast notifications were removed (the "Show notifications" setting was
-// dropped). Kept as a no-op so the scattered call sites stay simple;
-// failures still go to console.error where it matters.
-function showNotification(_message: string, _type: 'error' | 'warning' | 'info') {
-  /* intentionally no-op */
 }
 
 async function syncActiveContext(text: string, issues: Issue[]) {
