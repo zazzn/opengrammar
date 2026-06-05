@@ -1,87 +1,60 @@
-# 📚 OpenGrammar Documentation
+# OGrammar Documentation
 
-Welcome to the complete documentation for OpenGrammar - your privacy-first, open-source writing assistant.
+OGrammar is a privacy-first, open-source writing assistant — now in **two products**
+that share one Harper + LLM engine.
 
----
-
-## 📖 Table of Contents
-
-### Getting Started
-- [**Quick Start**](docs/01-quick-start.md) - Get up and running in 5 minutes
-- [**What is OpenGrammar?**](docs/02-what-is-opengrammar.md) - Overview and features
-- [**System Requirements**](docs/03-system-requirements.md) - What you need to run OpenGrammar
-
-### Installation & Setup
-- [**Browser Extension Setup**](docs/04-browser-extension-setup.md) - Chrome, Brave, Edge, Firefox
-- [**Backend Deployment**](docs/05-backend-deployment.md) - Complete deployment guide
-  - [Cloudflare Workers](docs/05-backend-deployment.md#cloudflare-workers)
-  - [Vercel](docs/05-backend-deployment.md#vercel)
-  - [Railway](docs/05-backend-deployment.md#railway)
-  - [Render](docs/05-backend-deployment.md#render)
-  - [Docker Self-Hosting](docs/06-docker-self-hosting.md)
-
-### Configuration
-- [**AI Provider Setup**](docs/07-ai-providers.md) - Configure AI providers
-  - [Groq (Free Tier)](docs/07-ai-providers.md#groq)
-  - [OpenAI](docs/07-ai-providers.md#openai)
-  - [OpenRouter](docs/07-ai-providers.md#openrouter)
-  - [Together AI](docs/07-ai-providers.md#together-ai)
-  - [Ollama (Local)](docs/07-ai-providers.md#ollama-local)
-- [**Extension Settings**](docs/08-extension-settings.md) - Configure the extension
-- [**Custom Dictionary**](docs/08-extension-settings.md#custom-dictionary) - Manage your dictionary
-
-### User Guide
-- [**Using OpenGrammar**](docs/09-using-opengrammar.md) - Daily usage guide
-- [**Grammar Checking**](docs/09-using-opengrammar.md#grammar-checking) - How to check grammar
-- [**Tone Rewriting**](docs/10-tone-rewriting.md) - Rewrite text in different tones
-- [**Writing Statistics**](docs/11-writing-statistics.md) - Analyze your writing
-- [**Keyboard Shortcuts**](docs/12-keyboard-shortcuts.md) - All shortcuts reference
-
-### Developer Guide
-- [**Architecture Overview**](docs/13-architecture.md) - System architecture
-- [**Local Development**](docs/14-local-development.md) - Development setup
-- [**API Reference**](docs/15-api-reference.md) - Backend API documentation
-- [**Adding Grammar Rules**](docs/16-grammar-rules.md) - Contribute grammar rules
-- [**Building the Extension**](docs/17-building-extension.md) - Build and package
-
-### Troubleshooting
-- [**Troubleshooting Guide**](docs/18-troubleshooting.md) - Common issues and solutions
-- [**FAQ**](docs/19-faq.md) - Frequently asked questions
-- [**Error Codes**](docs/20-error-codes.md) - Error code reference
-
-### Contributing
-- [**Contributing Guide**](docs/21-contributing.md) - How to contribute
-- [**Code Style**](docs/22-code-style.md) - Coding standards
-- [**Roadmap**](../ROADMAP.md) - Future development
+> **New here? Start with [30-products-overview.md](30-products-overview.md)** — it explains
+> the two products (browser extension + Windows desktop app), what they share, and which
+> to use when.
 
 ---
 
-## 🚀 Quick Links
+## Start here
 
-| I want to... | Go to... |
-|--------------|----------|
-| Install the extension | [Browser Extension Setup](docs/04-browser-extension-setup.md) |
-| Deploy the backend | [Backend Deployment](docs/05-backend-deployment.md) |
-| Configure AI providers | [AI Provider Setup](docs/07-ai-providers.md) |
-| Use tone rewriting | [Tone Rewriting](docs/10-tone-rewriting.md) |
-| Report a bug | [GitHub Issues](https://github.com/swadhinbiswas/opengrammar/issues) |
-| Suggest a feature | [GitHub Discussions](https://github.com/swadhinbiswas/opengrammar/discussions) |
+- [**Two Products — Overview**](30-products-overview.md) — the big picture
+- [**Quick Start**](01-quick-start.md) — get running fast
+
+## 1. Browser Extension
+
+- [**Install the extension**](04-browser-extension-setup.md) — Chrome / Brave / Edge
+- [**Using OGrammar**](09-using-opengrammar.md) — daily usage
+- [**Tone rewriting**](10-tone-rewriting.md)
+- [**Writing statistics**](11-writing-statistics.md)
+- [**Keyboard shortcuts**](12-keyboard-shortcuts.md)
+
+## 2. Desktop App (OS-wide, Windows)
+
+- [**OGrammar Desktop**](31-desktop-app.md) — overlay underlines, click-to-fix card,
+  autocorrect, LLM rewrite pill, tray, settings
+- [**Desktop README / build**](../desktop/README.md)
+
+## Developer guide
+
+- [**Architecture**](13-architecture.md) — how the two products + shared engine fit together, repo layout, data flow
+- [**Development guide**](14-development.md) — build / run / test both products; where to pick up
+- [**Contributing**](21-contributing.md) · [**Roadmap**](../ROADMAP.md)
+
+## AI, backend & configuration
+
+- [**AI providers**](07-ai-providers.md) — OpenAI, DeepSeek, Groq, OpenRouter, Together, Ollama
+- [**Backend deployment**](05-backend-deployment.md) (optional, extension)
+- [**Docker self-hosting**](06-docker-self-hosting.md) (optional, extension)
+- [**API reference**](15-api-reference.md)
+
+## Help
+
+- [**Troubleshooting**](18-troubleshooting.md)
+- [**FAQ**](19-faq.md)
+
+## Reference / research
+
+- [**False-positive audit**](24-og-rewrite-false-positive-audit.md) — methodology + the FP follow-up backlog
+- [**Local LLM model benchmark**](25-local-llm-model-benchmark.md) — provider/model comparison
+- [**OS-wide grammar-checking research**](29-os-wide-grammar-checking-research.md) — the rationale behind the desktop app
 
 ---
 
-## 📞 Support
+## License
 
-- **GitHub Issues**: [Report bugs or request features](https://github.com/swadhinbiswas/opengrammar/issues)
-- **GitHub Discussions**: [Ask questions and discuss ideas](https://github.com/swadhinbiswas/opengrammar/discussions)
-- **Documentation**: [Complete guides and tutorials](https://github.com/swadhinbiswas/opengrammar/tree/main/opengrammar)
-
----
-
-## 📄 License
-
-OpenGrammar is licensed under the Apache 2.0 License - see the [LICENSE](../LICENSE) file for details.
-
----
-
-**Last Updated:** March 2026  
-**Version:** 2.1.0
+OGrammar is a modified fork of [OpenGrammar](https://github.com/swadhinbiswas/opengrammar),
+licensed under Apache 2.0 — see [`../LICENSE`](../LICENSE) and [`../NOTICE`](../NOTICE).

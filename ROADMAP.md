@@ -1,159 +1,81 @@
-# 🗺️ OpenGrammar Roadmap
+# 🗺️ OGrammar Roadmap
 
-Our vision is to build the most capable, privacy-respecting, and customizable writing assistant in the world. OpenGrammar is designed to be a completely open-source alternative to premium grammar tools.
+OGrammar is a privacy-first, local-first writing assistant in **two products** — a
+**browser extension** and a **Windows desktop app** — sharing one Harper + LLM engine.
+This roadmap reflects the current state of the *fork* (see [`NOTICE`](NOTICE)); it is a
+living document.
 
-This roadmap outlines the major phases of development, from the initial MVP to advanced features and broader platform support. It is a living document and will evolve based on community feedback and technological advancements.
-
----
-
-## ✅ Phase 1: Foundation & MVP (Completed)
-
-The goal of this phase was to establish a solid, functional, and secure base architecture.
-
-*   [x] **Chrome Extension Skeleton:** Manifest V3 setup with React and Vite.
-*   [x] **Serverless Backend:** A stateless Hono API deployable to edge networks (Cloudflare/Vercel).
-*   [x] **Dual Engine:**
-    *   [x] Local rule-based checks (40+ rules: passive voice, repetition, spacing, apostrophes, clichés, etc.)
-    *   [x] AI-powered checks (OpenAI/OpenRouter/Groq/Together/Ollama compatible)
-*   [x] **Privacy:** Secure local storage for API keys (`chrome.storage.sync`); no backend logging or databases.
-*   [x] **Core UI:** Basic popup for configuration (toggling, setting API key/model).
-*   [x] **Content Script MVP:** Text extraction and basic visual highlighting for `input`, `textarea`, and standard `contenteditable` elements.
-*   [x] **Interactive Tooltips:** Click-to-apply suggestions with ignore and dictionary features.
-*   [x] **Comprehensive Options Page:** Site-specific settings, dictionary management, data export/import.
-*   [x] **Docker Self-Hosting:** Complete Docker setup with Ollama support for local LLM.
-*   [x] **Multi-Provider Support:** 6 AI providers (OpenAI, Groq, OpenRouter, Together, Ollama, Custom).
+> For what the products are, see [docs/30-products-overview.md](docs/30-products-overview.md).
 
 ---
 
-## ✅ Phase 2: Enhanced User Experience (Completed)
+## ✅ Shared engine (shipped)
 
-This phase focused on making the extension feature-rich and highly customizable.
-
-*   [x] **Tone & Style Rewriting:**
-    *   [x] 8 tone options (formal, casual, professional, friendly, concise, detailed, persuasive, neutral)
-    *   [x] Context menu integration (right-click → Rewrite)
-    *   [x] Keyboard shortcut (Ctrl+Shift+R / Cmd+Shift+R)
-    *   [x] Side-by-side text comparison UI
-*   [x] **Writing Statistics Dashboard:**
-    *   [x] Word count, character count, sentence count, paragraph count
-    *   [x] Flesch Reading Ease Score
-    *   [x] Flesch-Kincaid Grade Level
-    *   [x] Automated Readability Index (ARI)
-    *   [x] Vocabulary diversity percentage
-    *   [x] Reading/speaking time estimates
-    *   [x] Issue breakdown by type
-*   [x] **Custom Prompts for AI:**
-    *   [x] 8 preset prompts (Fix Grammar, Make Formal, Simplify, Summarize, etc.)
-    *   [x] Prompt categories (grammar, style, creative, professional)
-    *   [x] Extensible system for user-defined prompts
-*   [ ] **Better Google Docs Support:** (See implementation guide)
-*   [ ] **Advanced Highlighting Engine:**
-    *   [ ] Improve robustness inside complex `contenteditable` editors
-    *   [ ] Implement reliable inline underlines that move correctly
+- [x] **Harper** as the local engine (replaced the upstream RegEx/dictionary engine) —
+  spelling, grammar, punctuation, capitalization, style, on-device.
+- [x] **LLM context tier** (BYOK): OpenAI, DeepSeek, Groq, OpenRouter, Together, Ollama.
+- [x] **Merge/de-dup** of LLM findings with Harper (Harper wins on overlap).
+- [x] **Confidence routing** — quick-fix (high-confidence mechanical) vs. sentence-review.
+- [x] **Protected-text masking** before LLM calls.
+- [x] **Engine parity** — desktop `ograms-engine` (Rust) ports the extension's LLM core.
+- [x] Local n-gram context re-ranker; encrypted API-key storage.
 
 ---
 
-## 🚀 Phase 3: Advanced Capabilities (Planned)
+## 🧩 Browser Extension
 
-Here we will leverage the AI engine to provide deeper insights and more powerful writing assistance.
+**Shipped**
+- [x] Manifest V3 (React + Vite); local-first; key in `chrome.storage`; no backend DB.
+- [x] Inline underlines for inputs, textareas, and rich/contenteditable editors.
+- [x] **Proactive sentence review** + non-destructive review card.
+- [x] **Autocomplete** (context-aware next-words).
+- [x] **Tone rewriting** + custom prompts.
+- [x] Writing statistics; custom dictionary; per-site disable.
+- [x] **Autocorrect** *(opt-in)* — high-confidence auto-apply with revert-learning
+  (persisted via `chrome.storage.sync`).
+- [x] Options page; multi-provider; optional self-hosted backend (Hono edge) + Docker.
 
-*   [ ] **Autocomplete & Prediction:**
-    *   [ ] Suggest next few words as user types
-    *   [ ] Context-aware completions
-    *   [ ] Configurable suggestion length
-*   [ ] **Contextual Understanding:**
-    *   [ ] Consider previous paragraphs for consistency
-    *   [ ] Document-wide tone analysis
-    *   [ ] Track terminology and style preferences
-*   [x] **Reading Time Estimates:** (Completed in Phase 2)
-*   [x] **Vocabulary Diversity Metrics:** (Completed in Phase 2)
-*   [ ] **Writing Analytics:**
-    *   [ ] Track writing habits over time
-    *   [ ] Most used words analysis
-    *   [ ] Sentence length distribution
-    *   [ ] Weekly/monthly reports
-*   [ ] **Smart Suggestions:**
-    *   [ ] Synonym recommendations for overused words
-    *   [ ] Transition word suggestions
-    *   [ ] Genre-specific recommendations
+**In progress / planned**
+- [ ] Robustness in complex contenteditable editors (ongoing).
+- [ ] Better Google Docs coverage.
+- [ ] Firefox / Safari (WebExtensions) ports.
 
 ---
 
-## 🌐 Phase 4: Expansion & Ecosystem (Planned)
+## 🖥️ Desktop App (Windows) — **shipped**
 
-The final phase aims to bring OpenGrammar to every platform where people write.
+> Previously listed as "Phase 4 / planned" upstream; it is now **built and shipping on Windows.**
 
-*   [ ] **Cross-Browser Support:**
-    *   [ ] Firefox extension (WebExtensions API)
-    *   [ ] Safari extension (Safari Web Extension Converter)
-    *   [ ] Edge extension (Chromium-based)
-*   [ ] **Desktop Applications:**
-    *   [ ] Electron-based app for Windows, macOS, Linux
-    *   [ ] System-wide text input integration
-    *   [ ] Native messaging for full system access
-*   [ ] **Developer API:**
-    *   [ ] Public REST API with authentication
-    *   [ ] Rate limiting and usage tiers
-    *   [ ] SDK packages (npm, pip)
-    *   [ ] API documentation portal
-*   [ ] **Community Ecosystem:**
-    *   [ ] Custom rule marketplace
-    *   [ ] Shared prompt library
-    *   [ ] Language packs for non-English support
-    *   [ ] Plugin system for extensibility
+**Shipped**
+- [x] Native Rust app (no Electron): `ograms-engine` + `ograms-hotkey`.
+- [x] Reads the focused field via UI Automation (skips password fields; not a keylogger).
+- [x] Global hotkey (`Ctrl+Alt+J`) one-shot full correction.
+- [x] **Proactive monitoring + true OS overlay underlines** (red Harper / blue-dotted LLM),
+  whole-word clickable, tracking window moves.
+- [x] **Click-to-fix card** — kicker + reason + candidates + Dismiss; light-dismiss;
+  on-screen clamping (flips above the word near the bottom edge).
+- [x] **Autocorrect** *(opt-in)* — iPhone-style, freshly-typed only, revert-learning ledger.
+- [x] **LLM rewrite pill** — Polish / Formalize / Casual with a **preview → Apply/Cancel**.
+- [x] System tray (state icon + Pause/Settings/Quit); skinned pure-Win32 settings window.
+- [x] Per-app exclusion (browsers excluded by default); DPAPI-encrypted key; autostart.
+- [x] Per-monitor-V2 DPI; correct on mixed-resolution monitors.
 
----
-
-## 📊 Feature Status Summary
-
-| Feature | Status | Version |
-|---------|--------|---------|
-| Grammar Checking | ✅ Complete | v1.0 |
-| Multi-Provider AI | ✅ Complete | v2.0 |
-| Local LLM (Ollama) | ✅ Complete | v2.0 |
-| Interactive Tooltips | ✅ Complete | v1.0 |
-| Options Page | ✅ Complete | v1.0 |
-| Tone Rewriting | ✅ Complete | v2.1 |
-| Writing Statistics | ✅ Complete | v2.1 |
-| Custom Prompts | ✅ Complete | v2.1 |
-| Google Docs Support | 🚧 In Progress | - |
-| Autocomplete | 📋 Planned | v3.0 |
-| Firefox Support | 📋 Planned | v3.0 |
-| Desktop Apps | 📋 Planned | v4.0 |
-| Developer API | 📋 Planned | v4.0 |
+**In progress / planned**
+- [ ] **Phase 2 deeper capture** — Electron/IA2 activation + privacy gate for apps with
+  limited UIA accessibility.
+- [ ] **Selection-scoped rewrite** — rewrite only highlighted text (today: whole field).
+- [ ] Residual false-positive guards (proper-noun / capitalization edge cases).
+- [ ] Packaging + installer + code signing; auto-update.
+- [ ] macOS / Linux exploration.
 
 ---
 
-## 🤝 How to Help
+## 🤝 How to help
 
-We need developers, designers, and testers to make this roadmap a reality!
-
-### Contribution Areas
-
-1.  **Core Features:** Pick a feature from Phase 3 or 4 and implement it
-2.  **Bug Fixes:** Check the GitHub issues tab
-3.  **Documentation:** Improve guides, add tutorials
-4.  **Testing:** Test on different browsers and websites
-5.  **Translations:** Help localize OpenGrammar for other languages
-
-### Getting Started
-
-1.  Fork the repository
-2.  Check `FEATURES_IMPLEMENTATION.md` for implementation guides
-3.  Create a feature branch
-4.  Submit a pull request
-
-If you're interested in contributing, please start a discussion on GitHub or join our Discord server!
+Pick an item above, read [CONTRIBUTING.md](CONTRIBUTING.md), branch, and open a PR.
+Bugs/ideas → GitHub Issues / Discussions.
 
 ---
 
-## 📅 Release Timeline
-
-| Version | Target | Features |
-|---------|--------|----------|
-| v2.1 | Current | Tone rewriting, statistics, custom prompts |
-| v3.0 | Q2 2026 | Autocomplete, Firefox support, Google Docs |
-| v3.5 | Q3 2026 | Contextual understanding, writing analytics |
-| v4.0 | Q4 2026 | Desktop apps, Developer API, Safari support |
-
-*Timeline is approximate and may change based on community contributions.*
+*This roadmap describes the fork. The original OpenGrammar roadmap and history remain with
+the [upstream project](https://github.com/swadhinbiswas/opengrammar).*
