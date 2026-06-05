@@ -72,6 +72,47 @@ let autocorrectDelayMs = 2000; // idle (ms) before autocorrect applies; see sett
 let isContextInvalidated = false;
 
 /**
+ * Resolve the *real* focused element across (open) Shadow DOM boundaries.
+ *
+ * Plain `document.activeElement` stops at the shadow HOST: when a field lives
+ * inside a web component (Angular/Material, Play Console, Lit, etc.) focus
+ * retargets to the host and the actual editable inside the shadow root is never
+ * seen. We descend `shadowRoot.activeElement` until we reach the innermost
+ * focused node.
+ *
+ * NOTE: CLOSED shadow roots expose `null` for `.shadowRoot` by design and are
+ * inaccessible — this cannot be recovered. Most Angular/Material components use
+ * OPEN roots, which this fully recovers.
+ */
+function deepActiveElement(): HTMLElement | null {
+  let el: Element | null = document.activeElement;
+  while (el?.shadowRoot?.activeElement) {
+    el = el.shadowRoot.activeElement;
+  }
+  return el instanceof HTMLElement ? el : null;
+}
+
+/**
+ * Resolve the originating element of a (focus/input) event, undoing Shadow DOM
+ * retargeting. `event.composedPath()[0]` is the true target inside an open
+ * shadow root; `event.target` would be the host. Falls back to the existing
+ * target resolution when composedPath is unavailable (older targets / closed
+ * roots / synthetic events).
+ */
+function getElementFromEvent(event: Event): HTMLElement | null {
+  try {
+    if (typeof event.composedPath === 'function') {
+      const path = event.composedPath();
+      const first = path && path[0];
+      if (first instanceof HTMLElement) return first;
+    }
+  } catch {
+    /* composedPath can throw on some synthetic events — fall through */
+  }
+  return getElementFromTarget(event.target);
+}
+
+/**
  * Check if the extension context is still valid
  */
 function checkContext(): boolean {
@@ -96,6 +137,12 @@ function deactivateAll() {
     deactivateElement(element);
   });
   activeElements.clear();
+  // Stop the late-mount watcher too (e.g. on context invalidation) so we don't
+  // keep reacting to DOM churn after the extension is gone.
+  if (lateMountObserver) {
+    lateMountObserver.disconnect();
+    lateMountObserver = null;
+  }
 }
 
 /**
@@ -132,6 +179,11 @@ function initialize() {
 
   // Check for already focused elements on page load
   setTimeout(checkExistingFocusedElement, 500);
+
+  // SPA fields (Gmail compose, Play Console, any JS-heavy app) mount lazily,
+  // so the one-shot check above misses them. Watch for late DOM additions and
+  // re-probe the (deep) focused element when the page grows.
+  startLateMountObserver();
 
   // Verify connection to background script (no backend — direct provider model)
   try {
@@ -233,7 +285,9 @@ function isDomainDisabled(): boolean {
  */
 /** The editable element + selected text + best-effort offset, or null. */
 function getEditableSelection(): { el: HTMLElement; text: string; offset: number } | null {
-  const ae = document.activeElement as HTMLElement | null;
+  // deepActiveElement() so a focused input/textarea inside an open shadow root
+  // (e.g. Play Console web components) is found, not its host.
+  const ae = deepActiveElement();
   if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT')) {
     const input = ae as HTMLInputElement | HTMLTextAreaElement;
     const s = input.selectionStart;
@@ -244,7 +298,15 @@ function getEditableSelection(): { el: HTMLElement; text: string; offset: number
     }
     return null;
   }
-  const selObj = window.getSelection();
+
+  // Document-level selection. Inside a Shadow DOM, window.getSelection() is
+  // often empty/collapsed because the selection lives in the shadow root's own
+  // selection. Recover it from the shadow root (open roots only) or composedPath.
+  let selObj = window.getSelection();
+  if (!selObj || selObj.isCollapsed || selObj.rangeCount === 0) {
+    const shadowSel = getShadowSelection();
+    if (shadowSel) selObj = shadowSel;
+  }
   if (!selObj || selObj.isCollapsed || selObj.rangeCount === 0) return null;
   const text = selObj.toString();
   if (text.trim().length < 2) return null;
@@ -261,7 +323,41 @@ function getEditableSelection(): { el: HTMLElement; text: string; offset: number
       }
       return { el: node, text, offset };
     }
-    node = node.parentNode;
+    // Hop out of a shadow root to its host so the contenteditable ancestor
+    // search continues across the boundary.
+    const parent = node.parentNode;
+    if (!parent && node instanceof ShadowRoot) {
+      node = node.host;
+    } else {
+      node = parent;
+    }
+  }
+  return null;
+}
+
+/**
+ * Recover a Selection from inside an (open) Shadow DOM, where the top-level
+ * window.getSelection() reports nothing. We walk from deepActiveElement() up
+ * through its hosting shadow roots and ask each root's own getSelection()
+ * (a non-standard but widely-implemented Shadow DOM API) for a live selection.
+ * Returns null if none is found (or roots are closed — inaccessible by design).
+ */
+function getShadowSelection(): Selection | null {
+  let node: Node | null = deepActiveElement();
+  while (node) {
+    const root = node.getRootNode();
+    if (root instanceof ShadowRoot) {
+      const rootSel = (root as unknown as { getSelection?: () => Selection | null }).getSelection;
+      if (typeof rootSel === 'function') {
+        const sel = rootSel.call(root);
+        if (sel && !sel.isCollapsed && sel.rangeCount > 0 && sel.toString().trim().length >= 2) {
+          return sel;
+        }
+      }
+      node = root.host;
+    } else {
+      break;
+    }
   }
   return null;
 }
@@ -286,11 +382,70 @@ function checkExistingFocusedElement() {
     return;
   }
 
-  const activeElement = document.activeElement as HTMLElement;
+  // deepActiveElement() so a field inside an (open) shadow root — the real
+  // target on Play Console / web-component apps — is detected, not its host.
+  const activeElement = deepActiveElement();
   if (activeElement && isEditable(activeElement)) {
     console.log('[OpenGrammar] Found active element on load:', activeElement.tagName);
     activateElement(activeElement);
   }
+}
+
+let lateMountObserver: MutationObserver | null = null;
+
+/**
+ * Re-probe the (deep) focused element for editability and activate it. Used by
+ * the late-mount observer so fields that mount AFTER focus / page load (SPA
+ * compose windows, web-component apps) still get picked up.
+ */
+function reprobeActiveElement() {
+  if (!checkContext() || isDomainDisabled()) return;
+  const el = deepActiveElement();
+  if (el && isEditable(el) && !activeElements.has(el)) {
+    console.log('[OpenGrammar] Late-mounted editable detected:', el.tagName);
+    activateElement(el);
+  }
+}
+
+const debouncedReprobe = debounce(reprobeActiveElement, 500);
+
+/**
+ * Watch document.documentElement for significant DOM growth and, when it
+ * happens, re-check the focused element. Cheap by design: it only fires the
+ * (debounced) re-probe when nodes are actually ADDED, and ignores mutations
+ * coming from OpenGrammar's own decoration UI.
+ */
+function startLateMountObserver() {
+  if (lateMountObserver) return;
+  lateMountObserver = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.type !== 'childList' || m.addedNodes.length === 0) continue;
+      // Ignore our own UI churn (underlines/tooltips/badges) so we don't
+      // re-probe in a loop while highlighting.
+      let significant = false;
+      m.addedNodes.forEach((n) => {
+        if (!(n instanceof HTMLElement)) return;
+        if (
+          n.id === 'opengrammar-highlights' ||
+          n.classList?.contains('opengrammar-tooltip') ||
+          n.classList?.contains('opengrammar-badge') ||
+          n.classList?.contains('opengrammar-underline') ||
+          n.classList?.contains('og-selection-menu')
+        ) {
+          return;
+        }
+        significant = true;
+      });
+      if (significant) {
+        debouncedReprobe();
+        return;
+      }
+    }
+  });
+  lateMountObserver.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  });
 }
 
 /**
@@ -300,7 +455,9 @@ function handleFocusIn(event: FocusEvent) {
   if (!checkContext()) return;
   if (isDomainDisabled()) return;
 
-  const target = getElementFromTarget(event.target);
+  // Prefer composedPath()[0] so Shadow DOM retargeting (focus reported on the
+  // shadow HOST) is undone and we get the real editable inside the root.
+  const target = getElementFromEvent(event);
   const normalizedTarget = normalizeEditableTarget(target);
   if (normalizedTarget && isEditable(normalizedTarget)) {
     console.log('[OpenGrammar] Focus in:', normalizedTarget.tagName, normalizedTarget.className);
@@ -998,6 +1155,12 @@ function getPageContext(): string {
 
 function getEditorType(element: HTMLElement): string {
   if (window.location.hostname.includes('docs.google.com')) return 'google-docs';
+  if (
+    window.location.hostname.includes('mail.google.com') &&
+    element.closest('div[g_editable="true"], div[aria-label="Message Body"][contenteditable="true"]')
+  ) {
+    return 'gmail';
+  }
   if (element.tagName === 'TEXTAREA') return 'textarea';
   if (element.tagName === 'INPUT') return 'input';
   if (element.isContentEditable) return 'contenteditable';

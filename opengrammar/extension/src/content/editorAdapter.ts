@@ -19,6 +19,7 @@ export type EditorKind =
   | 'input'
   | 'textarea'
   | 'draft'
+  | 'gmail'
   | 'lexical'
   | 'prosemirror'
   | 'slate'
@@ -31,6 +32,12 @@ export function detectEditor(el: HTMLElement): EditorKind {
   if (el.tagName === 'INPUT') return 'input';
   if (el.tagName === 'TEXTAREA') return 'textarea';
   if (el.closest('.public-DraftEditor-content')) return 'draft';
+  // Gmail compose body: contenteditable that Gmail's own editor reconciles in
+  // the same frame, reverting a naive insert. Detected via stable selectors so
+  // we can give it the deferred re-apply below.
+  if (el.closest('div[g_editable="true"], div[aria-label="Message Body"][contenteditable="true"]')) {
+    return 'gmail';
+  }
   if (el.closest('[data-lexical-editor="true"]')) return 'lexical';
   if (el.closest('.ProseMirror')) return 'prosemirror';
   if (el.closest('[data-slate-editor="true"]')) return 'slate';
@@ -145,9 +152,11 @@ function applyToRichEditor(el: HTMLElement, fix: Fix, kind: EditorKind): boolean
     fireInput(el, fix.replacement);
   };
 
-  // Draft.js reconciles editorState on a tick; replacing synchronously
-  // inside the same frame races its reconciler and gets reverted.
-  if (kind === 'draft') setTimeout(run, 0);
+  // Draft.js (and Gmail's compose editor) reconcile their state on a tick;
+  // replacing synchronously inside the same frame races the reconciler and
+  // gets reverted. Defer to the next tick so the insert sticks. execCommand
+  // ('insertText') is still the primary apply for both — only the timing differs.
+  if (kind === 'draft' || kind === 'gmail') setTimeout(run, 0);
   else run();
   return true;
 }

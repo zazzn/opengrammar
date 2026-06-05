@@ -38,6 +38,12 @@
       "js": ["src/content/google-docs.ts"],
       "run_at": "document_idle",
       "all_frames": true
+    },
+    {
+      "matches": ["https://mail.google.com/*"],
+      "js": ["src/content/gmail.ts"],
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ],
   "web_accessible_resources": [
