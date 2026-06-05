@@ -31,9 +31,10 @@ use windows::Win32::UI::WindowsAndMessaging::{
     GetWindowLongPtrW,
     GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, HMENU, IDC_ARROW,
     IsWindowVisible, LB_ADDSTRING, LB_DELETESTRING, LB_GETCURSEL, LBS_NOTIFY, LoadCursorW, MSG,
-    PostQuitMessage, RegisterClassW, SET_WINDOW_POS_FLAGS, SW_SHOW,
+    PostMessageW, PostQuitMessage, RegisterClassW, SET_WINDOW_POS_FLAGS, SW_SHOW,
     SendMessageW, SetWindowLongPtrW, SetWindowPos, SetWindowTextW, ShowWindow, TranslateMessage,
-    WINDOW_EX_STYLE, WINDOW_STYLE, WM_COMMAND, WM_CTLCOLORBTN, WM_CTLCOLORSTATIC, WM_DESTROY,
+    WINDOW_EX_STYLE, WINDOW_STYLE, WM_APP, WM_COMMAND, WM_CTLCOLORBTN, WM_CTLCOLORSTATIC,
+    WM_DESTROY,
     WM_ERASEBKGND, WM_PAINT, WM_SETFONT, WNDCLASSW, WS_BORDER, WS_CAPTION, WS_CHILD, WS_MINIMIZEBOX,
     WS_OVERLAPPED, WS_SYSMENU, WS_TABSTOP, WS_VISIBLE, WS_VSCROLL,
 };
@@ -68,6 +69,10 @@ const ID_SECTION_AI: i32 = 2001;
 const ID_SECTION_APPS: i32 = 2002;
 const ID_HINT: i32 = 2003;
 const ID_PRIVACY: i32 = 2004;
+// Worker-thread → UI message carrying the fetched Ollama model list as a
+// Box<Vec<String>> raw pointer in LPARAM, so the network fetch never blocks the
+// settings window.
+const WM_OLLAMA_MODELS: u32 = WM_APP + 1;
 
 // Brand palette (0xRRGGBB).
 const C_INDIGO: u32 = 0x4F46E5;
@@ -426,24 +431,46 @@ unsafe fn combo_set_sel(h: HWND, i: i32) {
     }
 }
 
-unsafe fn fill_models(combo: HWND, provider: &str, current: &str, ollama_url: &str) {
+unsafe fn fill_models(parent: HWND, combo: HWND, provider: &str, current: &str, ollama_url: &str) {
     unsafe {
         SendMessageW(combo, CB_RESETCONTENT, None, None);
-        // Ollama: query the local server for the user's installed writing models
-        // (best first), then recommended-to-pull — parity with the extension.
-        // Other providers use the static curated list. The box stays editable.
-        let models: Vec<String> = if provider == "ollama" {
-            ograms_engine::ollama::dropdown_models(ollama_url)
-        } else {
-            models_for(provider).iter().map(|s| (*s).to_string()).collect()
-        };
-        for m in &models {
-            combo_add(combo, m.as_str());
+        if provider == "ollama" {
+            // Show the recommended list IMMEDIATELY (so the dropdown is never
+            // empty and the UI stays responsive), then fetch the user's installed
+            // models on a WORKER THREAD and merge them in via WM_OLLAMA_MODELS.
+            // The network call must never run on the UI thread (it froze before).
+            for m in ograms_engine::ollama::RECOMMENDED {
+                combo_add(combo, m);
+            }
+            if !current.is_empty() {
+                set_text(combo, current);
+            } else if let Some(first) = ograms_engine::ollama::RECOMMENDED.first() {
+                set_text(combo, first);
+            }
+            let hwnd_val = parent.0 as isize;
+            let url = ollama_url.to_string();
+            std::thread::spawn(move || {
+                let models = ograms_engine::ollama::dropdown_models(&url);
+                let boxed = Box::into_raw(Box::new(models));
+                unsafe {
+                    let _ = PostMessageW(
+                        Some(HWND(hwnd_val as *mut core::ffi::c_void)),
+                        WM_OLLAMA_MODELS,
+                        WPARAM(0),
+                        LPARAM(boxed as isize),
+                    );
+                }
+            });
+            return;
+        }
+        let models = models_for(provider);
+        for m in models {
+            combo_add(combo, m);
         }
         if !current.is_empty() {
             set_text(combo, current);
         } else if let Some(first) = models.first() {
-            set_text(combo, first.as_str());
+            set_text(combo, first);
         }
     }
 }
@@ -596,7 +623,7 @@ unsafe fn create_controls(hwnd: HWND, skin: &Skin) {
             }
         }
         combo_set_sel(provider_combo, psel);
-        fill_models(dlg(hwnd, ID_MODEL), &cfg.provider, &cfg.model, &cfg.ollama_url);
+        fill_models(hwnd, dlg(hwnd, ID_MODEL), &cfg.provider, &cfg.model, &cfg.ollama_url);
 
         let running = running_apps();
         let running_combo = dlg(hwnd, ID_RUNNING);
@@ -789,7 +816,7 @@ unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam:
                             // Reload config for the current Ollama URL (so the
                             // model list can query the local server).
                             let ourl = Config::load().ollama_url;
-                            fill_models(dlg(hwnd, ID_MODEL), PROVIDER_IDS[pi as usize], "", &ourl);
+                            fill_models(hwnd, dlg(hwnd, ID_MODEL), PROVIDER_IDS[pi as usize], "", &ourl);
                         }
                     }
                     ID_ADD => on_add(hwnd),
@@ -802,6 +829,34 @@ unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam:
                         let _ = DestroyWindow(hwnd);
                     }
                     _ => {}
+                }
+                LRESULT(0)
+            }
+            WM_OLLAMA_MODELS => {
+                // The worker finished fetching installed Ollama models. Reclaim
+                // the boxed payload (freeing it), and if Ollama is still selected
+                // replace the recommended-only list with installed-first.
+                let models: Vec<String> = if lparam.0 != 0 {
+                    *Box::from_raw(lparam.0 as *mut Vec<String>)
+                } else {
+                    Vec::new()
+                };
+                let pi = combo_sel(dlg(hwnd, ID_PROVIDER));
+                let still_ollama = pi >= 0
+                    && (pi as usize) < PROVIDER_IDS.len()
+                    && PROVIDER_IDS[pi as usize] == "ollama";
+                if still_ollama && !models.is_empty() {
+                    let combo = dlg(hwnd, ID_MODEL);
+                    let current = get_text(combo);
+                    SendMessageW(combo, CB_RESETCONTENT, None, None);
+                    for m in &models {
+                        combo_add(combo, m.as_str());
+                    }
+                    if !current.trim().is_empty() {
+                        set_text(combo, &current);
+                    } else if let Some(first) = models.first() {
+                        set_text(combo, first.as_str());
+                    }
                 }
                 LRESULT(0)
             }

@@ -1,55 +1,74 @@
 //! Ollama model discovery + writing-suitability ranking for the desktop Settings
-//! "Model" dropdown — kept at parity with the extension's `shared/ollamaModels.ts`.
+//! "Model" dropdown — informed by `docs/25-local-llm-model-benchmark.md`.
 //!
 //! Like the extension, we query the LOCAL Ollama server for the user's INSTALLED
-//! models, hide ones unsuited to prose correction (code / embedding / vision /
-//! math / safety), and rank the rest so the best writing model is offered first.
-//! When nothing usable is installed (or Ollama isn't running) we fall back to a
-//! curated list of recommended models so the user knows what to `ollama pull`.
+//! models, hide ones unsuited to prose correction, and rank the rest so the best
+//! writing model is offered first. When nothing usable is installed (or Ollama
+//! isn't running) we fall back to a curated, benchmark-proven RECOMMENDED list so
+//! the user knows what to `ollama pull`.
+//!
+//! TRANSPORT CAVEAT (kept in sync with the benchmark doc): the desktop sends LLM
+//! requests over the OpenAI-compatible `/v1/chat/completions` path. The Qwen
+//! "thinking" tags (`qwen3.5:*`, `qwen3:latest`, `qwen3:<n>b` without `-instruct`)
+//! return EMPTY `message.content` on that path (their text lands in the reasoning
+//! field), so they are unusable here and are hidden. The extension avoids this by
+//! using Ollama's native `/api/chat` path; porting that to the desktop would let
+//! `qwen3.5:4b` (the benchmark's overall local best) be recommended too — tracked
+//! as a follow-up.
 
-/// Curated writing models we recommend (best first). Shown when none are
-/// installed / Ollama is unreachable, and appended after any installed models so
-/// the user can see what to pull. (Only widely-available Ollama tags.)
+/// Curated, benchmark-proven writing models that work on the desktop's `/v1`
+/// transport (best first). Shown when none are installed / Ollama is unreachable,
+/// and appended after any installed models so the user can see what to pull.
+/// Source: docs/25 (masked + clean GPU runs).
 pub const RECOMMENDED: &[&str] = &[
-    "qwen2.5:7b",
-    "llama3.2:3b",
-    "gemma2:9b",
-    "llama3.1:8b",
-    "qwen2.5:3b",
-    "mistral:7b",
+    "qwen3:4b-instruct", // best local default: 113/123 masked, ~700ms, /v1-safe
+    "qwen2.5:7b",        // strongest masked /v1-safe quality (121/123), slower
+    "llama3.2:3b",       // fast, solid (95/123)
+    "qwen2.5:3b",        // fast alternate (93/123)
+    "gemma3:4b",         // alternate
 ];
 
-/// True for models unsuited to writing correction (code, embedding, vision,
-/// math, safety/moderation, rerankers). Mirrors the extension's exclusion list.
+/// Category exclusions (code / embedding / vision / math / safety / rerankers) +
+/// the `/v1`-incompatible Qwen thinking tags (see the transport caveat above).
 fn is_excluded(name: &str) -> bool {
     let n = name.to_ascii_lowercase();
     const BAD: &[&str] = &[
         "coder", "code", "embed", "vision", "-vl", "math", "guard", "moderation", "rerank",
         "nomic", "clip", "whisper", "llava",
     ];
-    BAD.iter().any(|b| n.contains(b))
+    if BAD.iter().any(|b| n.contains(b)) {
+        return true;
+    }
+    // Thinking-style Qwen tags → empty content on the OpenAI-compatible path.
+    if n.starts_with("qwen3.5") || n.starts_with("qwen3:latest") {
+        return true;
+    }
+    if n.starts_with("qwen3:") && !n.contains("instruct") {
+        return true;
+    }
+    false
 }
 
-/// Writing-suitability rank (higher = better), mirroring the extension's
-/// `WRITING_RANKS`. Unknown-but-allowed models get a small positive rank so they
-/// still appear (after the curated ones).
+/// Writing-suitability rank (higher = better) for `/v1`-safe models, from the
+/// benchmark. Unknown-but-allowed models get a small positive rank so they still
+/// appear (after the curated ones).
 fn writing_rank(name: &str) -> i32 {
     let n = name.to_ascii_lowercase();
     let s = |p: &str| n.starts_with(p);
-    if s("qwen3.5:4b") {
+    if s("qwen3:4b-instruct") {
         100
     } else if s("qwen2.5:7b") {
         96
-    } else if s("qwen3:latest") || s("qwen3:4b-instruct") {
-        92
-    } else if s("qwen3.5:2b") || s("qwen2.5:3b") {
+    } else if s("qwen2.5:14b") {
+        90
+    } else if s("llama3.2:3b") {
         88
-    } else if s("llama3.2:3b") || s("qwen2.5:14b") {
+    } else if s("qwen2.5:3b") {
         86
+    } else if s("gemma3:4b") {
+        84
     } else if s("gemma2:9b") {
         82
-    } else if s("gemma3:4b") {
-        80
     } else if s("llama3.1:8b-instruct") {
         78
     } else if s("llama3.1:8b") {
@@ -63,7 +82,7 @@ fn writing_rank(name: &str) -> i32 {
     }
 }
 
-/// Filter out non-writing models and rank the rest (best first).
+/// Filter out non-writing / incompatible models and rank the rest (best first).
 pub fn rank_writing_models(installed: &[String]) -> Vec<String> {
     let mut v: Vec<String> = installed
         .iter()
@@ -75,8 +94,8 @@ pub fn rank_writing_models(installed: &[String]) -> Vec<String> {
 }
 
 /// Query the local Ollama server (`GET {base}/api/tags`) for installed model
-/// names. Returns an empty Vec on any error (Ollama not running, timeout, parse).
-/// Uses a short timeout so the Settings UI never hangs if Ollama is down.
+/// names. Returns an empty Vec on any error. Uses a short timeout — but callers
+/// must still run this OFF the UI thread (the Settings window spawns a worker).
 #[cfg(feature = "net")]
 pub fn installed_models(base_url: &str) -> Vec<String> {
     use std::time::Duration;
@@ -86,7 +105,7 @@ pub fn installed_models(base_url: &str) -> Vec<String> {
     let base = base.strip_suffix("/v1").unwrap_or(base);
     let url = format!("{base}/api/tags");
     let agent = ureq::AgentBuilder::new()
-        .timeout(Duration::from_millis(900))
+        .timeout(Duration::from_millis(1500))
         .build();
     let Ok(resp) = agent.get(&url).call() else {
         return Vec::new();
@@ -112,10 +131,9 @@ pub fn installed_models(_base_url: &str) -> Vec<String> {
     Vec::new()
 }
 
-/// The list to put in the desktop Settings "Model" dropdown for Ollama:
-/// the user's installed writing models (best first), then any recommended models
-/// not already installed (so they can see what to pull). The box stays editable,
-/// so a user can always type any model tag.
+/// The list for the Settings "Model" dropdown: installed writing models (best
+/// first), then any recommended not installed (so the user can see what to pull).
+/// Does the network fetch — call OFF the UI thread.
 pub fn dropdown_models(base_url: &str) -> Vec<String> {
     let mut out = rank_writing_models(&installed_models(base_url));
     for r in RECOMMENDED {
