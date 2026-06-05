@@ -62,6 +62,7 @@ const ID_REMOVE: i32 = 1011;
 const ID_SAVE: i32 = 1012;
 const ID_CANCEL: i32 = 1013;
 const ID_AUTOCORRECT: i32 = 1014;
+const ID_AC_DELAY: i32 = 1015;
 // Styled statics (so WM_CTLCOLORSTATIC can color them).
 const ID_SECTION_AI: i32 = 2001;
 const ID_SECTION_APPS: i32 = 2002;
@@ -90,6 +91,14 @@ const PROVIDER_NAMES: &[&str] = &[
     "Custom",
 ];
 const DIALECTS: &[&str] = &["American", "British", "Canadian", "Australian"];
+// Autocorrect delay presets: visible label + idle milliseconds before applying.
+const AC_DELAYS: &[(&str, u64)] = &[
+    ("after 1s", 1000),
+    ("after 1.5s", 1500),
+    ("after 2s", 2000),
+    ("after 3s", 3000),
+    ("after 5s", 5000),
+];
 
 fn models_for(provider: &str) -> &'static [&'static str] {
     // Curated to models that fit fast, accurate proofreading. Reasoning models
@@ -504,7 +513,8 @@ unsafe fn create_controls(hwnd: HWND, skin: &Skin) {
         mk(hwnd, w!("STATIC"), w!("Language:"), label, s(lx), s(112), s(120), s(20), 0, body);
         mk(hwnd, w!("COMBOBOX"), w!(""), combo_list, s(ix), s(110), s(180), s(240), ID_DIALECT, body);
         mk(hwnd, w!("BUTTON"), w!("Start with Windows"), check, s(lx), s(140), s(200), s(22), ID_AUTOSTART, body);
-        mk(hwnd, w!("BUTTON"), w!("Autocorrect as I type"), check, s(240), s(140), s(240), s(22), ID_AUTOCORRECT, body);
+        mk(hwnd, w!("BUTTON"), w!("Autocorrect"), check, s(240), s(140), s(100), s(22), ID_AUTOCORRECT, body);
+        mk(hwnd, w!("COMBOBOX"), w!(""), combo_list, s(344), s(138), s(136), s(200), ID_AC_DELAY, body);
 
         // AI section
         mk(hwnd, w!("STATIC"), w!("AI CONTEXT CHECKING (OPTIONAL)"), label, s(lx), s(176), s(440), s(16), ID_SECTION_AI, skin.section);
@@ -549,6 +559,16 @@ unsafe fn create_controls(hwnd: HWND, skin: &Skin) {
         set_check(dlg(hwnd, ID_AI), cfg.llm_enabled);
         set_check(dlg(hwnd, ID_AUTOCORRECT), cfg.autocorrect_enabled);
         set_check(dlg(hwnd, ID_AUTOSTART), config::is_autostart());
+
+        let delay_combo = dlg(hwnd, ID_AC_DELAY);
+        let mut acsel = 3i32; // fallback → "after 3s"
+        for (i, &(lbl, ms)) in AC_DELAYS.iter().enumerate() {
+            combo_add(delay_combo, lbl);
+            if ms == cfg.autocorrect_delay_ms {
+                acsel = i as i32;
+            }
+        }
+        combo_set_sel(delay_combo, acsel);
 
         let dialect_combo = dlg(hwnd, ID_DIALECT);
         let mut dsel = 0;
@@ -700,6 +720,10 @@ unsafe fn save_settings(hwnd: HWND) {
         cfg.enabled = get_check(dlg(hwnd, ID_ENABLE));
         cfg.llm_enabled = get_check(dlg(hwnd, ID_AI));
         cfg.autocorrect_enabled = get_check(dlg(hwnd, ID_AUTOCORRECT));
+        let aci = combo_sel(dlg(hwnd, ID_AC_DELAY));
+        if aci >= 0 && (aci as usize) < AC_DELAYS.len() {
+            cfg.autocorrect_delay_ms = AC_DELAYS[aci as usize].1;
+        }
         let di = combo_sel(dlg(hwnd, ID_DIALECT));
         if di >= 0 && (di as usize) < DIALECTS.len() {
             cfg.harper_dialect = DIALECTS[di as usize].to_string();

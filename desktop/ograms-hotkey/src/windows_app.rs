@@ -66,16 +66,10 @@ const WM_LLM_RESULT: u32 = WM_APP + 3;
 const WM_REWRITE_RESULT: u32 = WM_APP + 4;
 const POLL_INTERVAL: Duration = Duration::from_millis(450);
 const DEBOUNCE_DELAY: Duration = Duration::from_millis(600);
-/// Autocorrect waits for a deliberate pause, measured from the last edit, before
-/// auto-applying — far longer than the fast underline pass. This guarantees it
-/// never fires while the user is still typing (which moved the caret back onto
-/// the corrected word and let the next keystrokes overwrite it).
-///
-/// Matched to the browser extension's autocorrect feel. (The extension's grammar
-/// debounce is 800ms, but its `execCommand` apply is caret-safe at that speed;
-/// the desktop inserts via the clipboard/UIA, so it needs the user fully stopped,
-/// hence the longer, deliberate window here.)
-const AUTOCORRECT_IDLE: Duration = Duration::from_millis(3000);
+// Autocorrect's idle delay is user-configurable (Settings → "Autocorrect" delay
+// dropdown); see `Config::autocorrect_delay()`. It is always longer than the fast
+// underline pass so autocorrect never fires mid-typing (which would move the caret
+// onto the corrected word and let the next keystrokes overwrite it).
 static MAIN_THREAD_ID: AtomicU32 = AtomicU32::new(0);
 // Monotonic generation for proactive LLM requests; a worker's result is dropped
 // if the counter moved on (text changed / focus changed) while it was in flight.
@@ -634,11 +628,12 @@ impl<'a> MonitorState<'a> {
         // armed by the last lint. Because this never runs at the fast debounce, the
         // user has genuinely stopped typing, so moving and restoring the caret
         // can't collide with their keystrokes. If a fix lands, skip the rest.
+        let ac_delay = self.config.autocorrect_delay();
         if self.config.autocorrect_enabled
             && target.autocorrect_baseline.is_some()
             && target
                 .last_edit_at
-                .is_some_and(|t| t.elapsed() >= AUTOCORRECT_IDLE)
+                .is_some_and(|t| t.elapsed() >= ac_delay)
         {
             let baseline = target.autocorrect_baseline.take();
             let drawn = target.drawn.clone();

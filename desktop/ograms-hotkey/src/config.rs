@@ -9,6 +9,7 @@
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
+use std::time::Duration;
 
 use ograms_engine::DialectName;
 use ograms_engine::llm::{DEFAULT_TIMEOUT_MS, LlmConfig};
@@ -37,6 +38,9 @@ pub struct Config {
     /// Autocorrect: auto-apply high-confidence fixes (capitalization, small
     /// typos) as you type. Off by default — opt-in, since it edits silently.
     pub autocorrect_enabled: bool,
+    /// Idle time (ms) after the last keystroke before autocorrect applies.
+    /// User-configurable; longer = more deliberate, never fires mid-typing.
+    pub autocorrect_delay_ms: u64,
     pub provider: String,
     pub model: String,
     pub custom_base_url: String,
@@ -53,6 +57,7 @@ impl Default for Config {
             enabled: true,
             llm_enabled: true,
             autocorrect_enabled: false,
+            autocorrect_delay_ms: 3000,
             provider: "openai".to_string(),
             model: "gpt-4o-mini".to_string(),
             custom_base_url: String::new(),
@@ -113,6 +118,12 @@ impl Config {
             "australian" => DialectName::Australian,
             _ => DialectName::American,
         }
+    }
+
+    /// Idle time after the last keystroke before autocorrect applies. Clamped to
+    /// a sane range so a bad config value can't disable or spam autocorrect.
+    pub fn autocorrect_delay(&self) -> Duration {
+        Duration::from_millis(self.autocorrect_delay_ms.clamp(500, 10_000))
     }
 
     /// Resolved OpenAI-compatible base URL for the selected provider.

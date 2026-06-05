@@ -38,6 +38,27 @@ interface RecentApply {
 /** Ring buffer of recent auto-applies, newest last; pruned by time. */
 const recentApplies: RecentApply[] = [];
 
+/** Timestamp of the user's last keystroke, so the delay measures idle from the
+ *  last edit (set via noteAutocorrectEdit from the content script). */
+let lastEditAt = Date.now();
+/** A scheduled-but-not-yet-fired auto-apply, cancelled if the user resumes typing. */
+let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Cancel a scheduled (not-yet-applied) autocorrect. */
+export function cancelPendingAutocorrect(): void {
+  if (pendingTimer !== null) {
+    clearTimeout(pendingTimer);
+    pendingTimer = null;
+  }
+}
+
+/** Note a keystroke: refresh the idle clock and cancel any pending apply, so
+ *  autocorrect never fires while the user is still typing. */
+export function noteAutocorrectEdit(): void {
+  lastEditAt = Date.now();
+  cancelPendingAutocorrect();
+}
+
 /**
  * Per-element record of the text we saw on the previous call, used as the diff
  * baseline. The content script overwrites `EditableElement.lastText` on `input`
@@ -151,6 +172,7 @@ export function maybeAutocorrect(
   lastText: string,
   issues: Issue[],
   caretOffset: number,
+  delayMs: number,
 ): void {
   const now = Date.now();
   pruneRecentApplies(now);
@@ -201,27 +223,43 @@ export function maybeAutocorrect(
   // Apply right-to-left so earlier offsets stay valid as text shifts length.
   eligible.sort((a, b) => b.offset - a.offset);
 
-  let appliedAny = false;
-  for (const issue of eligible) {
-    const ok = applyFix(element, {
-      original: issue.original,
-      offset: issue.offset,
-      length: issue.length,
-      replacement: issue.suggestion,
-    });
-    if (ok) {
-      appliedAny = true;
-      recentApplies.push({
-        preText: text,
+  // Defer until the field has been idle for `delayMs` since the last keystroke.
+  // If the user resumes typing, the content script calls cancelPendingAutocorrect
+  // (via noteAutocorrectEdit), so this never fires mid-typing — which means the
+  // text (and these offsets) are still valid when it does fire. We only re-check
+  // that the field is still focused.
+  const applyEligible = () => {
+    pendingTimer = null;
+    if (document.activeElement !== element) return;
+    let appliedAny = false;
+    for (const issue of eligible) {
+      const ok = applyFix(element, {
         original: issue.original,
-        suggestion: issue.suggestion,
-        at: now,
+        offset: issue.offset,
+        length: issue.length,
+        replacement: issue.suggestion,
       });
+      if (ok) {
+        appliedAny = true;
+        recentApplies.push({
+          preText: text,
+          original: issue.original,
+          suggestion: issue.suggestion,
+          at: Date.now(),
+        });
+      }
     }
-  }
+    if (appliedAny) {
+      // We only act when the caret was already at the end, so end is correct.
+      moveCaretToEnd(element);
+    }
+  };
 
-  if (appliedAny) {
-    // We only act when the caret was already at the end, so end is correct.
-    moveCaretToEnd(element);
+  cancelPendingAutocorrect();
+  const remaining = delayMs - (Date.now() - lastEditAt);
+  if (remaining <= 0) {
+    applyEligible();
+  } else {
+    pendingTimer = setTimeout(applyEligible, remaining);
   }
 }
