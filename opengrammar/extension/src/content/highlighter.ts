@@ -16,6 +16,7 @@ let currentTooltip: HTMLElement | null = null;
 let currentRephrasePanel: HTMLElement | null = null;
 let highlightContainer: HTMLElement | null = null;
 let assistantBubble: HTMLElement | null = null;
+let assistantBubbleIssues: Issue[] = [];
 // Contenteditable overlay state — so scroll/resize can re-place underlines
 let overlayTarget: HTMLElement | null = null;
 let overlayIssues: Issue[] = [];
@@ -36,6 +37,8 @@ const correctionCache = new Map<string, string>();
 const BUBBLE_SIZE = 30; // px — small, fits inside the field corner
 const COMPACT_BUBBLE_SIZE = 24;
 const MIN_FIELD_HEIGHT = 38; // skip tiny inputs (matches Grammarly)
+const MODEL_BENCHMARK_URL = 'https://github.com/zazzn/opengrammar/blob/og-rewrite/docs/25-local-llm-model-benchmark.md';
+let modelHintShownThisSession = false;
 
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(n, max));
@@ -107,6 +110,24 @@ let inputMirrorTarget: HTMLElement | null = null;
 let cleanupInputMirror: (() => void) | null = null;
 let uiActive = false;
 
+type RectLike = { left: number; top: number; width: number; height: number };
+type DecorationUpdateKind = 'reposition' | 'rebuild';
+
+let underlineRects: Array<{ el: HTMLElement; base: RectLike }> = [];
+let underlineBaseTargetRect: RectLike | null = null;
+let underlineBaseText = '';
+let underlineBaseScrollLeft = 0;
+let underlineBaseScrollTop = 0;
+let underlinesAreVisible = true;
+let decorationRaf = 0;
+let pendingDecorationUpdate: DecorationUpdateKind | null = null;
+let decorationResizeObserver: ResizeObserver | null = null;
+let decorationIntersectionObserver: IntersectionObserver | null = null;
+let decorationPollInterval: number | null = null;
+let observedDecorationTarget: HTMLElement | null = null;
+let observedTargetIntersects = true;
+let fontReadyToken = 0;
+
 export function isUIActive(): boolean {
   return uiActive;
 }
@@ -114,17 +135,19 @@ export function isUIActive(): boolean {
 /* ────────────────────────────────────────────────────────────
    GRAMMARLY COLOR SYSTEM — exact hex values from Grammarly
 ──────────────────────────────────────────────────────────── */
-// Three visual tiers, matching the Grammarly convention:
-//   - Red (spelling)  = must fix, mechanical
-//   - Amber (grammar) = should fix, mechanical
-//   - Grey (clarity/style) = consider rewriting, suggestion only
-// Clarity and style share the grey "rewrite" tier so the eye learns one
-// pattern for "this is fine, but here's a tighter version".
+// Visual tiers (matches the QA legend "local mechanical = red" and the user's
+// ask "red for misspelled, red for punctuation/capitalization"):
+//   - Red (spelling + grammar) = Correctness, must-fix mechanical errors
+//   - Grey (clarity/style)     = consider rewriting, suggestion only
+//   - Blue (LLM/context)       = AI review (set in getUnderlineStyle, not here)
+// Spelling and grammar share Correctness red (Grammarly's actual convention).
+// Grey is darkened from #8e8e93 → #6b7280 so the dotted style line isn't too
+// faint to notice on white backgrounds.
 const COLORS = {
   spelling: { line: '#e53935', bg: 'rgba(229,57,53,0.10)',  hover: 'rgba(229,57,53,0.20)',  dot: '#e53935' },
-  grammar:  { line: '#f5a623', bg: 'rgba(245,166,35,0.12)', hover: 'rgba(245,166,35,0.24)', dot: '#f5a623' },
-  clarity:  { line: '#8e8e93', bg: 'rgba(142,142,147,0.10)', hover: 'rgba(142,142,147,0.22)', dot: '#8e8e93' },
-  style:    { line: '#8e8e93', bg: 'rgba(142,142,147,0.10)', hover: 'rgba(142,142,147,0.22)', dot: '#8e8e93' },
+  grammar:  { line: '#e53935', bg: 'rgba(229,57,53,0.10)',  hover: 'rgba(229,57,53,0.20)',  dot: '#e53935' },
+  clarity:  { line: '#6b7280', bg: 'rgba(107,114,128,0.12)', hover: 'rgba(107,114,128,0.24)', dot: '#6b7280' },
+  style:    { line: '#6b7280', bg: 'rgba(107,114,128,0.12)', hover: 'rgba(107,114,128,0.24)', dot: '#6b7280' },
 };
 
 function getC(type: string) {
@@ -200,6 +223,55 @@ function isMechanical(i: Issue): boolean {
   return ops.length <= 2 && changed.length <= 14;
 }
 
+/**
+ * Inline REVIEW layer = the conservative route. issuePolicy sends borderline
+ * grammar fixes here, and every proactive LLM/context correction lands here
+ * too (loose/lose, their/there). These are NOT auto-applied: they get a
+ * visually DISTINCT (dotted) underline that opens a preview card so the user
+ * notices the issue even when the local mechanical tier is silent — and decides
+ * before any text changes. This is the fix for "issues found but nothing is
+ * highlighted, so the user assumes the text is clean".
+ */
+function isInlineReview(i: Issue): boolean {
+  if (i.ignored) return false;
+  if (i.route !== 'sentence-review') return false;
+  const o = (i.original || '').trim();
+  const s = (i.suggestion || '').trim();
+  // Needs a concrete span + a concrete single replacement to underline+preview.
+  // Cap BOTH sides so a whole-sentence rewrite (which belongs in the sentence
+  // review panel, not an inline word underline) doesn't paint half a line.
+  return !!o && !!s && o !== s && o.length <= 120 && s.length <= 120;
+}
+
+/** Context/AI suggestions (vs local rule output) — drives the blue "AI" tint. */
+function isLlmIssue(i: Issue): boolean {
+  return i.source === 'llm' || i.source === 'context';
+}
+
+/** Anything that earns an inline underline: mechanical quick-fixes OR the
+ *  distinct review layer. (isMechanical already excludes sentence-review.) */
+function isUnderlinable(i: Issue): boolean {
+  return isMechanical(i) || isInlineReview(i);
+}
+
+/**
+ * Visual language for a single underline:
+ *   - mechanical quick-fix → STRAIGHT line, type color (red/amber/grey)
+ *   - local sentence-review → DOTTED line, type color
+ *   - LLM / context review  → DOTTED line, blue (matches the QA legend's
+ *     "LLM/context" swatch; clearly "AI suggestion, click to review")
+ * Chrome's native squiggle is already suppressed (spellcheck="false"), so the
+ * only collision left to resolve is local-vs-review, which dotted-vs-straight
+ * and red-vs-blue handle.
+ */
+const REVIEW_LLM_LINE = '#3b82f6';
+function getUnderlineStyle(issue: Issue): { line: string; dashed: boolean } {
+  if (isInlineReview(issue)) {
+    return { line: isLlmIssue(issue) ? REVIEW_LLM_LINE : getC(issue.type).line, dashed: true };
+  }
+  return { line: getC(issue.type).line, dashed: false };
+}
+
 export function highlightIssues(element: HTMLElement, issues: Issue[]) {
   initHighlightContainer();
   clearHighlights();
@@ -211,24 +283,79 @@ export function highlightIssues(element: HTMLElement, issues: Issue[]) {
   // path to the correction.
   showAssistantBubble(element, issues || []);
 
-  const mechanical = issues.filter(isMechanical);
-  if (mechanical.length === 0) {
+  // Two visual tiers share one overlay: mechanical quick-fixes (straight) and
+  // the review layer (dotted) — so a sentence-review/LLM issue is no longer
+  // invisible just because it isn't a one-click destructive fix.
+  const underlinable = (issues || []).filter(isUnderlinable);
+  if (underlinable.length === 0) {
     overlayTarget = null;
     overlayIssues = [];
     return;
   }
   if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-    renderInputUnderlines(element, mechanical);
+    renderInputUnderlines(element, underlinable);
   } else {
     // Contenteditable: overlay only — never mutate/recolor the host DOM.
-    renderOverlayUnderlines(element, mechanical);
+    renderOverlayUnderlines(element, underlinable);
   }
+}
+
+function getFieldTextSnapshot(element: HTMLElement): string {
+  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+    return String((element as HTMLInputElement | HTMLTextAreaElement).value ?? '');
+  }
+  return element.innerText || element.textContent || '';
+}
+
+function getScrollSnapshot(element: HTMLElement): { left: number; top: number } {
+  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+    const input = element as HTMLInputElement | HTMLTextAreaElement;
+    return { left: input.scrollLeft, top: input.scrollTop };
+  }
+  return { left: 0, top: 0 };
+}
+
+function cacheUnderlineBase(element: HTMLElement) {
+  const rect = element.getBoundingClientRect();
+  const scroll = getScrollSnapshot(element);
+  underlineBaseTargetRect = {
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height,
+  };
+  underlineBaseText = getFieldTextSnapshot(element);
+  underlineBaseScrollLeft = scroll.left;
+  underlineBaseScrollTop = scroll.top;
+  underlinesAreVisible = true;
+}
+
+function appendUnderline(
+  rect: RectLike,
+  fs: number,
+  style: { line: string; dashed: boolean },
+  issue: Issue,
+  element: HTMLElement,
+) {
+  if (!highlightContainer) return;
+  const underline = makeUnderlineDiv(rect, fs, style, issue, element);
+  highlightContainer.appendChild(underline);
+  underlineRects.push({
+    el: underline,
+    base: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+  });
 }
 
 function clearOverlayUnderlines() {
   highlightContainer
     ?.querySelectorAll('.opengrammar-underline')
     .forEach((e) => e.remove());
+  underlineRects = [];
+  underlineBaseTargetRect = null;
+  underlineBaseText = '';
+  underlineBaseScrollLeft = 0;
+  underlineBaseScrollTop = 0;
+  underlinesAreVisible = true;
 }
 
 /**
@@ -241,7 +368,7 @@ function clearOverlayUnderlines() {
 function makeUnderlineDiv(
   r: { left: number; top: number; width: number; height: number },
   fs: number,
-  c: { line: string },
+  style: { line: string; dashed: boolean },
   issue: Issue,
   element: HTMLElement,
 ): HTMLElement {
@@ -259,18 +386,41 @@ function makeUnderlineDiv(
     z-index: 2147483646;
   `;
   const wave = document.createElement('div');
-  wave.style.cssText = `
-    position: absolute; left: 0; width: 100%; height: 2px;
-    bottom: ${leadBelow}px;
-    background: ${c.line};
-    border-radius: 999px;
-    box-shadow: 0 1px 0 rgba(255,255,255,0.65);
-    pointer-events: none;
-  `;
+  if (style.dashed) {
+    // Review/AI layer: a DOTTED line (visually distinct from the straight
+    // mechanical line and from Chrome's wavy squiggle). 2px dotted reads as
+    // "suggestion — click to review" rather than "fix this now".
+    wave.style.cssText = `
+      position: absolute; left: 0; width: 100%; height: 0;
+      bottom: ${leadBelow}px;
+      border-bottom: 2px dotted ${style.line};
+      pointer-events: none;
+    `;
+  } else {
+    // Mechanical quick-fix: solid straight line.
+    wave.style.cssText = `
+      position: absolute; left: 0; width: 100%; height: 2px;
+      bottom: ${leadBelow}px;
+      background: ${style.line};
+      border-radius: 999px;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.65);
+      pointer-events: none;
+    `;
+  }
   u.appendChild(wave);
   u.title = issue.reason || '';
   u.addEventListener('mousedown', (e) => e.preventDefault());
-  if (issue.type === 'spelling') {
+  if (isInlineReview(issue)) {
+    // Review layer (local sentence-review OR LLM/context): open a preview card.
+    // NEVER a one-click destructive replace — the user reviews, then Accepts.
+    const open = (e: Event) => {
+      e.stopPropagation();
+      e.preventDefault();
+      showInlineReviewCard(u, issue, element);
+    };
+    u.addEventListener('click', open);
+    u.addEventListener('contextmenu', open);
+  } else if (issue.type === 'spelling') {
     const open = (e: Event) => {
       e.stopPropagation();
       e.preventDefault();
@@ -308,12 +458,13 @@ function renderOverlayUnderlines(element: HTMLElement, issues: Issue[]) {
         ? (range.startContainer as Element)
         : range.startContainer.parentElement) || element;
     const fs = parseFloat(getComputedStyle(cEl).fontSize) || 16;
-    const c = getC(issue.type);
+    const st = getUnderlineStyle(issue);
     for (const r of Array.from(range.getClientRects())) {
       if (r.width === 0 || r.height === 0) continue;
-      highlightContainer.appendChild(makeUnderlineDiv(r, fs, c, issue, element));
+      appendUnderline(r, fs, st, issue, element);
     }
   }
+  cacheUnderlineBase(element);
 }
 
 /**
@@ -354,7 +505,10 @@ function renderInputUnderlines(element: HTMLElement, issues: Issue[]) {
   positionInputMirror(element);
   syncInputMirrorScroll(element);
 
-  const sync = () => syncInputMirrorScroll(element);
+  const sync = () => {
+    syncInputMirrorScroll(element);
+    scheduleFloatingDecorationUpdate('rebuild');
+  };
   input.addEventListener('scroll', sync, { passive: true });
   cleanupInputMirror = () => input.removeEventListener('scroll', sync);
 
@@ -375,15 +529,16 @@ function renderInputUnderlines(element: HTMLElement, issues: Issue[]) {
     } catch {
       continue;
     }
-    const c = getC(issue.type);
+    const st = getUnderlineStyle(issue);
     for (const r of Array.from(range.getClientRects())) {
       if (r.width === 0 || r.height === 0) continue;
       if (r.bottom < clip.top || r.top > clip.bottom || r.right < clip.left || r.left > clip.right) {
         continue; // scrolled out of the field
       }
-      highlightContainer.appendChild(makeUnderlineDiv(r, fs, c, issue, element));
+      appendUnderline(r, fs, st, issue, element);
     }
   }
+  cacheUnderlineBase(element);
 }
 
 /**
@@ -423,6 +578,7 @@ export function clearHighlights() {
   overlayIssues = [];
   destroyInputMirror();
   assistantBubble?.remove(); assistantBubble = null;
+  assistantBubbleIssues = [];
   assistantTarget = null;
   selectionBubble?.remove(); selectionBubble = null;
   selectionTarget = null; selectionText = '';
@@ -433,18 +589,146 @@ export function clearHighlights() {
   uiActive = false;
 }
 
-export function refreshFloatingDecorations() {
-  positionAssistantBubble();
-  positionSelectionBubble();
-  // Re-measure underlines (rects are viewport-relative) for whichever field
-  // type is active. One unified overlay path.
-  if (overlayTarget && overlayIssues.length && overlayTarget.isConnected) {
-    if (overlayTarget.tagName === 'INPUT' || overlayTarget.tagName === 'TEXTAREA') {
-      renderInputUnderlines(overlayTarget, overlayIssues);
-    } else {
-      renderOverlayUnderlines(overlayTarget, overlayIssues);
-    }
+function rebuildActiveUnderlines() {
+  if (!overlayTarget || !overlayTarget.isConnected) return;
+  // Last issue accepted/dismissed → clear the stale underline div(s) instead of
+  // early-returning and leaving them painted. Dismiss fires no input event, so
+  // without this the final underline would linger permanently. The FAB stays.
+  if (overlayIssues.length === 0) {
+    clearOverlayUnderlines();
+    return;
   }
+  if (overlayTarget.tagName === 'INPUT' || overlayTarget.tagName === 'TEXTAREA') {
+    renderInputUnderlines(overlayTarget, overlayIssues);
+  } else {
+    renderOverlayUnderlines(overlayTarget, overlayIssues);
+  }
+}
+
+function setUnderlinesVisible(visible: boolean) {
+  underlinesAreVisible = visible;
+  for (const { el } of underlineRects) {
+    el.style.display = visible ? '' : 'none';
+  }
+}
+
+function repositionActiveUnderlines(): boolean {
+  if (!overlayTarget || !overlayTarget.isConnected) return true;
+  if (!underlineBaseTargetRect || underlineRects.length === 0) return true;
+
+  // If the text or textarea scroll changed, cached rects no longer describe the
+  // glyphs. Rebuild instead of translating stale hit targets.
+  if (getFieldTextSnapshot(overlayTarget) !== underlineBaseText) return false;
+  const scroll = getScrollSnapshot(overlayTarget);
+  if (scroll.left !== underlineBaseScrollLeft || scroll.top !== underlineBaseScrollTop) return false;
+
+  const rect = overlayTarget.getBoundingClientRect();
+  if (
+    Math.abs(rect.width - underlineBaseTargetRect.width) > 0.5 ||
+    Math.abs(rect.height - underlineBaseTargetRect.height) > 0.5
+  ) {
+    return false;
+  }
+
+  const dx = rect.left - underlineBaseTargetRect.left;
+  const dy = rect.top - underlineBaseTargetRect.top;
+  for (const { el } of underlineRects) {
+    el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+  }
+  if (inputMirrorOverlay && inputMirrorTarget === overlayTarget) {
+    positionInputMirror(overlayTarget);
+  }
+  setUnderlinesVisible(true);
+  return true;
+}
+
+function scheduleFloatingDecorationUpdate(kind: DecorationUpdateKind) {
+  if (kind === 'rebuild' || !pendingDecorationUpdate) {
+    pendingDecorationUpdate = kind;
+  }
+  if (decorationRaf) return;
+  decorationRaf = requestAnimationFrame(() => {
+    const update = pendingDecorationUpdate || 'reposition';
+    decorationRaf = 0;
+    pendingDecorationUpdate = null;
+
+    positionAssistantBubble();
+    positionSelectionBubble();
+
+    if (!overlayTarget || !overlayTarget.isConnected || overlayIssues.length === 0) return;
+    if (!observedTargetIntersects) {
+      setUnderlinesVisible(false);
+      return;
+    }
+    if (!underlinesAreVisible) setUnderlinesVisible(true);
+
+    if (update === 'rebuild') {
+      rebuildActiveUnderlines();
+    } else if (!repositionActiveUnderlines()) {
+      rebuildActiveUnderlines();
+    }
+  });
+}
+
+export function refreshFloatingDecorations() {
+  scheduleFloatingDecorationUpdate('reposition');
+}
+
+export function rebuildFloatingDecorations() {
+  scheduleFloatingDecorationUpdate('rebuild');
+}
+
+export function startFloatingDecorationObservers(element: HTMLElement) {
+  stopFloatingDecorationObservers();
+  observedDecorationTarget = element;
+  observedTargetIntersects = true;
+
+  if (typeof ResizeObserver !== 'undefined') {
+    decorationResizeObserver = new ResizeObserver(() => scheduleFloatingDecorationUpdate('rebuild'));
+    decorationResizeObserver.observe(element);
+  }
+
+  if (typeof IntersectionObserver !== 'undefined') {
+    decorationIntersectionObserver = new IntersectionObserver((entries) => {
+      observedTargetIntersects = entries.some((entry) => entry.isIntersecting);
+      scheduleFloatingDecorationUpdate('reposition');
+    });
+    decorationIntersectionObserver.observe(element);
+  }
+
+  decorationPollInterval = window.setInterval(() => {
+    if (observedDecorationTarget?.isConnected) scheduleFloatingDecorationUpdate('reposition');
+  }, 1000);
+
+  const fonts = document.fonts;
+  if (fonts?.ready) {
+    const token = ++fontReadyToken;
+    void fonts.ready.then(() => {
+      if (token === fontReadyToken && observedDecorationTarget === element) {
+        scheduleFloatingDecorationUpdate('rebuild');
+      }
+    });
+  }
+}
+
+export function stopFloatingDecorationObservers(element?: HTMLElement) {
+  if (element && observedDecorationTarget && observedDecorationTarget !== element) return;
+  decorationResizeObserver?.disconnect();
+  decorationResizeObserver = null;
+  decorationIntersectionObserver?.disconnect();
+  decorationIntersectionObserver = null;
+  if (decorationPollInterval !== null) {
+    window.clearInterval(decorationPollInterval);
+    decorationPollInterval = null;
+  }
+  if (decorationRaf) {
+    cancelAnimationFrame(decorationRaf);
+    decorationRaf = 0;
+  }
+  pendingDecorationUpdate = null;
+  observedDecorationTarget = null;
+  observedTargetIntersects = true;
+  fontReadyToken++;
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -474,10 +758,17 @@ function addWordToDictionary(word: string) {
   });
 }
 
+/** Re-paint the active overlay for whichever field type is in front. Used
+ *  after dismissing/accepting one issue so the remaining underlines refresh —
+ *  branches on element type so it doesn't break textarea/input underlines. */
+function rerenderActiveUnderlines() {
+  rebuildActiveUnderlines();
+}
+
 function removeIssueUnderline(issue: Issue, element: HTMLElement) {
   issue.ignored = true;
   overlayIssues = overlayIssues.filter((i) => i !== issue);
-  if (overlayTarget) renderOverlayUnderlines(overlayTarget, overlayIssues);
+  rerenderActiveUnderlines();
   void element;
 }
 
@@ -612,45 +903,88 @@ function showSpellingMenu(anchor: HTMLElement, issue: Issue, element: HTMLElemen
 /* ────────────────────────────────────────────────────────────
    GRAMMARLY-STYLE FLOATING BADGE (bottom-right green circle)
 ──────────────────────────────────────────────────────────── */
-function showAssistantBubble(element: HTMLElement, issues: Issue[]) {
-  assistantBubble?.remove();
-  assistantBubble = null;
+export type AssistantPhase =
+  | 'analyzing-local'
+  | 'analyzing-llm'
+  | 'has-issues'
+  | 'clean-pending-ai'
+  | 'clean';
 
-  // Grammarly uses a green circle with the G logo and a red count badge
-  const bubble = document.createElement('button');
-  bubble.className = 'opengrammar-assistant';
-  bubble.type = 'button';
-  const count = issues.length;
-  const label = count > 0
-    ? `OpenGrammar: ${count} suggestion${count !== 1 ? 's' : ''}`
-    : 'OpenGrammar: review writing with AI';
-  bubble.setAttribute('aria-label', label);
-  bubble.title = count > 0 ? label : 'Review writing with DeepSeek/local AI';
-  bubble.style.cssText = `
-    position: fixed;
-    left: 0; top: 0;
-    display: inline-flex; align-items: center; justify-content: center;
-    width: ${BUBBLE_SIZE}px; height: ${BUBBLE_SIZE}px; padding: 0;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-    box-shadow: 0 1px 6px rgba(79,70,229,0.45), 0 1px 3px rgba(0,0,0,0.18);
-    z-index: 2147483646;
-    cursor: pointer; pointer-events: auto;
-    border: none; outline: none;
-    transition: transform 0.12s ease, box-shadow 0.12s ease;
-  `;
+export interface AssistantState {
+  localCount: number;
+  llmCount: number | null;
+  phase: AssistantPhase;
+  issues?: Issue[];
+}
 
-  const hasErrors = issues.some(i => i.type === 'grammar' || i.type === 'spelling');
-  const badgeBg = count === 0 ? '#4F46E5' : hasErrors ? '#e53935' : '#f59e0b';
-  const badgeText = count === 0 ? 'AI' : String(count);
+function getAssistantSeverity(issues: Issue[]): '#e53935' | '#f59e0b' {
+  return issues.some((i) => i.type === 'grammar' || i.type === 'spelling') ? '#e53935' : '#f59e0b';
+}
 
-  bubble.innerHTML = `
-    <span style="position:relative;display:flex;align-items:center;justify-content:center;">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+function getAssistantLabel(state: AssistantState, totalCount: number): string {
+  switch (state.phase) {
+    case 'analyzing-local':
+      return 'OpenGrammar: checking writing';
+    case 'analyzing-llm':
+      return totalCount > 0
+        ? `OpenGrammar: ${totalCount} suggestion${totalCount !== 1 ? 's' : ''}; AI is still checking context`
+        : 'OpenGrammar: AI is checking context';
+    case 'clean-pending-ai':
+      return 'OpenGrammar: local check found no issues; AI context check pending';
+    case 'clean':
+      return 'OpenGrammar: writing looks clean';
+    case 'has-issues':
+    default:
+      return state.llmCount === null
+        ? `OpenGrammar: ${totalCount} suggestion${totalCount !== 1 ? 's' : ''}; AI is still checking context`
+        : `OpenGrammar: ${totalCount} suggestion${totalCount !== 1 ? 's' : ''}`;
+  }
+}
+
+function renderAssistantBadge(state: AssistantState, issues: Issue[]): string {
+  const totalCount = issues.length || state.localCount + (state.llmCount || 0);
+  const checking = state.phase === 'analyzing-local' || state.phase === 'analyzing-llm';
+  const pendingAi = state.llmCount === null || state.phase === 'clean-pending-ai' || state.phase === 'analyzing-llm';
+  const badgeBg =
+    state.phase === 'clean'
+      ? '#16a34a'
+      : totalCount > 0
+        ? getAssistantSeverity(issues)
+        : '#4F46E5';
+  const badgeText =
+    state.phase === 'clean'
+      ? '✓'
+      : state.phase === 'analyzing-local' && totalCount === 0
+        ? ''
+        : totalCount > 0
+          ? String(totalCount)
+          : 'AI';
+  const badgeInner = badgeText
+    ? escapeHtml(badgeText)
+    : `<span style="width:8px;height:8px;border:1.5px solid rgba(255,255,255,0.55);border-top-color:white;border-radius:50%;animation:og-spin 0.7s linear infinite;"></span>`;
+  const aiHint = pendingAi && totalCount > 0
+    ? `<span style="
+        position:absolute; bottom:-7px; right:-11px;
+        height:12px; min-width:16px; padding:0 3px;
+        border-radius:999px; background:#4F46E5; color:white;
+        font-size:7px; font-weight:800; line-height:12px;
+        border:1.5px solid white;
+        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+        box-shadow:0 1px 3px rgba(0,0,0,0.22);
+      ">AI</span>`
+    : '';
+
+  const mainIcon = checking
+    ? `<span style="width:15px;height:15px;border:2px solid rgba(255,255,255,0.45);border-top-color:white;border-radius:50%;animation:og-spin 0.7s linear infinite;"></span>`
+    : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none">
         <path d="M20 4C15 4 10 7 8 12L4 20l8-4c5-2 8-7 8-12z" fill="white" opacity="0.92"/>
         <path d="M8 12 L4 20" stroke="rgba(255,255,255,0.55)" stroke-width="1.6" stroke-linecap="round"/>
         <path d="M5 18l2 2 4-5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
+      </svg>`;
+
+  return `
+    <span style="position:relative;display:flex;align-items:center;justify-content:center;">
+      ${mainIcon}
       <span style="
         position:absolute; top:-6px; right:-8px;
         min-width:15px; height:15px; padding:0 3px;
@@ -660,24 +994,66 @@ function showAssistantBubble(element: HTMLElement, issues: Issue[]) {
         border:1.5px solid white;
         font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
         box-shadow:0 1px 3px rgba(0,0,0,0.25);
-      ">${badgeText}</span>
+      ">${badgeInner}</span>
+      ${aiHint}
     </span>
   `;
+}
 
-  bubble.addEventListener('mouseenter', () => { bubble.style.transform = 'scale(1.12)'; });
-  bubble.addEventListener('mouseleave', () => { bubble.style.transform = 'scale(1)'; });
-  bubble.addEventListener('mousedown', (e) => e.preventDefault());
-  bubble.addEventListener('click', (e) => {
-    e.preventDefault(); e.stopPropagation();
-    // Grammar/clarity/style → whole-sentence review.
-    // Spelling is handled inline via right/left-click on the underline.
-    showSentenceReview(issues, element, 0);
-  });
+export function setAssistantState(element: HTMLElement, state: AssistantState) {
+  assistantBubbleIssues = state.issues || assistantBubbleIssues || [];
 
-  document.body.appendChild(bubble);
-  assistantBubble = bubble;
-  assistantTarget = element;
+  if (!assistantBubble || assistantTarget !== element || !assistantBubble.isConnected) {
+    assistantBubble?.remove();
+    assistantBubble = null;
+
+    const bubble = document.createElement('button');
+    bubble.className = 'opengrammar-assistant';
+    bubble.type = 'button';
+    bubble.style.cssText = `
+      position: fixed;
+      left: 0; top: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: ${BUBBLE_SIZE}px; height: ${BUBBLE_SIZE}px; padding: 0;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+      box-shadow: 0 1px 6px rgba(79,70,229,0.45), 0 1px 3px rgba(0,0,0,0.18);
+      z-index: 2147483646;
+      cursor: pointer; pointer-events: auto;
+      border: none; outline: none;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    `;
+    bubble.addEventListener('mouseenter', () => { bubble.style.transform = 'scale(1.12)'; });
+    bubble.addEventListener('mouseleave', () => { bubble.style.transform = 'scale(1)'; });
+    bubble.addEventListener('mousedown', (e) => e.preventDefault());
+    bubble.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (!assistantTarget) return;
+      // Grammar/clarity/style → whole-sentence review.
+      // Spelling is handled inline via right/left-click on the underline.
+      showSentenceReview(assistantBubbleIssues, assistantTarget, 0);
+    });
+
+    document.body.appendChild(bubble);
+    assistantBubble = bubble;
+    assistantTarget = element;
+  }
+
+  const totalCount = assistantBubbleIssues.length || state.localCount + (state.llmCount || 0);
+  const label = getAssistantLabel(state, totalCount);
+  assistantBubble.setAttribute('aria-label', label);
+  assistantBubble.title = label;
+  assistantBubble.innerHTML = renderAssistantBadge(state, assistantBubbleIssues);
   positionAssistantBubble();
+}
+
+function showAssistantBubble(element: HTMLElement, issues: Issue[]) {
+  setAssistantState(element, {
+    localCount: issues.length,
+    llmCount: 0,
+    phase: issues.length > 0 ? 'has-issues' : 'clean-pending-ai',
+    issues,
+  });
 }
 
 /**
@@ -904,6 +1280,158 @@ function placeFixedPanel(el: HTMLElement, anchorRect: DOMRect, gap = 8) {
   el.style.position = 'fixed';
   el.style.left = `${Math.round(left)}px`;
   el.style.top = `${Math.round(top)}px`;
+}
+
+/**
+ * Inline REVIEW card — opened by clicking a dotted underline (sentence-review
+ * or LLM/context issue). Unlike the spelling menu / mechanical tooltip, this
+ * NEVER does a silent destructive replace: it previews the single correction
+ * and the user explicitly Accepts. "Review in context" is the only path that
+ * re-calls the model (whole-sentence review); the card itself uses the
+ * structured correction we already have, so opening it costs nothing.
+ */
+function showInlineReviewCard(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
+  uiActive = true;
+  currentTooltip?.remove();
+  currentRephrasePanel?.remove();
+  currentRephrasePanel = null;
+  injectStyles();
+
+  const anchorRect = anchor.getBoundingClientRect();
+  const ai = isLlmIssue(issue);
+  const accent = ai ? REVIEW_LLM_LINE : getC(issue.type).line;
+  const kicker = ai ? 'AI suggestion' : getCategoryLabel(issue.type);
+  const headline = summarizeChange(issue.original, issue.suggestion) || getTypeLabel(issue.type);
+  const diffHtml = renderInlineDiffHTML(issue.original, issue.suggestion);
+
+  const card = document.createElement('div');
+  card.className = 'opengrammar-tooltip';
+  card.style.cssText = `
+    position: fixed; left: -9999px; top: -9999px;
+    width: 330px;
+    background: #ffffff; border-radius: 12px;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.14), 0 1px 6px rgba(0,0,0,0.07);
+    z-index: 2147483647;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px; max-height: calc(100vh - 16px); overflow-y: auto;
+    border: 1px solid rgba(0,0,0,0.07); animation: og-fade-in 0.12s ease;
+  `;
+
+  card.innerHTML = `
+    <div style="padding: 13px 16px 10px; border-bottom: 1px solid #f0f0f0;">
+      <div style="display:flex; align-items:center; gap:7px; margin-bottom:5px;">
+        <span style="width:7px;height:7px;border-radius:50%;background:${accent};display:inline-block;border:1px dotted ${accent};"></span>
+        <span style="font-size:11px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:0.5px;">${escapeHtml(kicker)}</span>
+        ${ai ? `<span style="margin-left:auto;font-size:10px;font-weight:600;color:#6b7280;background:#eef2ff;border:1px solid #c7d2fe;border-radius:999px;padding:1px 7px;">context</span>` : ''}
+      </div>
+      <div style="font-size:14px;font-weight:600;color:#1c1c1e;line-height:1.4;">
+        ${escapeHtml(headline)}
+      </div>
+    </div>
+
+    <div class="og-rv-apply-box" style="
+      padding: 12px 16px; background:#fafafa; cursor:pointer;
+      transition:background 0.12s; border-bottom:1px solid #f0f0f0;
+    ">
+      <div style="font-size:14px; line-height:1.6; word-break:break-word;">
+        ${diffHtml}
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:#8e8e93;">Click to accept</div>
+    </div>
+
+    <details style="border-bottom:1px solid #f0f0f0;">
+      <summary style="padding:8px 16px;cursor:pointer;font-size:12px;color:#5f6368;font-weight:600;list-style:none;user-select:none;">Why?</summary>
+      <div style="padding:0 16px 10px;font-size:13px;color:#3c3c43;line-height:1.5;">
+        ${escapeHtml(issue.reason || 'Suggested for clarity and correctness.')}
+      </div>
+    </details>
+
+    <div style="display:flex; border-top: 1px solid #f0f0f0;">
+      <button class="og-rv-accept" style="
+        flex: 1.4; padding: 11px 12px; background: #4F46E5; color: white;
+        border: none; cursor: pointer; font-size: 13px; font-weight: 600;
+        border-radius: 0 0 0 12px; font-family: inherit; transition: background 0.12s;
+        display: flex; align-items: center; justify-content: center; gap: 5px;
+      ">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="white">
+          <path d="M6.5 11.5L2.5 7.5l1.06-1.06 2.94 2.93 5.94-5.93 1.06 1.06z"/>
+        </svg>
+        Accept
+      </button>
+      <button class="og-rv-context" style="
+        flex: 1.3; padding: 11px 10px; background: white; color: #4F46E5;
+        border: none; border-left: 1px solid #f0f0f0; cursor: pointer;
+        font-size: 12px; font-weight: 600; font-family: inherit; transition: background 0.12s;
+      " title="Review the whole sentence with AI">Review in context</button>
+      <button class="og-rv-dismiss" style="
+        flex: 1; padding: 11px 10px; background: white; color: #5f6368;
+        border: none; border-left: 1px solid #f0f0f0; cursor: pointer;
+        font-size: 13px; font-weight: 500; border-radius: 0 0 12px 0;
+        font-family: inherit; transition: background 0.12s;
+      ">Dismiss</button>
+    </div>
+  `;
+
+  card.addEventListener('mousedown', (e) => e.preventDefault());
+
+  const accept = () => {
+    // Only drop the underline if the validated apply actually landed; a stale
+    // span (text moved/changed since analysis) keeps its underline.
+    if (applySuggestion(element, issue, anchor)) {
+      removeIssueUnderline(issue, element);
+    }
+    hideTooltip();
+  };
+
+  const applyBox = card.querySelector('.og-rv-apply-box') as HTMLElement | null;
+  if (applyBox) {
+    applyBox.addEventListener('click', (e) => { e.stopPropagation(); accept(); });
+    applyBox.addEventListener('mouseenter', () => { applyBox.style.background = '#f0f0ff'; });
+    applyBox.addEventListener('mouseleave', () => { applyBox.style.background = '#fafafa'; });
+  }
+
+  const acceptBtn = card.querySelector('.og-rv-accept') as HTMLButtonElement | null;
+  if (acceptBtn) {
+    acceptBtn.addEventListener('click', (e) => { e.stopPropagation(); accept(); });
+    acceptBtn.addEventListener('mouseenter', () => { acceptBtn.style.background = '#4338CA'; });
+    acceptBtn.addEventListener('mouseleave', () => { acceptBtn.style.background = '#4F46E5'; });
+  }
+
+  const contextBtn = card.querySelector('.og-rv-context') as HTMLButtonElement | null;
+  if (contextBtn) {
+    contextBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      hideTooltip();
+      // Explicit deeper review — the ONLY path that re-invokes the model.
+      showSentenceReview([issue], element, 0);
+    });
+    contextBtn.addEventListener('mouseenter', () => { contextBtn.style.background = '#f5f3ff'; });
+    contextBtn.addEventListener('mouseleave', () => { contextBtn.style.background = 'white'; });
+  }
+
+  const dismissBtn = card.querySelector('.og-rv-dismiss') as HTMLButtonElement | null;
+  if (dismissBtn) {
+    dismissBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      ignoreIssue(issue, anchor);
+      hideTooltip();
+    });
+    dismissBtn.addEventListener('mouseenter', () => { dismissBtn.style.background = '#f8f9fa'; });
+    dismissBtn.addEventListener('mouseleave', () => { dismissBtn.style.background = 'white'; });
+  }
+
+  const closeOnOutsideClick = (e: MouseEvent) => {
+    const t = e.target as Node;
+    if (!card.contains(t) && !anchor.contains(t)) {
+      hideTooltip();
+      document.removeEventListener('click', closeOnOutsideClick);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', closeOnOutsideClick), 100);
+
+  document.body.appendChild(card);
+  placeFixedPanel(card, anchorRect, 8);
+  currentTooltip = card;
 }
 
 function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
@@ -1607,6 +2135,7 @@ function showReviewStatusCard(
   title: string,
   message: string,
   retry?: () => void,
+  options?: { modelHint?: boolean },
 ) {
   uiActive = true;
   currentTooltip?.remove();
@@ -1629,6 +2158,7 @@ function showReviewStatusCard(
         <span style="font-size:12px; font-weight:700; color:#92400e; text-transform:uppercase; letter-spacing:0.5px;">${escapeHtml(title)}</span>
       </div>
       <div style="font-size:13px; color:#3c3c43; line-height:1.45;">${escapeHtml(message)}</div>
+      <div class="og-model-hint-slot" style="display:none;"></div>
     </div>
     <div style="display:flex; border-top:1px solid #f0f0f0;">
       ${retry ? `<button class="og-review-retry" type="button" style="
@@ -1654,11 +2184,69 @@ function showReviewStatusCard(
     e.stopPropagation();
     hideTooltip();
   });
-
   document.body.appendChild(card);
   const anchorEl = overlayTarget && overlayTarget.isConnected ? overlayTarget : element;
   placeFixedPanel(card, anchorEl.getBoundingClientRect(), 8);
   currentTooltip = card;
+  if (options?.modelHint) void maybeShowModelHint(card, anchorEl);
+}
+
+function isSubstantialContextText(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 20) return false;
+  return trimmed.split(/\s+/).filter(Boolean).length >= 8;
+}
+
+async function shouldShowModelHint(): Promise<boolean> {
+  if (modelHintShownThisSession) return false;
+  const stored = await new Promise<Record<string, unknown>>((res) =>
+    chrome.storage.sync.get(['provider', 'hideModelHint'], (r) => res(r as Record<string, unknown>))
+  );
+  if (stored.hideModelHint === true) return false;
+
+  const provider = typeof stored.provider === 'string' ? stored.provider : 'openai';
+  const apiKey = await getApiKey();
+  if (apiKey && provider !== 'ollama') return false;
+  return provider === 'ollama' || !apiKey;
+}
+
+async function maybeShowModelHint(card: HTMLElement, anchorEl: HTMLElement) {
+  if (!(await shouldShowModelHint())) return;
+  if (!card.isConnected) return;
+  const slot = card.querySelector('.og-model-hint-slot') as HTMLElement | null;
+  if (!slot) return;
+
+  modelHintShownThisSession = true;
+  slot.style.display = 'block';
+  slot.style.marginTop = '10px';
+  slot.style.padding = '9px 10px';
+  slot.style.border = '1px solid #C7D2FE';
+  slot.style.borderRadius = '7px';
+  slot.style.background = '#EEF2FF';
+  slot.style.color = '#3730A3';
+  slot.style.fontSize = '12px';
+  slot.style.lineHeight = '1.45';
+  slot.innerHTML = `
+    <div style="display:flex; gap:8px; align-items:flex-start;">
+      <div style="flex:1;">
+        For context-aware suggestions (e.g. loose vs lose), a stronger cloud model like DeepSeek is more reliable than the local model.
+        <a href="${MODEL_BENCHMARK_URL}" target="_blank" rel="noreferrer" style="color:#3730A3; font-weight:700; text-decoration:underline;">See benchmark results</a>.
+      </div>
+      <button class="og-model-hint-dismiss" type="button" style="
+        flex-shrink:0; border:none; background:transparent; color:#4F46E5;
+        font-size:11px; font-weight:700; cursor:pointer; padding:1px 0 0 4px;
+        font-family:inherit;
+      ">Dismiss</button>
+    </div>
+  `;
+  const dismiss = slot.querySelector('.og-model-hint-dismiss') as HTMLButtonElement | null;
+  dismiss?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    void chrome.storage.sync.set({ hideModelHint: true });
+    slot.remove();
+    placeFixedPanel(card, anchorEl.getBoundingClientRect(), 8);
+  });
+  placeFixedPanel(card, anchorEl.getBoundingClientRect(), 8);
 }
 
 function showSentenceReview(
@@ -1698,6 +2286,8 @@ function showSentenceReview(
           element,
           'No sentence change',
           'The model did not find a confident sentence-level correction. Local underlines will remain available where a quick fix is safe.',
+          undefined,
+          { modelHint: isSubstantialContextText(text) },
         );
       }
       return;
@@ -1757,6 +2347,8 @@ function showSentenceReview(
           element,
           'No sentence change',
           'The model did not find a confident sentence-level correction. Local underlines will remain available where a quick fix is safe.',
+          undefined,
+          { modelHint: isSubstantialContextText(text) },
         );
       }
     });
@@ -2202,14 +2794,28 @@ function copyTypographyStyles(element: HTMLElement, overlay: HTMLElement, conten
   overlay.style.width  = `${rect.width}px`;
   overlay.style.height = `${rect.height}px`;
   overlay.style.borderRadius = styles.borderRadius;
+  overlay.style.boxSizing = styles.boxSizing;
+  overlay.style.borderTopWidth = styles.borderTopWidth;
+  overlay.style.borderRightWidth = styles.borderRightWidth;
+  overlay.style.borderBottomWidth = styles.borderBottomWidth;
+  overlay.style.borderLeftWidth = styles.borderLeftWidth;
+  overlay.style.borderTopStyle = styles.borderTopStyle;
+  overlay.style.borderRightStyle = styles.borderRightStyle;
+  overlay.style.borderBottomStyle = styles.borderBottomStyle;
+  overlay.style.borderLeftStyle = styles.borderLeftStyle;
   content.style.font          = styles.font;
   content.style.fontFamily    = styles.fontFamily;
   content.style.fontSize      = styles.fontSize;
   content.style.fontWeight    = styles.fontWeight;
   content.style.lineHeight    = styles.lineHeight;
   content.style.letterSpacing = styles.letterSpacing;
+  content.style.wordSpacing   = styles.wordSpacing;
   content.style.textTransform = styles.textTransform;
   content.style.textAlign     = styles.textAlign;
+  content.style.textIndent    = styles.textIndent;
+  content.style.direction     = styles.direction;
+  content.style.tabSize       = styles.tabSize;
+  content.style.whiteSpace    = element.tagName === 'TEXTAREA' ? 'pre-wrap' : 'pre';
   content.style.padding       = styles.padding;
   content.style.color         = target.dataset.ogOriginalColor || styles.color;
 }
@@ -2243,21 +2849,25 @@ function hideTooltip() {
   uiActive = false;
 }
 
-function applySuggestion(element: HTMLElement, issue: Issue, highlightEl: HTMLElement) {
-  void chrome.runtime.sendMessage({
-    type: 'TRACK_ANALYTICS_EVENT',
-    eventType: 'suggestions_applied',
-    payload: { count: 1, domain: window.location.hostname },
-  });
-
-  // One validated apply primitive for every field/editor type.
-  applyFix(element, {
+function applySuggestion(element: HTMLElement, issue: Issue, highlightEl: HTMLElement): boolean {
+  // One validated apply primitive for every field/editor type. It rejects stale
+  // or ambiguous spans, so a failed apply must NOT be treated as success (the
+  // underline should stay put rather than vanish without the text changing).
+  const ok = applyFix(element, {
     original: issue.original,
     offset: issue.offset,
     length: issue.length,
     replacement: issue.suggestion,
   });
+  if (ok) {
+    void chrome.runtime.sendMessage({
+      type: 'TRACK_ANALYTICS_EVENT',
+      eventType: 'suggestions_applied',
+      payload: { count: 1, domain: window.location.hostname },
+    });
+  }
   void highlightEl;
+  return ok;
 }
 
 function ignoreIssue(issue: Issue, highlightEl: HTMLElement) {
@@ -2279,10 +2889,8 @@ function ignoreIssue(issue: Issue, highlightEl: HTMLElement) {
   // Drop this issue and re-render the remaining overlay underlines (no DOM
   // mutation of the editor — the underline lives in our overlay).
   issue.ignored = true;
-  if (overlayTarget) {
-    overlayIssues = overlayIssues.filter((i) => i !== issue);
-    renderOverlayUnderlines(overlayTarget, overlayIssues);
-  }
+  overlayIssues = overlayIssues.filter((i) => i !== issue);
+  rerenderActiveUnderlines();
   if (highlightEl.classList?.contains('opengrammar-badge')) highlightEl.remove();
 }
 

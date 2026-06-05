@@ -5,6 +5,7 @@ type HarperDialect = 'American' | 'British' | 'Australian' | 'Canadian';
 
 interface Settings {
   autocompleteEnabled: boolean;
+  autocorrectEnabled: boolean;
   harperDialect: HarperDialect;
   debugLogging: boolean;
   llmProtectedMasking: boolean;
@@ -16,6 +17,7 @@ interface Settings {
 // DOM Elements
 const elements = {
   autocompleteEnabled: document.getElementById('autocompleteEnabled') as HTMLInputElement,
+  autocorrectEnabled: document.getElementById('autocorrectEnabled') as HTMLInputElement,
   harperDialect: document.getElementById('harperDialect') as HTMLSelectElement,
   debugLogging: document.getElementById('debugLogging') as HTMLInputElement,
   llmProtectedMasking: document.getElementById('llmProtectedMasking') as HTMLInputElement,
@@ -49,6 +51,7 @@ const elements = {
 
 let settings: Settings = {
   autocompleteEnabled: true,
+  autocorrectEnabled: false,
   harperDialect: 'American',
   debugLogging: false,
   llmProtectedMasking: false,
@@ -89,6 +92,7 @@ async function loadSettings() {
     chrome.storage.sync.get(
       [
         'autocompleteEnabled',
+        'autocorrectEnabled',
         'harperDialect',
         'debugLogging',
         'llmProtectedMasking',
@@ -99,6 +103,7 @@ async function loadSettings() {
       (result) => {
         settings = {
           autocompleteEnabled: result.autocompleteEnabled !== false,
+          autocorrectEnabled: result.autocorrectEnabled === true,
           harperDialect: normalizeDialect(result.harperDialect),
           debugLogging: result.debugLogging === true,
           llmProtectedMasking: result.llmProtectedMasking === true,
@@ -109,6 +114,7 @@ async function loadSettings() {
 
         // Update UI
         elements.autocompleteEnabled.checked = settings.autocompleteEnabled;
+        elements.autocorrectEnabled.checked = settings.autocorrectEnabled;
         elements.harperDialect.value = settings.harperDialect;
         elements.debugLogging.checked = settings.debugLogging;
         elements.llmProtectedMasking.checked = settings.llmProtectedMasking;
@@ -161,6 +167,7 @@ async function saveSettings() {
     chrome.storage.sync.set(
       {
         autocompleteEnabled: settings.autocompleteEnabled,
+        autocorrectEnabled: settings.autocorrectEnabled,
         harperDialect: settings.harperDialect,
         debugLogging: settings.debugLogging,
         llmProtectedMasking: settings.llmProtectedMasking,
@@ -183,6 +190,11 @@ function setupEventListeners() {
   // Toggle settings
   elements.autocompleteEnabled.addEventListener('change', () => {
     settings.autocompleteEnabled = elements.autocompleteEnabled.checked;
+    saveSettings();
+  });
+
+  elements.autocorrectEnabled.addEventListener('change', () => {
+    settings.autocorrectEnabled = elements.autocorrectEnabled.checked;
     saveSettings();
   });
 
