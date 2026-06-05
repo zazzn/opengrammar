@@ -20,7 +20,6 @@ that share one Harper + LLM engine.
 - [**Using OGrammar**](09-using-opengrammar.md) — daily usage
 - [**Tone rewriting**](10-tone-rewriting.md)
 - [**Writing statistics**](11-writing-statistics.md)
-- [**Keyboard shortcuts**](12-keyboard-shortcuts.md)
 
 ## 2. Desktop App (OS-wide, Windows)
 
@@ -32,7 +31,7 @@ that share one Harper + LLM engine.
 
 - [**Architecture**](13-architecture.md) — how the two products + shared engine fit together, repo layout, data flow
 - [**Development guide**](14-development.md) — build / run / test both products; where to pick up
-- [**Contributing**](21-contributing.md) · [**Roadmap**](../ROADMAP.md)
+- [**Contributing**](../CONTRIBUTING.md) · [**Roadmap**](../ROADMAP.md)
 
 ## AI & configuration
 

@@ -14,14 +14,14 @@ automotive shorthand, and casual chat slang.
 Benchmark script:
 
 ```bash
-cd /home/zazzn/opengrammar/opengrammar/extension
+cd opengrammar/extension
 npm run benchmark:ollama -- --models=qwen2.5:1.5b,qwen2.5:3b,qwen2.5:7b,qwen3:1.7b,qwen3:4b-instruct,llama3.2:3b,gemma3:4b,phi4-mini:latest,granite3.3:2b,gemma2:2b
 ```
 
 The benchmark now uses the real suggestion corpus at:
 
 ```text
-/home/zazzn/opengrammar/opengrammar/extension/test-data/suggestion-corpus.json
+opengrammar/extension/test-data/suggestion-corpus.json
 ```
 
 It scores 46 active non-manual cases:
@@ -139,7 +139,7 @@ artifact (terse `qwen3:4b-instruct` vs verbose `qwen2.5:1.5b`).
 Command:
 
 ```bash
-cd /home/zazzn/opengrammar/opengrammar/extension
+cd opengrammar/extension
 node scripts/benchmark-models.mjs --remote --repeats=2
 # cloud keys read from env or ~/.ogrammar-bench/{deepseek,abacus}.key
 ```
@@ -173,7 +173,7 @@ path and prevents the large default context cache from inflating RAM usage.
 Command:
 
 ```bash
-cd /home/zazzn/opengrammar/opengrammar/extension
+cd opengrammar/extension
 node scripts/benchmark-models.mjs --local=qwen3:4b-instruct,qwen3.5:0.8b,qwen3.5:2b,qwen3.5:4b,nemotron-mini --repeats=1
 ```
 
@@ -294,7 +294,7 @@ The setting is enabled by default and can be toggled from Options:
 Command:
 
 ```bash
-cd /home/zazzn/opengrammar/opengrammar/extension
+cd opengrammar/extension
 node scripts/benchmark-models.mjs --local=qwen3:4b-instruct,qwen3.5:0.8b,qwen3.5:2b,qwen3.5:4b,qwen2.5:7b,gemma3:4b,qwen3:latest --repeats=1
 ```
 

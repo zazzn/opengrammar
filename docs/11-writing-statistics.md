@@ -6,7 +6,7 @@ Analyze and improve your writing with detailed statistics and metrics.
 
 ## 📋 Overview
 
-OpenGrammar provides comprehensive writing analytics to help you understand and improve your writing style.
+OGrammar provides comprehensive writing analytics to help you understand and improve your writing style.
 
 ---
 
@@ -252,11 +252,7 @@ Unique words: 7 (the, cat, sat, on, mat, was, happy)
 - Historical data
 - Trends over time
 
-### Method 3: Manual Check
-
-1. **Select Text**
-2. **Right-click → "Analyze with OpenGrammar"**
-3. **View Statistics Popup**
+Statistics are computed for the text in the focused field and update as you write.
 
 ---
 
@@ -297,16 +293,9 @@ Unique words: 7 (the, cat, sat, on, mat, was, happy)
 │                                         │
 │ ⚠️ Issue Breakdown                      │
 │ ─────────────────────────────────────── │
-│ Grammar Errors:     3 🔴                │
-│ Spelling Errors:    5 🔴                │
-│ Style Issues:       7 🔵                │
-│ Clarity Issues:     4 🟡                │
-│ Total Issues:       19                  │
-│                                         │
-│ 📈 Overall Score                        │
-│ ─────────────────────────────────────── │
-│ Writing Quality:    85/100 (Very Good)  │
-│ ████████████████████░░░░                │
+│ Harper (local):     8 🔴                │
+│ LLM suggestions:    4 🔵                │
+│ Total Issues:       12                  │
 │                                         │
 └─────────────────────────────────────────┘
 ```
@@ -513,14 +502,14 @@ Week 4: Maintain 85+ overall score
 **Solutions:**
 - Different tools use different formulas
 - Focus on trends, not absolute numbers
-- Use OpenGrammar consistently
+- Use OGrammar consistently
 - Compare with multiple tools
 
 ---
 
 ## 📚 Related Documentation
 
-- [Using OpenGrammar](09-using-opengrammar.md) - Complete user guide
+- [Using OGrammar](09-using-opengrammar.md) - Complete user guide
 - [Tone Rewriting](10-tone-rewriting.md) - Improve writing style
 - [Grammar & Style Rules](../GRAMMAR_RULES.md) - Understand errors
 

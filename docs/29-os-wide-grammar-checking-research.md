@@ -4,6 +4,13 @@ How to extend OGrammar beyond the browser so it catches typing in **any** app
 (native Win32, and Electron apps like Claude Desktop / Codex / VS Code).
 Synthesised from three parallel research agents (sources cited inline below).
 
+> **Status — historical research.** This note captures the pre-build research that led to
+> the desktop app. The app has since **shipped on Windows**, built as a **pure Rust Win32
+> app** (`windows-rs` + the `uiautomation` crate), **not** the Tauri/webview design
+> recommended below. For the *as-built* design see [13-architecture.md](13-architecture.md)
+> and [31-desktop-app.md](31-desktop-app.md); this doc remains for the rationale, the
+> coverage analysis, and the cited sources.
+
 ## TL;DR
 
 - A Chrome extension can **only** see web pages. OS-wide needs a **separate desktop
