@@ -365,9 +365,78 @@ function applySafeCorrections(
     if (used.some((r) => e.start < r.end && e.end > r.start)) continue;
     out = out.slice(0, e.start) + e.replacement + out.slice(e.end);
     used.push({ start: e.start, end: e.end });
-    applied.push(e.c);
+    // Stamp the RESOLVED (protected-span-safe) offsets onto the returned
+    // correction. Without this, the content script's buildLlmIssues re-searches
+    // for `original` and may anchor the inline underline at a different (e.g.
+    // protected) occurrence in repeated-token text. These offsets are valid
+    // against the ORIGINAL `text` the model was given (which is what the content
+    // script also re-derives), so they line up 1:1.
+    applied.push({ ...e.c, start: e.start, end: e.end });
   }
   return { corrected: out, applied };
+}
+
+/**
+ * Derive per-word corrections by aligning original vs corrected text with a word
+ * LCS. Used when the model returns a good correctedText but NO usable structured
+ * corrections array — which LLMs do often (we observed deepseek-chat return a
+ * perfect corrected sentence with an empty/omitted corrections list, leaving the
+ * proactive inline pass with nothing to underline). The LCS keeps unchanged
+ * words aligned and emits a correction for each changed RUN (one or more
+ * original words → one or more corrected words), so it handles word-count
+ * changes too (e.g. "work I 'd" → "work, I'd"). Offsets are exact (the original
+ * substring spanning the changed run); pure insertions/deletions and
+ * protected-span runs are skipped, and over-long runs are dropped so a big
+ * rewrite never paints a whole line.
+ */
+function correctionsFromDiff(
+  original: string,
+  corrected: string,
+  spans: { start: number; end: number }[],
+): LlmCorrectionSpan[] {
+  const o: { text: string; start: number; end: number }[] = [];
+  const re = /\S+/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(original)) !== null) o.push({ text: m[0], start: m.index, end: m.index + m[0].length });
+  const c = corrected.match(/\S+/g) || [];
+  const n = o.length;
+  const p = c.length;
+  if (n === 0) return [];
+  // LCS length table (top-down) over the two word sequences.
+  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(p + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = p - 1; j >= 0; j--) {
+      dp[i]![j] = o[i]!.text === c[j]! ? dp[i + 1]![j + 1]! + 1 : Math.max(dp[i + 1]![j]!, dp[i]![j + 1]!);
+    }
+  }
+  const out: LlmCorrectionSpan[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < n || j < p) {
+    if (i < n && j < p && o[i]!.text === c[j]!) { i++; j++; continue; }
+    const dels: typeof o = [];
+    const ins: string[] = [];
+    while ((i < n || j < p) && !(i < n && j < p && o[i]!.text === c[j]!)) {
+      if (j >= p) { dels.push(o[i]!); i++; }
+      else if (i >= n) { ins.push(c[j]!); j++; }
+      else if (dp[i + 1]![j]! >= dp[i]![j + 1]!) { dels.push(o[i]!); i++; }
+      else { ins.push(c[j]!); j++; }
+    }
+    if (dels.length && ins.length) {
+      const start = dels[0]!.start;
+      const end = dels[dels.length - 1]!.end;
+      const orig = original.slice(start, end);
+      const repl = ins.join(' ');
+      if (
+        orig && repl && orig !== repl &&
+        end - start <= 120 && repl.length <= 120 &&
+        !spans.some((s) => start < s.end && end > s.start)
+      ) {
+        out.push({ original: orig, replacement: repl, start, end, type: 'grammar', confidence: 'high' });
+      }
+    }
+  }
+  return out;
 }
 
 function normalizeCorrectionResult(
@@ -390,6 +459,8 @@ function normalizeCorrectionResult(
     }
     // No structured edits: fall back to the model's full correctedText, but only
     // if it keeps protected fragments intact and isn't an over-broad rewrite.
+    // DERIVE per-word corrections from the diff so the proactive inline pass can
+    // still draw blue underlines (the model often omits the corrections array).
     const proposed = (parsed?.correctedText || '').trim();
     if (
       proposed &&
@@ -397,7 +468,7 @@ function normalizeCorrectionResult(
       preservesProtectedFragments(text, proposed) &&
       isConservativeCorrection(text, proposed)
     ) {
-      return { corrected: proposed, corrections: [], shouldShow: true };
+      return { corrected: proposed, corrections: correctionsFromDiff(text, proposed, spans), shouldShow: true };
     }
     return { corrected: text, corrections: [], shouldShow: false };
   }
@@ -914,10 +985,12 @@ async function correctText(
             'Return JSON ONLY with this shape: {"correctedText":string,' +
             '"shouldShow":boolean,"protectedSpansPreserved":boolean,' +
             '"corrections":[{"original":string,"replacement":string,' +
+            '"start":number,"end":number,' +
             '"type":"spelling|grammar|punctuation|capitalization|word-form",' +
             '"confidence":"high|medium|low"}]}. The "corrections" array lists each ' +
-            'individual fix — give the EXACT original substring and its ' +
-            'replacement; return an empty array if there are no real mistakes. ' +
+            'individual fix — give the EXACT original substring, its replacement, ' +
+            'and the character start/end offsets of that substring in the input ' +
+            'text; return an empty array if there are no real mistakes. ' +
             'Set correctedText to the fully corrected text.',
         },
         {

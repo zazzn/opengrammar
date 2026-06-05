@@ -1,11 +1,20 @@
 import type { AnalysisContext, AutocompleteResponse, Issue } from '../types';
 import { isProtectedNonProseText } from '../shared/protectedText';
+import {
+  initAutocorrect,
+  maybeAutocorrect,
+  onRejectedStorageChange,
+} from './autocorrect';
 import { autocompleteManager } from './autocomplete';
 import {
   clearHighlights,
   highlightIssues,
   isUIActive,
+  rebuildFloatingDecorations,
   refreshFloatingDecorations,
+  setAssistantState,
+  startFloatingDecorationObservers,
+  stopFloatingDecorationObservers,
   updateSelectionBubble,
 } from './highlighter';
 import {
@@ -27,11 +36,16 @@ interface EditableElement {
   lastLlmText?: string;
   lastLlmIssues?: Issue[];
   llmSeq?: number;
+  /** The field's original `spellcheck` attribute value (null if unset), so we
+   *  can restore it when OGrammar stops managing the field. */
+  prevSpellcheck?: string | null;
 }
 
 interface LlmCorrection {
   original?: string;
   replacement?: string;
+  start?: number;
+  end?: number;
   type?: 'spelling' | 'grammar' | 'punctuation' | 'capitalization' | 'word-form';
   confidence?: 'high' | 'medium' | 'low';
 }
@@ -51,6 +65,7 @@ let lastInputSelection: {
 // Track which domains are disabled
 let disabledDomains: string[] = [];
 let autocompleteEnabled = false; // opt-in; see loadUserSettings()
+let autocorrectEnabled = false; // opt-in; see loadUserSettings()
 
 let isContextInvalidated = false;
 
@@ -104,9 +119,9 @@ function initialize() {
   document.addEventListener('focusin', handleFocusIn, true);
   document.addEventListener('focusout', handleFocusOut, true);
 
-  // Handle scroll events to reposition highlights
-  window.addEventListener('scroll', debounce(handleScroll, 100), true);
-  window.addEventListener('resize', debounce(handleScroll, 100), true);
+  // Highlight updates are coalesced inside highlighter.ts with one rAF.
+  window.addEventListener('scroll', handleScroll, true);
+  window.addEventListener('resize', handleResize, true);
 
   // Selection-rewrite bubble: show whenever there's a non-empty selection
   // inside an editable field (works on clean, error-free text too).
@@ -176,12 +191,20 @@ async function loadUserSettings() {
   if (!checkContext()) return;
 
   try {
-    const result = await chrome.storage.sync.get(['disabledDomains', 'autocompleteEnabled']);
+    const result = await chrome.storage.sync.get([
+      'disabledDomains',
+      'autocompleteEnabled',
+      'autocorrectEnabled',
+    ]);
     disabledDomains = result.disabledDomains || [];
     // Tab/ghost autocomplete is OPT-IN (default off). This is a proofreading
     // tool, not a predictive-text tool; the unwanted Tab suggestions were a
     // top complaint. Only on if the user explicitly enabled it.
     autocompleteEnabled = result.autocompleteEnabled === true;
+    // iPhone-style autocorrect is OPT-IN (default off): it silently edits the
+    // user's text as they type, so it must be explicitly enabled.
+    autocorrectEnabled = result.autocorrectEnabled === true;
+    void initAutocorrect();
   } catch (e) {
     if (e instanceof Error && e.message.includes('context invalidated')) {
       isContextInvalidated = true;
@@ -334,6 +357,10 @@ function handleScroll() {
   refreshFloatingDecorations();
 }
 
+function handleResize() {
+  rebuildFloatingDecorations();
+}
+
 /**
  * Activate an editable element for grammar checking
  */
@@ -348,6 +375,14 @@ function activateElement(element: HTMLElement) {
     element,
     lastText: extractText(element),
   };
+
+  // Suppress the browser's NATIVE spellcheck on fields we manage, so its red
+  // wavy squiggle doesn't visually collide with OGrammar's own underlines
+  // (Grammarly does exactly this). OGrammar ships its own spell engine, menu,
+  // and per-user dictionary, so the native checker isn't needed while active;
+  // the original value is restored on deactivate.
+  editableElement.prevSpellcheck = element.getAttribute('spellcheck');
+  element.setAttribute('spellcheck', 'false');
 
   // Set up mutation observer for contenteditable elements
   if (element.isContentEditable && element.tagName !== 'INPUT' && element.tagName !== 'TEXTAREA') {
@@ -374,6 +409,7 @@ function activateElement(element: HTMLElement) {
   // Listen for input events
   element.addEventListener('input', handleInput as EventListener);
   element.addEventListener('keydown', handleKeyDown as EventListener);
+  startFloatingDecorationObservers(element);
 
   activeElements.set(element, editableElement);
 
@@ -393,6 +429,13 @@ function deactivateElement(element: HTMLElement) {
   const editableElement = activeElements.get(element);
   if (!editableElement) return;
 
+  // Restore the field's original native-spellcheck setting.
+  if (editableElement.prevSpellcheck === null || editableElement.prevSpellcheck === undefined) {
+    element.removeAttribute('spellcheck');
+  } else {
+    element.setAttribute('spellcheck', editableElement.prevSpellcheck);
+  }
+
   // Disconnect observer
   if (editableElement.observer) {
     editableElement.observer.disconnect();
@@ -401,6 +444,7 @@ function deactivateElement(element: HTMLElement) {
   // Remove event listeners
   element.removeEventListener('input', handleInput as EventListener);
   element.removeEventListener('keydown', handleKeyDown as EventListener);
+  stopFloatingDecorationObservers(element);
 
   // Clear highlights only if NOT currently interacting with a tooltip
   const currentActive = document.activeElement;
@@ -465,6 +509,24 @@ function handleGrammarSuccess(element: HTMLElement, text: string, issues: Issue[
     if (editableElement.lastLlmText !== text) editableElement.lastLlmIssues = [];
   }
   const visibleIssues = mergeLlmIssues(localIssues, editableElement?.lastLlmIssues || []);
+
+  // Autocorrect (opt-in): silently apply high-confidence (quick-fix) fixes for
+  // words the user just finished typing. Runs IN ADDITION to highlighting —
+  // anything it doesn't apply is still underlined below. Only for the focused
+  // field, and only when enabled.
+  if (autocorrectEnabled && editableElement && element === currentFocusElement) {
+    maybeAutocorrect(
+      element,
+      text,
+      editableElement.lastText,
+      visibleIssues,
+      getCaretPosition(element),
+    );
+  }
+
+  const proactiveEligible = isProactiveLlmEligible(element, text);
+  const llmCompletedForText = editableElement?.lastLlmText === text;
+  const llmPending = proactiveEligible && !llmCompletedForText;
   if (visibleIssues.length > 0) {
     if (editableElement) editableElement.lastIssues = visibleIssues;
     void syncActiveContext(text, visibleIssues);
@@ -473,6 +535,14 @@ function handleGrammarSuccess(element: HTMLElement, text: string, issues: Issue[
     // open panel before the user finishes the remaining sentences. Defer
     // the underline refresh until the panel is closed.
     if (!isUIActive()) highlightIssues(element, visibleIssues);
+    if (!isUIActive()) {
+      setAssistantState(element, {
+        localCount: localIssues.length,
+        llmCount: llmPending ? null : (editableElement?.lastLlmIssues || []).length,
+        phase: 'has-issues',
+        issues: visibleIssues,
+      });
+    }
 
     const statsPerType = { grammar: 0, spelling: 0, clarity: 0, style: 0 };
     for (const issue of visibleIssues) {
@@ -510,6 +580,14 @@ function handleGrammarSuccess(element: HTMLElement, text: string, issues: Issue[
     if (!isUIActive()) {
       if (wordCount >= 4) highlightIssues(element, []);
       else clearHighlights();
+      if (wordCount >= 4) {
+        setAssistantState(element, {
+          localCount: 0,
+          llmCount: llmPending ? null : 0,
+          phase: llmPending ? 'clean-pending-ai' : 'clean',
+          issues: [],
+        });
+      }
     }
     void chrome.runtime.sendMessage({ type: 'UPDATE_BADGE_COUNT', count: 0 });
   }
@@ -568,7 +646,19 @@ function buildLlmIssues(text: string, corrections: LlmCorrection[] | undefined):
     const original = (correction.original || '').trim();
     const suggestion = (correction.replacement || '').trim();
     if (!original || !suggestion || original === suggestion) continue;
-    const offset = findCorrectionOffset(text, original, used);
+    // Prefer the model's own offsets (unambiguous for repeated words); fall back
+    // to first-unused text match if they're missing or don't line up.
+    let offset = -1;
+    if (
+      typeof correction.start === 'number' &&
+      correction.start >= 0 &&
+      text.slice(correction.start, correction.start + original.length) === original &&
+      !used.some((s) => correction.start! < s.end && correction.start! + original.length > s.start)
+    ) {
+      offset = correction.start;
+    } else {
+      offset = findCorrectionOffset(text, original, used);
+    }
     if (offset < 0) continue;
     const end = offset + original.length;
     used.push({ start: offset, end });
@@ -583,7 +673,12 @@ function buildLlmIssues(text: string, corrections: LlmCorrection[] | undefined):
       confidence: confidenceScore(correction.confidence),
       priority: 2,
       source: 'llm',
-      route: 'quick-fix',
+      // LLM/context fixes are the SUBTLE ones (loose/lose, their/there) where a
+      // wrong one-click replace is most damaging. Route them to sentence-review
+      // so they surface as a distinct inline underline that opens a preview card
+      // (Accept/Dismiss) instead of a destructive quick-fix — preserving the
+      // false-positive guards in issuePolicy.
+      route: 'sentence-review',
       routeReason: 'Proactive sentence-level review after typing paused.',
     });
   }
@@ -598,22 +693,33 @@ function shouldRunProactiveLlm(text: string): boolean {
   return words >= PROACTIVE_LLM_MIN_WORDS;
 }
 
+function isProactiveLlmEligible(element: HTMLElement, text: string): boolean {
+  if (!shouldRunProactiveLlm(text)) return false;
+  const inputType =
+    element.tagName === 'INPUT'
+      ? ((element as HTMLInputElement).type || '').toLowerCase()
+      : '';
+  return !NON_PROSE_INPUT_TYPES.has(inputType) && !looksNonProse(text);
+}
+
 async function runProactiveLlmReview(element: HTMLElement) {
   if (!checkContext() || !activeElements.has(element) || isUIActive()) return;
 
   const editableElement = activeElements.get(element)!;
   const text = stripQuotedBBCode(extractText(element));
-  if (!shouldRunProactiveLlm(text)) return;
-
-  const inputType =
-    element.tagName === 'INPUT'
-      ? ((element as HTMLInputElement).type || '').toLowerCase()
-      : '';
-  if (NON_PROSE_INPUT_TYPES.has(inputType) || looksNonProse(text)) return;
+  if (!isProactiveLlmEligible(element, text)) return;
   if (editableElement.lastLlmText === text) return;
 
   const seq = (editableElement.llmSeq || 0) + 1;
   editableElement.llmSeq = seq;
+  const localIssues = editableElement.lastLocalIssues || [];
+  const pendingIssues = mergeLlmIssues(localIssues, editableElement.lastLlmIssues || []);
+  setAssistantState(element, {
+    localCount: localIssues.length,
+    llmCount: null,
+    phase: 'analyzing-llm',
+    issues: pendingIssues,
+  });
 
   try {
     const response = await chrome.runtime.sendMessage({ type: 'CORRECT_TEXT', text });
@@ -625,20 +731,44 @@ async function runProactiveLlmReview(element: HTMLElement) {
     currentState.lastLlmText = text;
     if (!response?.llm || response.shouldShow === false || !response.corrected || response.corrected.trim() === text.trim()) {
       currentState.lastLlmIssues = [];
+      const merged = currentState.lastLocalIssues || [];
+      currentState.lastIssues = merged;
+      setAssistantState(element, {
+        localCount: merged.length,
+        llmCount: 0,
+        phase: merged.length > 0 ? 'has-issues' : 'clean',
+        issues: merged,
+      });
       return;
     }
 
     const llmIssues = buildLlmIssues(text, response.corrections);
     currentState.lastLlmIssues = llmIssues;
-    if (llmIssues.length === 0) return;
-
     const merged = mergeLlmIssues(currentState.lastLocalIssues || [], llmIssues);
     currentState.lastIssues = merged;
     void syncActiveContext(text, merged);
-    highlightIssues(element, merged);
+    if (merged.length > 0) highlightIssues(element, merged);
+    else clearHighlights();
+    setAssistantState(element, {
+      localCount: (currentState.lastLocalIssues || []).length,
+      llmCount: llmIssues.length,
+      phase: merged.length > 0 ? 'has-issues' : 'clean',
+      issues: merged,
+    });
     void chrome.runtime.sendMessage({ type: 'UPDATE_BADGE_COUNT', count: merged.length });
   } catch (err) {
     console.debug('[OpenGrammar] Proactive LLM review skipped:', err);
+    if (activeElements.has(element) && !isUIActive()) {
+      const currentState = activeElements.get(element)!;
+      const localIssues = currentState.lastLocalIssues || [];
+      const visibleIssues = mergeLlmIssues(localIssues, currentState.lastLlmIssues || []);
+      setAssistantState(element, {
+        localCount: localIssues.length,
+        llmCount: null,
+        phase: visibleIssues.length > 0 ? 'has-issues' : 'clean-pending-ai',
+        issues: visibleIssues,
+      });
+    }
   }
 }
 
@@ -700,6 +830,14 @@ const checkGrammar = async (element: HTMLElement) => {
 
   try {
     const startTime = Date.now();
+    if (!isUIActive()) {
+      setAssistantState(element, {
+        localCount: 0,
+        llmCount: null,
+        phase: 'analyzing-local',
+        issues: [],
+      });
+    }
     const response = await chrome.runtime.sendMessage({
       type: 'CHECK_GRAMMAR',
       text,
@@ -1014,5 +1152,11 @@ chrome.storage?.onChanged?.addListener((changes) => {
   if (changes.autocompleteEnabled) {
     autocompleteEnabled = changes.autocompleteEnabled.newValue === true;
     if (!autocompleteEnabled) autocompleteManager.hide();
+  }
+  if (changes.autocorrectEnabled) {
+    autocorrectEnabled = changes.autocorrectEnabled.newValue === true;
+  }
+  if (changes.autocorrectRejected) {
+    onRejectedStorageChange(changes.autocorrectRejected.newValue);
   }
 });
