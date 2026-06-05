@@ -30,3 +30,11 @@ opengrammar/extension/scripts/.fp-corpora/
 
 # Local Netlify folder
 .netlify
+
+# Rust build output for the desktop app (regenerable; never commit — multi-GB)
+desktop/target/
+desktop/**/target/
+# DPAPI-encrypted key / local config live in %APPDATA%, never in the repo, but
+# guard against any stray copies landing under desktop/
+desktop/**/apikey.bin
+desktop/**/config.json
