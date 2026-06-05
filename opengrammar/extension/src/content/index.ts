@@ -1,8 +1,10 @@
 import type { AnalysisContext, AutocompleteResponse, Issue } from '../types';
 import { isProtectedNonProseText } from '../shared/protectedText';
 import {
+  cancelPendingAutocorrect,
   initAutocorrect,
   maybeAutocorrect,
+  noteAutocorrectEdit,
   onRejectedStorageChange,
 } from './autocorrect';
 import { autocompleteManager } from './autocomplete';
@@ -65,6 +67,7 @@ let lastInputSelection: {
 let disabledDomains: string[] = [];
 let autocompleteEnabled = false; // opt-in; see loadUserSettings()
 let autocorrectEnabled = false; // opt-in; see loadUserSettings()
+let autocorrectDelayMs = 2000; // idle (ms) before autocorrect applies; see settings
 
 let isContextInvalidated = false;
 
@@ -194,6 +197,7 @@ async function loadUserSettings() {
       'disabledDomains',
       'autocompleteEnabled',
       'autocorrectEnabled',
+      'autocorrectDelayMs',
     ]);
     disabledDomains = result.disabledDomains || [];
     // Tab/ghost autocomplete is OPT-IN (default off). This is a proofreading
@@ -203,6 +207,9 @@ async function loadUserSettings() {
     // iPhone-style autocorrect is OPT-IN (default off): it silently edits the
     // user's text as they type, so it must be explicitly enabled.
     autocorrectEnabled = result.autocorrectEnabled === true;
+    if (typeof result.autocorrectDelayMs === 'number') {
+      autocorrectDelayMs = result.autocorrectDelayMs;
+    }
     void initAutocorrect();
   } catch (e) {
     if (e instanceof Error && e.message.includes('context invalidated')) {
@@ -474,6 +481,7 @@ function handleInput(event: Event) {
     const editableElement = activeElements.get(target)!;
     editableElement.lastText = extractText(target);
     void syncActiveContext(editableElement.lastText, editableElement.lastIssues || []);
+    if (autocorrectEnabled) noteAutocorrectEdit();
     debouncedCheck(target);
     if (autocompleteEnabled) {
       debouncedAutocomplete(target);
@@ -520,6 +528,7 @@ function handleGrammarSuccess(element: HTMLElement, text: string, issues: Issue[
       editableElement.lastText,
       visibleIssues,
       getCaretPosition(element),
+      autocorrectDelayMs,
     );
   }
 
@@ -1154,6 +1163,10 @@ chrome.storage?.onChanged?.addListener((changes) => {
   }
   if (changes.autocorrectEnabled) {
     autocorrectEnabled = changes.autocorrectEnabled.newValue === true;
+    if (!autocorrectEnabled) cancelPendingAutocorrect();
+  }
+  if (changes.autocorrectDelayMs && typeof changes.autocorrectDelayMs.newValue === 'number') {
+    autocorrectDelayMs = changes.autocorrectDelayMs.newValue;
   }
   if (changes.autocorrectRejected) {
     onRejectedStorageChange(changes.autocorrectRejected.newValue);
