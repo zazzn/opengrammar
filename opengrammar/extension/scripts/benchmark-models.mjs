@@ -300,7 +300,10 @@ async function runTarget(target) {
       if (s.protects) protectedOk++;
       if (s.noFalsePositive) falsePositiveOk++;
       if (test.bucket === 'sentence-review') { srTotal++; if (s.ok) srPass++; }
-      if (!s.protects || !s.noFalsePositive || !s.validJson) hard++;
+      if (!s.protects || !s.noFalsePositive || !s.validJson) {
+        hard++;
+        if (r === 0) console.log(`  HARD ${target.name}: json=${s.validJson} prot=${s.protects} noFP=${s.noFalsePositive} :: ${JSON.stringify(test.text).slice(0, 90)}`);
+      }
     }
   }
   if (target.kind === 'ollama') await ollamaUnload(target.model);

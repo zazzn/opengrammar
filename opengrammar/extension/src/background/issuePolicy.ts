@@ -96,6 +96,33 @@ function isPunctuationOrCaseOnly(issue: Issue): boolean {
   return !!s && o !== s && bare(o) === bare(s);
 }
 
+// A case/punctuation-only edit (bare(o) === bare(s)) that is genuinely MECHANICAL
+// and therefore safe to auto-apply on the one-click quick-fix route:
+//   - capitalization confined to the FIRST letter (sentence-initial caps: please→Please);
+//   - punctuation/space deltas confined to apostrophes and spaces (contraction /
+//     possessive fixes dont→don't, Its→It's; boundary splits alot→"a lot").
+// It rejects a capital introduced anywhere past the first letter — that is
+// brand/proper-noun re-casing (Datadog→DataDog, websocket→WebSocket) — and any
+// inserted comma/period/other mark — that is an optional style call
+// (Honestly→"Honestly,"). Neither is a reliable one-click fix, so the caller
+// drops it instead of silently rewriting already-correct text.
+function isMechanicalCaseOrPunct(original: string, suggestion: string): boolean {
+  if (!suggestion || original === suggestion || bare(original) !== bare(suggestion)) return false;
+  const lettersO = original.replace(/[^A-Za-z]/g, '');
+  const lettersS = suggestion.replace(/[^A-Za-z]/g, '');
+  for (let i = 1; i < lettersS.length; i++) {
+    const cs = lettersS[i]!;
+    if (cs !== lettersO[i] && cs === cs.toUpperCase()) return false;
+  }
+  const counts: Record<string, number> = {};
+  for (const ch of original.replace(/[A-Za-z0-9]/g, '')) counts[ch] = (counts[ch] ?? 0) + 1;
+  for (const ch of suggestion.replace(/[A-Za-z0-9]/g, '')) counts[ch] = (counts[ch] ?? 0) - 1;
+  for (const ch of Object.keys(counts)) {
+    if (counts[ch] !== 0 && !/['’ ]/.test(ch)) return false;
+  }
+  return true;
+}
+
 function isHighConfidenceSpelling(issue: Issue): boolean {
   const original = (issue.original || '').trim();
   const suggestion = (issue.suggestion || '').trim();
@@ -168,7 +195,14 @@ function routeIssue(issue: Issue): { route: Route; reason: string; confidence?: 
 
   if (issue.type === 'grammar') {
     if (isPunctuationOrCaseOnly(issue)) {
-      return { route: 'quick-fix', reason: 'mechanical punctuation/case fix', confidence: 0.94 };
+      // Auto-apply only genuinely mechanical case/punctuation edits. A new internal
+      // capital is brand/proper-noun casing (Datadog→DataDog, websocket→WebSocket)
+      // and an inserted comma/period is an optional style mark (Honestly→"Honestly,")
+      // — neither is a safe one-click fix, so drop it rather than corrupt correct text.
+      if (isMechanicalCaseOrPunct(issue.original || '', issue.suggestion || '')) {
+        return { route: 'quick-fix', reason: 'mechanical punctuation/case fix', confidence: 0.94 };
+      }
+      return { route: 'suppress', reason: 'brand/proper-noun casing or optional punctuation, not a reliable fix', confidence: 0 };
     }
     return { route: 'sentence-review', reason: 'grammar needs sentence context', confidence: 0.65 };
   }
