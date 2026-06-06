@@ -38,7 +38,7 @@ const nudged = new WeakSet<HTMLElement>();
 function nudge(el: HTMLElement | null) {
   if (!el || nudged.has(el)) return;
   nudged.add(el);
-  console.log('[OpenGrammar] Gmail field detected, handing off to content script:', el.tagName);
+  console.log('[OGrammar] Gmail field detected, handing off to content script:', el.tagName);
   // Dispatch a composed, bubbling focusin so the main content script's
   // document-level capture listener activates the field through its normal path.
   try {
@@ -72,7 +72,7 @@ function scheduleScan() {
 }
 
 function start() {
-  console.log('[OpenGrammar] Initializing Gmail integration...');
+  console.log('[OGrammar] Initializing Gmail integration...');
   // Initial scan in case compose is already open (e.g. ?compose=new deep link).
   scan();
   // Compose mounts/remounts as the user opens/closes draft windows.

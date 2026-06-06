@@ -924,20 +924,20 @@ function getAssistantSeverity(issues: Issue[]): '#e53935' | '#f59e0b' {
 function getAssistantLabel(state: AssistantState, totalCount: number): string {
   switch (state.phase) {
     case 'analyzing-local':
-      return 'OpenGrammar: checking writing';
+      return 'OGrammar: checking writing';
     case 'analyzing-llm':
       return totalCount > 0
-        ? `OpenGrammar: ${totalCount} suggestion${totalCount !== 1 ? 's' : ''}; AI is still checking context`
-        : 'OpenGrammar: AI is checking context';
+        ? `OGrammar: ${totalCount} suggestion${totalCount !== 1 ? 's' : ''}; AI is still checking context`
+        : 'OGrammar: AI is checking context';
     case 'clean-pending-ai':
-      return 'OpenGrammar: local check found no issues; AI context check pending';
+      return 'OGrammar: local check found no issues; AI context check pending';
     case 'clean':
-      return 'OpenGrammar: writing looks clean';
+      return 'OGrammar: writing looks clean';
     case 'has-issues':
     default:
       return state.llmCount === null
-        ? `OpenGrammar: ${totalCount} suggestion${totalCount !== 1 ? 's' : ''}; AI is still checking context`
-        : `OpenGrammar: ${totalCount} suggestion${totalCount !== 1 ? 's' : ''}`;
+        ? `OGrammar: ${totalCount} suggestion${totalCount !== 1 ? 's' : ''}; AI is still checking context`
+        : `OGrammar: ${totalCount} suggestion${totalCount !== 1 ? 's' : ''}`;
   }
 }
 
@@ -1769,7 +1769,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
         content.innerHTML = `
           <div style="padding:16px;text-align:center;">
             <div style="font-size:13px;color:#dc2626;margin-bottom:6px;">🔑 API key required</div>
-            <div style="font-size:12px;color:#8e8e93;">Add your API key in the OpenGrammar popup settings, then try again.</div>
+            <div style="font-size:12px;color:#8e8e93;">Add your API key in the OGrammar popup settings, then try again.</div>
           </div>
         `;
         repositionPanel();

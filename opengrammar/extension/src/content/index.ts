@@ -120,7 +120,7 @@ function checkContext(): boolean {
 
   if (!chrome.runtime?.id) {
     if (!isContextInvalidated) {
-      console.warn('[OpenGrammar] Extension context invalidated. Please refresh the page.');
+      console.warn('[OGrammar] Extension context invalidated. Please refresh the page.');
       isContextInvalidated = true;
       deactivateAll();
     }
@@ -149,7 +149,7 @@ function deactivateAll() {
  * Initialize the content script
  */
 function initialize() {
-  console.log('🚀 [OpenGrammar] Content script starting...');
+  console.log('🚀 [OGrammar] Content script starting...');
 
   // Check context immediately
   if (!checkContext()) return;
@@ -157,7 +157,7 @@ function initialize() {
   // Check for file:// protocol
   if (window.location.protocol === 'file:') {
     console.warn(
-      '⚠️ [OpenGrammar] You are using file:// protocol. Make sure "Allow access to file URLs" is enabled in chrome://extensions for OpenGrammar.',
+      '⚠️ [OGrammar] You are using file:// protocol. Make sure "Allow access to file URLs" is enabled in chrome://extensions for OGrammar.',
     );
   }
 
@@ -193,23 +193,23 @@ function initialize() {
           isContextInvalidated = true;
         }
         console.error(
-          '❌ [OpenGrammar] Cannot connect to background script:',
+          '❌ [OGrammar] Cannot connect to background script:',
           chrome.runtime.lastError.message,
         );
       } else {
         console.log(
-          '✅ [OpenGrammar] Connected to background script.',
+          '✅ [OGrammar] Connected to background script.',
           response?.providers?.length ? `${response.providers.length} providers` : '',
         );
       }
     });
   } catch (e) {
-    console.error('❌ [OpenGrammar] Fatal error connecting to background:', e);
+    console.error('❌ [OGrammar] Fatal error connecting to background:', e);
     isContextInvalidated = true;
   }
 
   console.log(
-    '[OpenGrammar] Content script initialized on',
+    '[OGrammar] Content script initialized on',
     window.location.hostname || 'local file',
   );
 
@@ -267,7 +267,7 @@ async function loadUserSettings() {
     if (e instanceof Error && e.message.includes('context invalidated')) {
       isContextInvalidated = true;
     }
-    console.debug('[OpenGrammar] Could not load disabled domains');
+    console.debug('[OGrammar] Could not load disabled domains');
   }
 }
 
@@ -378,7 +378,7 @@ function syncSelectionBubble(): void {
 function checkExistingFocusedElement() {
   if (!checkContext()) return;
   if (isDomainDisabled()) {
-    console.log('[OpenGrammar] Domain is disabled, skipping');
+    console.log('[OGrammar] Domain is disabled, skipping');
     return;
   }
 
@@ -386,7 +386,7 @@ function checkExistingFocusedElement() {
   // target on Play Console / web-component apps — is detected, not its host.
   const activeElement = deepActiveElement();
   if (activeElement && isEditable(activeElement)) {
-    console.log('[OpenGrammar] Found active element on load:', activeElement.tagName);
+    console.log('[OGrammar] Found active element on load:', activeElement.tagName);
     activateElement(activeElement);
   }
 }
@@ -402,7 +402,7 @@ function reprobeActiveElement() {
   if (!checkContext() || isDomainDisabled()) return;
   const el = deepActiveElement();
   if (el && isEditable(el) && !activeElements.has(el)) {
-    console.log('[OpenGrammar] Late-mounted editable detected:', el.tagName);
+    console.log('[OGrammar] Late-mounted editable detected:', el.tagName);
     activateElement(el);
   }
 }
@@ -460,7 +460,7 @@ function handleFocusIn(event: FocusEvent) {
   const target = getElementFromEvent(event);
   const normalizedTarget = normalizeEditableTarget(target);
   if (normalizedTarget && isEditable(normalizedTarget)) {
-    console.log('[OpenGrammar] Focus in:', normalizedTarget.tagName, normalizedTarget.className);
+    console.log('[OGrammar] Focus in:', normalizedTarget.tagName, normalizedTarget.className);
     activateElement(normalizedTarget);
   }
 }
@@ -482,7 +482,7 @@ function handleFocusOut(event: FocusEvent) {
       relatedTarget.closest('#opengrammar-highlights') ||
       relatedTarget.classList.contains('opengrammar-underline'))
   ) {
-    console.log('[OpenGrammar] Focus moving to UI, staying active');
+    console.log('[OGrammar] Focus moving to UI, staying active');
     return;
   }
 
@@ -506,7 +506,7 @@ function handleFocusOut(event: FocusEvent) {
       }
 
       if (document.activeElement !== target) {
-        console.log('[OpenGrammar] Focus out:', target.tagName);
+        console.log('[OGrammar] Focus out:', target.tagName);
         deactivateElement(target);
       }
     }, 200);
@@ -554,7 +554,7 @@ function activateElement(element: HTMLElement) {
         const newText = extractText(element);
         if (newText !== editableElement.lastText) {
           editableElement.lastText = newText;
-          console.log('[OpenGrammar] Content changed, checking grammar...');
+          console.log('[OGrammar] Content changed, checking grammar...');
           debouncedCheck(element);
         }
       }, 500),
@@ -578,7 +578,7 @@ function activateElement(element: HTMLElement) {
 
   // Initial check
   console.log(
-    '[OpenGrammar] Activated element, initial text:',
+    '[OGrammar] Activated element, initial text:',
     editableElement.lastText.substring(0, 50),
   );
   void syncActiveContext(editableElement.lastText, editableElement.lastIssues || []);
@@ -625,7 +625,7 @@ function deactivateElement(element: HTMLElement) {
     currentFocusElement = null;
   }
 
-  console.log('[OpenGrammar] Deactivated element');
+  console.log('[OGrammar] Deactivated element');
   autocompleteManager.hide();
 }
 
@@ -922,7 +922,7 @@ async function runProactiveLlmReview(element: HTMLElement) {
     });
     void chrome.runtime.sendMessage({ type: 'UPDATE_BADGE_COUNT', count: merged.length });
   } catch (err) {
-    console.debug('[OpenGrammar] Proactive LLM review skipped:', err);
+    console.debug('[OGrammar] Proactive LLM review skipped:', err);
     if (activeElements.has(element) && !isUIActive()) {
       const currentState = activeElements.get(element)!;
       const localIssues = currentState.lastLocalIssues || [];
@@ -970,7 +970,7 @@ const checkGrammar = async (element: HTMLElement) => {
   if (!checkContext()) return;
 
   if (!activeElements.has(element)) {
-    console.log('[OpenGrammar] Element not active, skipping check');
+    console.log('[OGrammar] Element not active, skipping check');
     return;
   }
 
@@ -1013,7 +1013,7 @@ const checkGrammar = async (element: HTMLElement) => {
       // The assistant bubble was set to 'analyzing-local' above; returning here
       // without resetting it leaves the bubble spinning forever. Reset to a
       // resting state (mirrors runProactiveLlmReview's catch).
-      console.error('[OpenGrammar] Grammar check failed:', response.error);
+      console.error('[OGrammar] Grammar check failed:', response.error);
       resetAssistantAfterError(element);
       return;
     }
@@ -1026,7 +1026,7 @@ const checkGrammar = async (element: HTMLElement) => {
       return;
     }
 
-    console.error('[OpenGrammar] Grammar check failed:', err);
+    console.error('[OGrammar] Grammar check failed:', err);
     // Same reason as above: don't leave the bubble stuck spinning on a thrown error.
     resetAssistantAfterError(element);
   }
@@ -1241,7 +1241,7 @@ function applyRewrite(original: string, rewritten: string): { success: boolean; 
         return { success: true };
       }
     } catch (error) {
-      console.debug('[OpenGrammar] Failed to apply selection rewrite:', error);
+      console.debug('[OGrammar] Failed to apply selection rewrite:', error);
     }
   }
 
@@ -1329,7 +1329,7 @@ if (document.readyState === 'loading') {
 chrome.storage?.onChanged?.addListener((changes) => {
   if (changes.disabledDomains) {
     disabledDomains = changes.disabledDomains.newValue || [];
-    console.log('[OpenGrammar] Disabled domains updated:', disabledDomains);
+    console.log('[OGrammar] Disabled domains updated:', disabledDomains);
   }
   if (changes.autocompleteEnabled) {
     autocompleteEnabled = changes.autocompleteEnabled.newValue === true;
