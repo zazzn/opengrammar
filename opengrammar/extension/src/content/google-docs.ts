@@ -10,12 +10,12 @@ export class GoogleDocsHandler {
   }
 
   private async init() {
-    console.log('[OpenGrammar] Initializing Google Docs integration...');
+    console.log('[OGrammar] Initializing Google Docs integration...');
 
     // We need to wait for the iframe to be available
     for (let i = 0; i < 20; i++) {
       if (this.findEditor()) {
-        console.log('[OpenGrammar] Found Google Docs editor');
+        console.log('[OGrammar] Found Google Docs editor');
         this.setupObserver();
         this.runCheck();
         return;
@@ -70,7 +70,7 @@ export class GoogleDocsHandler {
     if (!this.lastText || this.lastText.trim().length < 5) return;
 
     console.log(
-      '[OpenGrammar] Analyzing Google Docs content (length: ' + this.lastText.length + ')',
+      '[OGrammar] Analyzing Google Docs content (length: ' + this.lastText.length + ')',
     );
 
     try {
@@ -99,7 +99,7 @@ export class GoogleDocsHandler {
         });
       }
     } catch (e) {
-      console.debug('[OpenGrammar] GDocs check skipped:', e);
+      console.debug('[OGrammar] GDocs check skipped:', e);
     }
   }
 
