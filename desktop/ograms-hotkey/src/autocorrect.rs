@@ -118,6 +118,21 @@ fn looks_intentional(token: &str) -> bool {
     all_caps || internal_caps
 }
 
+/// True if `suggestion` introduces an uppercase letter PAST the first character
+/// that `original` lacks — i.e. brand / proper-noun re-casing (Datadog→DataDog,
+/// websocket→WebSocket, iphone→iPhone). Harper's capitalization lint can't be
+/// trusted for these (it "corrects" already-correct brand names), so we never
+/// auto-apply them; a plain sentence-initial capital (i→I, please→Please) is fine.
+/// Mirrors the extension's `isMechanicalCaseOrPunct` guard in `issuePolicy.ts`.
+fn adds_internal_capital(original: &str, suggestion: &str) -> bool {
+    let o: Vec<char> = original.chars().collect();
+    suggestion
+        .chars()
+        .enumerate()
+        .skip(1)
+        .any(|(i, cs)| cs.is_uppercase() && o.get(i).is_none_or(|&co| co != cs))
+}
+
 /// Should this Harper issue be AUTO-APPLIED (vs. only underlined)? Conservative:
 /// capitalization fixes, and single-word spelling/typo fixes that are a small
 /// edit from the original. Everything else stays click-to-fix.
@@ -127,8 +142,10 @@ pub fn is_auto_applicable(kind: &str, original: &str, suggestion: &str) -> bool 
         return false;
     }
     match kind {
-        // i→I, sentence-initial, product-name capitalization: highest confidence.
-        "Capitalization" => true,
+        // i→I and sentence-initial capitalization: high confidence — but NOT brand
+        // re-casing (Datadog→DataDog, websocket→WebSocket), which Harper gets wrong
+        // and would corrupt correct text. Matches the extension's issuePolicy guard.
+        "Capitalization" => !adds_internal_capital(original, suggestion),
         // Spelling/typo: single word, small edit, not an intentional-case token.
         "Spelling" | "Typo" => {
             original.chars().count() >= 3
@@ -188,7 +205,7 @@ mod tests {
     #[test]
     fn capitalization_and_small_typos_auto_apply() {
         assert!(is_auto_applicable("Capitalization", "i", "I"));
-        assert!(is_auto_applicable("Capitalization", "iphone", "iPhone"));
+        assert!(is_auto_applicable("Capitalization", "please", "Please"));
         assert!(is_auto_applicable("Typo", "teh", "the"));
         assert!(is_auto_applicable("Spelling", "becuase", "because"));
         assert!(is_auto_applicable("Spelling", "definately", "definitely"));
@@ -202,6 +219,9 @@ mod tests {
         // Intentional case (acronym / brand) left alone.
         assert!(!is_auto_applicable("Spelling", "NASA", "nasa"));
         assert!(!is_auto_applicable("Spelling", "iMac", "imac"));
+        // Brand re-casing is not auto-applied (Harper mis-capitalizes correct names).
+        assert!(!is_auto_applicable("Capitalization", "Datadog", "DataDog"));
+        assert!(!is_auto_applicable("Capitalization", "iphone", "iPhone"));
         // Big edits aren't "high confidence".
         assert!(!is_auto_applicable("Spelling", "wat", "watermelon"));
         // No-op / empty.
