@@ -1,4 +1,23 @@
-# Local LLM model benchmark - 2026-05-31
+# Local LLM model benchmark (2026-05-31 → 06-01)
+
+> ## ✅ Current recommendation (TL;DR)
+>
+> Measured on OGrammar's 46-case proofreading corpus (weighted score /123), **with
+> protected-text masking on** — the configuration the product actually ships:
+>
+> - **Best local (the shipped `DEFAULT_WRITING_MODEL`):** **`qwen3.5:4b`** — 123/123,
+>   0 hard failures, ~1.0 s on a GPU, full 10/10 sentence-review.
+> - **Best cloud (quality *and* cheapest):** **`deepseek-chat`** — 123/123, 0 hard
+>   failures, ~$0.00004/correction with prompt caching.
+> - **Fastest cloud:** Groq **`llama-3.3-70b-versatile`** (~400 ms, 97/123).
+> - **Keep masking on** — it turns protected-text safety into an app-level guarantee and
+>   makes weaker models materially more usable.
+>
+> The sections below are a **chronological research log.** Earlier sections that name
+> `qwen3:4b-instruct` as the "best local default" predate the
+> [protected-text masking rerun](#protected-text-masking-rerun--2026-06-01) and are
+> **superseded by it** — that rerun is the authoritative result. The user-facing summary
+> of all this is [07-ai-providers.md](07-ai-providers.md).
 
 ## Goal
 
@@ -50,7 +69,10 @@ Known gaps and manual UI cases are excluded from model selection.
 | granite3.3:2b | 23/46 | 53/123 | 18 | 46/46 | 30/46 | 30/46 | 6/10 | 945ms |
 | phi4-mini:latest | 19/46 | 39/123 | 24 | 46/46 | 23/46 | 27/46 | 6/10 | 3669ms |
 
-## Recommendation
+## Recommendation (2026-05-31 — superseded)
+
+> ⚠️ **Superseded** by the [masking rerun](#protected-text-masking-rerun--2026-06-01):
+> the current best local model is **`qwen3.5:4b`**. Kept for the historical record.
 
 Use `qwen3:4b-instruct` as the recommended local Ollama model.
 
@@ -123,11 +145,15 @@ artifact (terse `qwen3:4b-instruct` vs verbose `qwen2.5:1.5b`).
 | qwen2.5:7b (local) | 31/46 | 74/123 | 12 | 46/46 | 35/46 | 34/46 | 9/10 | 2557ms | 100% |
 | qwen2.5:1.5b (local) | 22/46 | 64/123 | 14 | 46/46 | 33/46 | 35/46 | 3/10 | 2496ms | 100% |
 
-### Updated recommendation
+### Updated recommendation (2026-06-01)
 
-- **Best local (default):** `qwen3:4b-instruct` — **confirmed** on a clean GPU run.
-  Best local quality by a wide margin, fewest hard failures (2), and the fastest
-  local model (902 ms). Stays the `DEFAULT_WRITING_MODEL`.
+> ⚠️ The **local** pick below (`qwen3:4b-instruct`) was later **superseded** by the
+> [masking rerun](#protected-text-masking-rerun--2026-06-01), where `qwen3.5:4b` wins
+> (123/123, 0 hard) and becomes the `DEFAULT_WRITING_MODEL`. The **cloud** picks here
+> still stand.
+
+- **Best local (at the time):** `qwen3:4b-instruct` — best local quality then, fewest
+  hard failures (2), fastest local model (902 ms). *(Now superseded by `qwen3.5:4b`.)*
 - **Best overall / best for users with an API key:** **`deepseek-chat`** — near
   perfect (121/123), **zero hard failures**, perfect protected-span and
   no-false-positive (46/46), and only ~1.4 s. The strongest proofreader tested.
@@ -185,11 +211,13 @@ node scripts/benchmark-models.mjs --local=qwen3:4b-instruct,qwen3.5:0.8b,qwen3.5
 | qwen3.5:0.8b | 26/46 | 93/123 | 0 | 46/46 | 46/46 | 46/46 | 0/10 | 1481ms | 100% |
 | nemotron-mini | 23/46 | 72/123 | 11 | 44/46 | 35/46 | 39/46 | 2/10 | 4670ms | n/a |
 
-Result:
+Result (unmasked — later overturned by masking):
 
-- `qwen3:4b-instruct` remains the best local default.
-- `qwen3.5:4b` is interesting for sentence review (`8/10`) but has more hard
-  failures than the default.
+- *At the time*, `qwen3:4b-instruct` looked like the best local default; `qwen3.5:4b`
+  had more hard failures **without masking**.
+- ⚠️ The [masking rerun](#protected-text-masking-rerun--2026-06-01) **overturns this**:
+  with masking, `qwen3.5:4b` reaches 123/123 / 0 hard and becomes the default — masking
+  removes exactly the protected-span failures that hurt `qwen3.5:4b` here.
 - `qwen3.5:2b` has strong weighted quality but is much slower on this machine.
 - `qwen3.5:0.8b` is very conservative but cannot do sentence review.
 - NVIDIA `nemotron-mini` is not competitive for this proofreading workload.
