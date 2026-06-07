@@ -602,7 +602,7 @@ impl<'a> MonitorState<'a> {
                         if let Some((px, py)) = target.last_pill_anchor {
                             let np = (px + dx as i32, py + dy as i32);
                             target.last_pill_anchor = Some(np);
-                            pill::show_pill(np.0, np.1);
+                            pill::shift_pill(dx as i32, dy as i32);
                         }
                     }
                 }
@@ -913,10 +913,10 @@ impl<'a> MonitorState<'a> {
             }
             return;
         }
-        self.pending_rewrite = Some((msg.original, msg.rewritten.clone()));
         if let Some((ax, ay)) = anchor {
-            pill::show_preview(ax - 380, ay - 240, &msg.rewritten, msg.tone.label());
+            pill::show_preview(ax - 380, ay - 240, &msg.original, &msg.rewritten, msg.tone.label());
         }
+        self.pending_rewrite = Some((msg.original, msg.rewritten));
     }
 
     /// Apply clicked in the preview: now replace the field with the rewrite (only
@@ -1384,8 +1384,7 @@ fn show_field_pill(config: &Config, element: &UIElement, text: &str) -> Option<(
         pill::close();
         return None;
     };
-    let anchor = (rect.get_right() - 10, rect.get_bottom() - 10);
-    pill::show_pill(anchor.0, anchor.1);
+    let anchor = pill::show_pill(rect.get_right(), rect.get_bottom(), rect.get_top());
     Some(anchor)
 }
 

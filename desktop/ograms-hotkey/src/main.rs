@@ -8,6 +8,8 @@ mod autocorrect;
 #[cfg(windows)]
 mod config;
 #[cfg(windows)]
+mod diff;
+#[cfg(windows)]
 mod overlay;
 #[cfg(windows)]
 mod pill;

@@ -16,14 +16,18 @@ use windows::Win32::Graphics::Gdi::{
     HFONT, HGDIOBJ, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromPoint, OUT_TT_PRECIS,
     PAINTSTRUCT, SelectObject, SetBkMode, SetTextColor, SetWindowRgn, TRANSPARENT,
 };
-use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::System::LibraryLoader::{GetModuleHandleW, LoadLibraryW};
+use windows::Win32::UI::Controls::RichEdit::{
+    CFE_BOLD, CFE_STRIKEOUT, CFM_BOLD, CFM_COLOR, CFM_STRIKEOUT, CHARFORMAT2W,
+};
 use windows::Win32::System::Threading::GetCurrentThreadId;
 use windows::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
 use windows::Win32::UI::WindowsAndMessaging::{
     BS_PUSHBUTTON, CallNextHookEx, CreateWindowExW, DefWindowProcW, DestroyWindow, ES_MULTILINE,
-    ES_READONLY, GetClientRect, GetWindowRect, HHOOK, HMENU, IDC_ARROW, KillTimer, LoadCursorW,
+    GetClientRect, GetWindowRect, HHOOK, HMENU, IDC_ARROW, KillTimer, LoadCursorW,
     MSLLHOOKSTRUCT, PostThreadMessageW, RegisterClassW, SW_SHOWNOACTIVATE, SendMessageW, SetTimer,
-    SetWindowsHookExW, ShowWindow, UnhookWindowsHookEx, WH_MOUSE_LL, WINDOW_EX_STYLE, WINDOW_STYLE,
+    SetWindowPos, SetWindowsHookExW, ShowWindow, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
+    UnhookWindowsHookEx, WH_MOUSE_LL, WINDOW_EX_STYLE, WINDOW_STYLE,
     WM_APP, WM_COMMAND, WM_CTLCOLORBTN, WM_CTLCOLOREDIT, WM_CTLCOLORSTATIC, WM_DESTROY,
     WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_PAINT, WM_RBUTTONDOWN, WM_SETFONT, WM_TIMER,
     WNDCLASSW, WS_BORDER, WS_CHILD, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
@@ -44,6 +48,13 @@ const ID_APPLY: i32 = 210;
 const ID_CANCEL: i32 = 211;
 pub const TONES: [&str; 3] = ["Polish", "Formalize", "Casual"];
 const INDIGO: u32 = 0x4F46E5;
+
+// RichEdit control messages — the WindowsAndMessaging set we import doesn't include
+// these RichEdit-specific ones; the values are stable Win32 ABI.
+const EM_REPLACESEL: u32 = 0x00C2;
+const EM_SETREADONLY: u32 = 0x00CF;
+const EM_SETCHARFORMAT: u32 = 0x0444;
+const SCF_SELECTION: u32 = 0x0001;
 
 thread_local! {
     static PILL: Cell<isize> = const { Cell::new(0) };
@@ -199,13 +210,17 @@ pub fn close_menu() {
     });
 }
 
-/// Show (or move) the rewrite pill so its bottom-right sits near (x, y) — the
-/// field's bottom-right corner. Clamped on-screen.
-pub fn show_pill(x: i32, y: i32) {
+/// Show (or replace) the rewrite pill just BELOW the focused field (right-aligned to
+/// the field's right edge) so it never covers the field's text. Clamped on-screen; if
+/// placing it below would spill off the bottom (field near the screen edge) it flips
+/// to just ABOVE the field instead. Returns the pill's bottom-right (screen coords) so
+/// the tone menu / preview / working bubble can anchor to it.
+pub fn show_pill(field_right: i32, field_bottom: i32, field_top: i32) -> (i32, i32) {
     close_pill();
+    let fallback = (field_right, field_bottom);
     unsafe {
         let Ok(hinstance) = GetModuleHandleW(None) else {
-            return;
+            return fallback;
         };
         let class = w!("OGrammarPillClass");
         let wc = WNDCLASSW {
@@ -217,14 +232,20 @@ pub fn show_pill(x: i32, y: i32) {
         };
         RegisterClassW(&wc);
 
-        let scale = (dpi_for_point(x, y) as f32) / 96.0;
+        let scale = (dpi_for_point(field_right, field_bottom) as f32) / 96.0;
         let s = |v: i32| (v as f32 * scale).round() as i32;
         let pw = s(96);
         let ph = s(26);
-        // Position the pill so its bottom-right is at (x, y), clamped on-screen.
-        let work = work_area_for_point(x, y);
-        let px = (x - pw).min(work.right - pw).max(work.left);
-        let py = (y - ph).min(work.bottom - ph).max(work.top);
+        let gap = s(6);
+        // Sit the pill just BELOW the field (out of the text), right-aligned. If that
+        // would push it off the bottom of the screen, flip it just ABOVE the field.
+        let work = work_area_for_point(field_right, field_bottom);
+        let px = (field_right - pw).min(work.right - pw).max(work.left);
+        let mut py = field_bottom + gap;
+        if py + ph > work.bottom {
+            py = field_top - ph - gap;
+        }
+        py = py.min(work.bottom - ph).max(work.top);
 
         let bg = CreateSolidBrush(cref(INDIGO));
         PILL_BG.with(|b| b.set(bg.0 as isize));
@@ -247,13 +268,39 @@ pub fn show_pill(x: i32, y: i32) {
         )
         .unwrap_or_default();
         if hwnd.0.is_null() {
-            return;
+            return fallback;
         }
         let rgn = CreateRoundRectRgn(0, 0, pw + 1, ph + 1, s(13), s(13));
         let _ = SetWindowRgn(hwnd, Some(rgn), true);
         PILL.with(|c| c.set(hwnd.0 as isize));
         let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+        (px + pw, py + ph)
     }
+}
+
+/// Move the existing pill by (dx, dy) — used when the host window moves so the pill
+/// tracks the field without re-querying (some controls report stale rects post-move).
+pub fn shift_pill(dx: i32, dy: i32) {
+    PILL.with(|c| {
+        let h = c.get();
+        if h != 0 {
+            unsafe {
+                let hwnd = HWND(h as *mut core::ffi::c_void);
+                let mut rc = RECT::default();
+                if GetWindowRect(hwnd, &mut rc).is_ok() {
+                    let _ = SetWindowPos(
+                        hwnd,
+                        None,
+                        rc.left + dx,
+                        rc.top + dy,
+                        0,
+                        0,
+                        SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+                    );
+                }
+            }
+        }
+    });
 }
 
 /// Show the tone menu (Polish / Formalize / Casual) anchored near (x, y).
@@ -406,14 +453,16 @@ pub fn show_notice(x: i32, y: i32, msg: &str) {
     show_bubble(x, y, msg, Some(2500));
 }
 
-/// Show the rewrite PREVIEW: the proposed new text (read-only) with Apply /
-/// Cancel. Nothing is applied until Apply is clicked.
-pub fn show_preview(x: i32, y: i32, text: &str, tone: &str) {
+/// Show the rewrite PREVIEW as a DIFF: the proposed text with insertions in green
+/// and deletions in red strikethrough, so the user sees WHAT changed instead of
+/// re-reading the whole sentence. Apply / Cancel; nothing is applied until Apply.
+pub fn show_preview(x: i32, y: i32, original: &str, rewritten: &str, tone: &str) {
     close_preview();
     unsafe {
         let Ok(hinstance) = GetModuleHandleW(None) else {
             return;
         };
+        let _ = LoadLibraryW(w!("Msftedit.dll")); // ensure the RICHEDIT50W class exists
         let class = w!("OGrammarPreviewClass");
         let wc = WNDCLASSW {
             lpfnWndProc: Some(preview_proc),
@@ -455,19 +504,14 @@ pub fn show_preview(x: i32, y: i32, text: &str, tone: &str) {
             return;
         }
 
-        // Read-only, scrollable multiline edit showing the proposed text.
-        let edit_text = wide(text);
+        // RichEdit showing the rewrite as a colored word-diff. Created editable so
+        // the formatted runs can be written, then flipped read-only.
         let edit = CreateWindowExW(
             WINDOW_EX_STYLE(0),
-            w!("EDIT"),
-            PCWSTR(edit_text.as_ptr()),
+            w!("RICHEDIT50W"),
+            w!(""),
             WINDOW_STYLE(
-                WS_CHILD.0
-                    | WS_VISIBLE.0
-                    | WS_BORDER.0
-                    | WS_VSCROLL.0
-                    | (ES_MULTILINE as u32)
-                    | (ES_READONLY as u32),
+                WS_CHILD.0 | WS_VISIBLE.0 | WS_BORDER.0 | WS_VSCROLL.0 | (ES_MULTILINE as u32),
             ),
             s(10),
             s(30),
@@ -480,6 +524,8 @@ pub fn show_preview(x: i32, y: i32, text: &str, tone: &str) {
         )
         .unwrap_or_default();
         SendMessageW(edit, WM_SETFONT, Some(WPARAM(font.0 as usize)), Some(LPARAM(1)));
+        render_diff(edit, original, rewritten);
+        let _ = SendMessageW(edit, EM_SETREADONLY, Some(WPARAM(1)), Some(LPARAM(0)));
 
         let bw = s(110);
         let bh = s(30);
@@ -507,6 +553,44 @@ pub fn show_preview(x: i32, y: i32, text: &str, tone: &str) {
 
         PREVIEW.with(|c| c.set(hwnd.0 as isize));
         let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+    }
+}
+
+/// Write the rewrite into the RichEdit as a colored word-diff: equal text neutral,
+/// insertions green + bold, deletions red strikethrough — mirroring the extension's
+/// minimal-change highlight (`src/content/diff.ts`).
+fn render_diff(edit: HWND, original: &str, rewritten: &str) {
+    let cbsize = std::mem::size_of::<CHARFORMAT2W>() as u32;
+    let put = |color: u32, bold: bool, strike: bool, text: &str| unsafe {
+        let mut cf = CHARFORMAT2W::default();
+        cf.Base.cbSize = cbsize;
+        cf.Base.dwMask = CFM_COLOR | CFM_BOLD | CFM_STRIKEOUT;
+        cf.Base.crTextColor = cref(color);
+        if bold {
+            cf.Base.dwEffects = CFE_BOLD;
+        } else if strike {
+            cf.Base.dwEffects = CFE_STRIKEOUT;
+        }
+        let _ = SendMessageW(
+            edit,
+            EM_SETCHARFORMAT,
+            Some(WPARAM(SCF_SELECTION as usize)),
+            Some(LPARAM(&cf as *const CHARFORMAT2W as isize)),
+        );
+        let w = wide(text);
+        let _ = SendMessageW(edit, EM_REPLACESEL, Some(WPARAM(0)), Some(LPARAM(w.as_ptr() as isize)));
+    };
+    let mut first = true;
+    for seg in &crate::diff::word_diff(original, rewritten) {
+        if !first {
+            put(0x404040, false, false, " "); // neutral separating space
+        }
+        first = false;
+        match seg.op {
+            crate::diff::Op::Eq => put(0x202020, false, false, &seg.text),
+            crate::diff::Op::Ins => put(0x0E7A0E, true, false, &seg.text),
+            crate::diff::Op::Del => put(0xC62828, false, true, &seg.text),
+        }
     }
 }
 
