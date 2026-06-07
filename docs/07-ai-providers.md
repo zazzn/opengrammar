@@ -1,499 +1,268 @@
 # 🤖 AI Provider Setup Guide
 
-Configure the optional **LLM tier** for context/sentence review and tone rewriting.
-This applies to **both products** — the browser extension and the desktop app set the
-provider the same way (extension: **Options**; desktop: tray → **Settings**).
+Configure the optional **LLM tier** that powers sentence-level review and tone
+rewriting. This applies to **both products** — the browser extension and the Windows
+desktop app set the provider the same way (extension: **Options**; desktop: tray →
+**Settings**).
 
-OGrammar is **bring-your-own-key**: it calls your chosen provider directly with your own
-key — there is no OGrammar backend. The local **Harper** engine always works without a
-key; a provider is only needed for the LLM tier.
+OGrammar is **bring-your-own-key**: it calls your chosen provider directly with your
+own key — there is no OGrammar backend, and nothing is proxied through us. The local
+**Harper** engine always works without a key; a provider is only needed for the LLM
+tier.
 
----
-
-## 📋 Overview
-
-OGrammar supports these providers, giving you flexibility in cost, quality, and privacy.
-
-| Provider | Speed | Quality | Cost | Best For |
-|----------|-------|---------|------|----------|
-| **Groq** | ⚡⚡⚡ | ⭐⭐⭐⭐ | Free tier | Fast & free |
-| **OpenAI** | ⚡⚡ | ⭐⭐⭐⭐⭐ | $$ | Best quality |
-| **DeepSeek** | ⚡⚡ | ⭐⭐⭐⭐ | $ | Cheap, capable |
-| **OpenRouter** | ⚡⚡ | ⭐⭐⭐⭐⭐ | Varies | Model variety |
-| **Together AI** | ⚡⚡ | ⭐⭐⭐⭐ | $ | Open-source |
-| **Abacus RouteLLM** | ⚡⚡ | ⭐⭐⭐⭐ | Varies | Smart routing across top models |
-| **Ollama** | ⚡⚡⚡ | ⭐⭐⭐ | Free | Privacy, offline |
-| **Custom** | - | - | - | Your own API |
-
-All providers use an OpenAI-compatible API. **DeepSeek** and **Abacus RouteLLM** aren't
-covered in their own sections below, but they're configured exactly like the others —
-select the provider, paste your key, and pick a model (for DeepSeek, get a key at
-[platform.deepseek.com](https://platform.deepseek.com) and use `deepseek-chat`).
+> **All quality numbers on this page are measured on OGrammar's own 46-case
+> proofreading corpus** (weighted score out of 123), with protected-text masking on —
+> not vendor marketing. Full methodology and per-model tables live in
+> [25-local-llm-model-benchmark.md](25-local-llm-model-benchmark.md) and
+> [33-spell-suggestion-benchmark.md](33-spell-suggestion-benchmark.md). Providers we
+> have **not** scored on that corpus are labelled *not scored* — we don't invent numbers.
 
 ---
 
-## 🎯 Quick Setup
+## ⭐ TL;DR — what to pick
 
-### Step 1: Choose Your Provider
+| If you want… | Pick | Why |
+|---|---|---|
+| **Private / free / offline** | **Ollama → `qwen3.5:4b`** | Best local model tested: **123/123**, 0 hard failures, ~1 s on a GPU. The shipped default. |
+| **Best quality + cheapest cloud** | **DeepSeek → `deepseek-chat`** | Ties the top score (**123/123**, 0 hard failures) and is the cheapest paid option (~**$0.00004 / correction** with prompt caching). |
+| **Lowest latency cloud** | **Groq → `llama-3.3-70b-versatile`** | ~**400 ms** round-trip (97/123) when in-browser speed matters more than peak accuracy. |
+| **Flat monthly fee, smart routing** | **Abacus RouteLLM → `route-llm`** | 120/123, ~$10/mo flat instead of per-token. |
 
-**For Free Usage:**
-- Provider: **Groq**
-- Free tier: 100 requests/day
-- Quality: Excellent (Llama 3.1 70B)
-
-**For Best Quality:**
-- Provider: **OpenAI**
-- Model: GPT-4o-mini
-- Cost: ~$0.15 per 1K requests
-
-**For Privacy:**
-- Provider: **Ollama (Local)**
-- 100% offline
-- Free (your hardware)
-
-### Step 2: Get API Key
-
-Follow the guide for your chosen provider below.
-
-### Step 3: Configure Extension
-
-1. Click OGrammar icon
-2. Click **Settings** (gear icon)
-3. Select **Provider** from dropdown
-4. Enter **API Key**
-5. Select **Model**
-6. Click **Save**
+Everything else (OpenAI, OpenRouter, Together) works fine and is widely capable, but
+has **not** been scored on our corpus — see the table below.
 
 ---
 
-## ⚡ Groq (Recommended - Free)
+## How the LLM tier works
 
-### Overview
-- **Free Tier:** generous free quota (rate-limited; see Groq's current limits)
-- **Speed:** Fastest (LPU technology)
-- **Quality:** Excellent (Llama 3.3 70B)
-- **Setup Time:** 2 minutes
+- **Harper (local, always on)** catches spelling and rule-based grammar instantly, with
+  no key and no network. This is the inline tier.
+- **The LLM tier (optional)** runs on the *proactive* correction path — it reviews whole
+  sentences for context errors the rules miss, and powers **tone rewriting** (Polish /
+  Formalize / Casual). It is a deferred/background tier, never inline, because even the
+  fastest cloud call (~400 ms) is far slower than the local engine (~5 ms).
+- **Protected-text masking** is on by default: before any sentence is sent to a provider,
+  OGrammar replaces URLs, emails, file paths, code, IDs, versions, and command snippets
+  with placeholders, then restores them in the result. This makes *every* provider safer
+  and is the real guarantee — not the model's own restraint.
 
-### Step 1: Create Account
-1. Visit [Groq Console](https://console.groq.com)
-2. Click **Sign Up**
-3. Complete registration
+---
 
-### Step 2: Get API Key
-1. Go to **API Keys** in left sidebar
-2. Click **Create API Key**
-3. Give it a name (e.g., "OGrammar")
-4. Copy the key (starts with `gsk_`)
-5. ⚠️ **Save it now** - you can't see it again!
+## 📋 Provider comparison
 
-### Step 3: Configure in Extension
-1. Click OGrammar icon → Settings
-2. Provider: **Groq**
-3. API Key: `gsk_xxx` (paste your key)
-4. Model: **llama-3.3-70b-versatile**
-5. Click **Save**
+| Provider | Our recommended model | OGrammar score | Latency | Cost | Privacy |
+|----------|----------------------|:--------------:|---------|------|---------|
+| **Ollama** (local) | `qwen3.5:4b` | **123/123** ✓ | ~1 s (GPU) | Free | 100% local |
+| **DeepSeek** | `deepseek-chat` | **123/123** ✓ | ~1–2 s | ~$0.00004/corr | Cloud |
+| **Abacus RouteLLM** | `route-llm` | 120/123 ✓ | ~2 s | ~$10/mo flat | Cloud |
+| **Groq** | `gpt-oss-20b` / `llama-3.3-70b-versatile` | 117 / 97 ✓† | 0.4–3 s | ¢/month | Cloud (free tier) |
+| **OpenAI** | `gpt-4o-mini` | *not scored* | ~1–2 s | $ | Cloud |
+| **OpenRouter** | varies (100+ models) | *not scored* | varies | varies | Cloud |
+| **Together AI** | `Llama-3.x-70B` | *not scored* | ~1 s | $ | Cloud |
+| **Custom** | your endpoint | — | — | — | depends |
 
-> Groq rotates its hosted models periodically. If a model name is rejected, check the
-> current list at [console.groq.com/docs/models](https://console.groq.com/docs/models)
-> and pick the closest equivalent.
+✓ = measured on OGrammar's 46-case corpus **with masking** (docs/25).
+† Groq was scored **before** masking landed, so its numbers are a slight *under*-estimate
+relative to the masked rows. All providers use an OpenAI-compatible API.
 
-### Available Models
-| Model | Speed | Quality | Best For |
-|-------|-------|---------|----------|
-| `llama-3.3-70b-versatile` | ⚡⚡⚡ | ⭐⭐⭐⭐⭐ | **Recommended** |
-| `llama-3.1-8b-instant` | ⚡⚡⚡⚡ | ⭐⭐⭐⭐ | Fast checks |
-| `gemma2-9b-it` | ⚡⚡⚡ | ⭐⭐⭐⭐ | Balanced |
+---
 
-### Testing
+## 🦙 Ollama — local, private, free (recommended default)
+
+The shipped local default. Runs entirely on your machine; no key, no network.
+
+### Install & pull
+
 ```bash
-# Test Groq API
-curl https://api.groq.com/openai/v1/chat/completions \
-  -H "Authorization: Bearer gsk_xxx" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "llama-3.3-70b-versatile",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'
-```
-
-### Troubleshooting
-- **Error: Invalid API key** - Check key starts with `gsk_`
-- **Error: Rate limit** - Free tier is 100/day, wait 24 hours
-- **Error: Model not found** - Use exact model name
-
----
-
-## 🟢 OpenAI (Best Quality)
-
-### Overview
-- **Quality:** Best available
-- **Speed:** Good
-- **Cost:** $0.15 per 1K requests (GPT-4o-mini)
-- **Setup Time:** 5 minutes
-
-### Step 1: Create Account
-1. Visit [OpenAI Platform](https://platform.openai.com)
-2. Click **Sign Up**
-3. Complete registration
-4. Add phone number (required)
-
-### Step 2: Add Credits
-1. Go to **Settings** → **Billing**
-2. Click **Add payment method**
-3. Add minimum $5 credit (recommended)
-
-### Step 3: Get API Key
-1. Go to **API Keys** section
-2. Click **Create new secret key**
-3. Give it a name (e.g., "OGrammar")
-4. Copy the key (starts with `sk-`)
-5. ⚠️ **Save it now** - can't see it again!
-
-### Step 4: Configure in Extension
-1. Click OGrammar icon → Settings
-2. Provider: **OpenAI**
-3. API Key: `sk-xxx` (paste your key)
-4. Model: **gpt-4o-mini** (recommended)
-5. Click **Save**
-
-### Available Models
-| Model | Speed | Quality | Cost/1K | Best For |
-|-------|-------|---------|---------|----------|
-| `gpt-4o-mini` | ⚡⚡ | ⭐⭐⭐⭐⭐ | $0.15 | **Recommended** |
-| `gpt-4o` | ⚡ | ⭐⭐⭐⭐⭐⭐ | $2.50 | Premium quality |
-| `gpt-3.5-turbo` | ⚡⚡⚡ | ⭐⭐⭐⭐ | $0.05 | Budget option |
-
-### Cost Estimates
-- **Light user** (50 checks/day): ~$0.25/month
-- **Medium user** (200 checks/day): ~$1/month
-- **Heavy user** (1000 checks/day): ~$5/month
-
-### Testing
-```bash
-# Test OpenAI API
-curl https://api.openai.com/v1/chat/completions \
-  -H "Authorization: Bearer sk-xxx" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "gpt-4o-mini",
-    "messages": [{"role": "user", "content": "Fix: me and him went"}]
-  }'
-```
-
----
-
-## 🌐 OpenRouter (100+ Models)
-
-### Overview
-- **Models:** 100+ (Claude, Llama, Mistral, etc.)
-- **Cost:** Pay-per-use, varies by model
-- **Speed:** Good
-- **Setup Time:** 5 minutes
-
-### Step 1: Create Account
-1. Visit [OpenRouter](https://openrouter.ai)
-2. Click **Sign In**
-3. Sign in with Google or GitHub
-
-### Step 2: Get API Key
-1. Go to **Keys** section
-2. Click **Create Key**
-3. Give it a name
-4. Copy the key
-
-### Step 3: Add Credits
-1. Go to **Credits** section
-2. Add minimum $5 credit
-3. Choose payment method
-
-### Step 4: Configure in Extension
-1. Click OGrammar icon → Settings
-2. Provider: **OpenRouter**
-3. API Key: (paste your key)
-4. Model: **anthropic/claude-3.5-sonnet** (recommended)
-5. Click **Save**
-
-### Popular Models
-| Model | Provider | Quality | Cost/1K | Best For |
-|-------|----------|---------|---------|----------|
-| `anthropic/claude-3.5-sonnet` | Anthropic | ⭐⭐⭐⭐⭐⭐ | $3.00 | Best overall |
-| `meta-llama/llama-3.1-70b` | Meta | ⭐⭐⭐⭐⭐ | $0.40 | Great value |
-| `mistralai/mistral-large` | Mistral | ⭐⭐⭐⭐⭐ | $2.00 | European AI |
-| `google/gemini-pro` | Google | ⭐⭐⭐⭐⭐ | $0.25 | Google quality |
-
-### Testing
-```bash
-# Test OpenRouter API
-curl https://openrouter.ai/api/v1/chat/completions \
-  -H "Authorization: Bearer xxx" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "anthropic/claude-3.5-sonnet",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'
-```
-
----
-
-## 🔷 Together AI (Open-Source)
-
-### Overview
-- **Models:** Open-source (Llama, Mistral, etc.)
-- **Cost:** Very cheap ($0.01-0.10 per 1K)
-- **Speed:** Fast
-- **Setup Time:** 5 minutes
-
-### Step 1: Create Account
-1. Visit [Together AI](https://api.together.ai)
-2. Click **Sign Up**
-3. Complete registration
-
-### Step 2: Get API Key
-1. Go to **Settings** → **API Keys**
-2. Click **Create API Key**
-3. Copy the key
-
-### Step 3: Add Credits
-1. Go to **Billing** section
-2. Add credits (minimum $5)
-3. Get $25 free credit on signup
-
-### Step 4: Configure in Extension
-1. Click OGrammar icon → Settings
-2. Provider: **Together AI**
-3. API Key: (paste your key)
-4. Model: **meta-llama/Meta-Llama-3.1-70B-Instruct**
-5. Click **Save**
-
-### Available Models
-| Model | Quality | Cost/1K | Best For |
-|-------|---------|---------|----------|
-| `meta-llama/Meta-Llama-3.1-70B-Instruct` | ⭐⭐⭐⭐⭐ | $0.40 | **Recommended** |
-| `mistralai/Mixtral-8x7B-Instruct` | ⭐⭐⭐⭐⭐ | $0.60 | Complex tasks |
-| `Qwen/Qwen2.5-72B-Instruct` | ⭐⭐⭐⭐⭐ | $0.40 | Alternative |
-
----
-
-## 🦙 Ollama (Local - Offline)
-
-### Overview
-- **Privacy:** 100% local, offline
-- **Cost:** Free (your hardware)
-- **Speed:** Depends on hardware
-- **Setup Time:** 15 minutes
-
-### Prerequisites
-- 4GB+ RAM (for smaller models)
-- 8GB+ RAM (for larger models)
-- NVIDIA GPU (optional, for acceleration)
-
-### Step 1: Install Ollama
-
-**Linux:**
-```bash
+# Linux:
 curl -fsSL https://ollama.com/install.sh | sh
+# macOS:  brew install ollama
+# Windows: download the installer from https://ollama.com
+
+ollama serve                 # start the service
+ollama pull qwen3.5:4b       # the recommended model (~2.5 GB)
 ```
 
-**macOS:**
-```bash
-brew install ollama
-```
+### Configure
 
-**Windows:**
-1. Download from [ollama.com](https://ollama.com)
-2. Run installer
+| Setting | Value |
+|---|---|
+| Provider | **Ollama (Local)** |
+| Base URL | `http://localhost:11434/v1` |
+| Model | `qwen3.5:4b` |
+| API Key | *(leave empty)* |
 
-### Step 2: Start Ollama Service
-```bash
-# Start Ollama (runs in background)
-ollama serve
-```
+> **Running Ollama in WSL?** Use `http://127.0.0.1:11434/v1`, **not** `localhost` —
+> Windows resolves `localhost` to IPv6 (`::1`), which WSL's mirrored loopback doesn't
+> forward, so the connection silently fails. (The desktop app normalizes this for you;
+> the extension does not, so set `127.0.0.1` there.) `127.0.0.1` also works for a native
+> install, so it's always a safe choice.
 
-### Step 3: Pull Models
-```bash
-# Small & fast (recommended for grammar)
-ollama pull qwen2.5:0.5b      # 400MB, very fast
-ollama pull qwen2.5:1.5b      # 1GB, balanced
+OGrammar talks to Ollama over its **native `/api/chat`** API under the hood (pinned to a
+4096-token context, `think:false`). That's why the Qwen 3 / 3.5 "thinking" tags work here
+— on the older OpenAI-compatible path they returned empty content.
 
-# Medium quality
-ollama pull phi4-mini:3.8b    # 2.5GB, great quality
-ollama pull llama3.2:3b       # 2GB, good balance
+### Recommended local models (measured, masking on)
 
-# High quality (requires GPU)
-ollama pull llama3.2:7b       # 4GB, requires 8GB+ RAM
-ollama pull mistral:7b        # 4GB, requires 8GB+ RAM
-```
+| Model | RAM | OGrammar score | Latency | Notes |
+|-------|-----|:--------------:|---------|-------|
+| **`qwen3.5:4b`** | ~6 GB | **123/123** | ~1.0 s | **Best local — the default.** 0 hard failures, full sentence-review. |
+| `qwen2.5:7b` | ~8 GB | 121/123 | ~2.1 s | Strong alternate; slower. |
+| `qwen3:latest` | ~6 GB | 119/123 | ~1.0 s | Solid all-rounder. |
+| `qwen3:4b-instruct` | ~6 GB | 113/123 | **~0.7 s** | **Fastest local**, 0 hard failures, but weaker on sentence-level review. |
 
-### Step 4: Test Ollama
-```bash
-# Test the model
-ollama run qwen2.5:1.5b "Fix this: me and him went to store"
-```
-
-Expected output:
-```
-"He and I went to the store."
-```
-
-### Step 5: Configure in Extension
-1. Click OGrammar icon → Settings
-2. Provider: **Ollama (Local)**
-3. Base URL: `http://localhost:11434/v1`
-4. Model: `qwen2.5:1.5b` (or your chosen model)
-5. API Key: (leave empty - not needed)
-6. Click **Save**
-
-### Model Recommendations
-
-| Use Case | Model | RAM | Speed | Quality |
-|----------|-------|-----|-------|---------|
-| **Basic grammar** | qwen2.5:0.5b | 1GB | ⚡⚡⚡⚡⚡ | ⭐⭐⭐ |
-| **Better accuracy** | qwen2.5:1.5b | 2GB | ⚡⚡⚡⚡ | ⭐⭐⭐⭐ |
-| **Professional writing** | phi4-mini:3.8b | 4GB | ⚡⚡⚡ | ⭐⭐⭐⭐⭐ |
-| **Best quality** | llama3.2:7b | 8GB | ⚡⚡ | ⭐⭐⭐⭐⭐ |
-
-### GPU Acceleration (NVIDIA)
-```bash
-# Install NVIDIA Container Toolkit
-sudo apt-get install -y nvidia-container-toolkit
-
-# Configure Docker
-sudo nvidia-ctk runtime configure --runtime=docker
-sudo systemctl restart docker
-
-# Ollama will automatically use GPU
-ollama run llama3.2:7b
-```
-
-### Troubleshooting
-- **Error: Connection refused** - Make sure Ollama is running: `ollama serve`
-- **Error: Model not found** - Pull the model: `ollama pull qwen2.5:1.5b`
-- **Slow performance** - Use smaller model or enable GPU
+Smaller models (`qwen3.5:0.8b`, `gemma3:4b`, the old `qwen2.5:1.5b`) score materially
+lower or can't do sentence review — only choose them if `qwen3.5:4b` is too heavy for your
+hardware. A GPU is strongly recommended; CPU-only inference is several times slower.
 
 ---
 
-## 🔧 Custom Provider
+## 🟣 DeepSeek — best overall quality, cheapest cloud
 
-### Overview
-Use your own API endpoint or any OpenAI-compatible API.
+The strongest proofreader we tested and the cheapest paid option.
 
-### Configuration
-1. Click OGrammar icon → Settings
-2. Provider: **Custom**
-3. Base URL: `https://your-api.com/v1`
-4. API Key: (your API key)
-5. Model: (your model name)
-6. Click **Save**
+### Setup
 
-### Example: LocalAI
+1. Create a key at [platform.deepseek.com](https://platform.deepseek.com).
+2. Provider: **DeepSeek** · API Key: `sk-…` · Model: **`deepseek-chat`**.
+
+### Why deepseek-chat
+
+- **123/123**, **zero hard failures**, perfect protected-span and no-false-positive scores
+  — ties the best local model and matches the top of every cloud run.
+- **~$0.00004 per correction** with prompt caching (our fixed proofreading system prompt
+  is cached), i.e. pennies per month for normal use. See the cost table below.
+- ~1–2 s latency.
+
+> Avoid **`deepseek-reasoner`** for proofreading: it scored lower (115/123) *and* slower,
+> with JSON-mode failures — the classic thinking-model + strict-JSON risk. `deepseek-chat`
+> is the right pick.
+
+---
+
+## ⚡ Groq — lowest latency, generous free tier
+
+Fastest responses thanks to Groq's LPU hardware; a generous (rate-limited) free tier.
+
+### Setup
+
+1. Sign up at [console.groq.com](https://console.groq.com) → **API Keys** → create
+   (key starts with `gsk_`).
+2. Provider: **Groq** · API Key: `gsk_…` · Model: see below.
+
+> Groq rotates its hosted models periodically. If a name is rejected, check
+> [console.groq.com/docs/models](https://console.groq.com/docs/models) and pick the
+> closest equivalent. The free tier is **rate-limited** — bursts return `429`s, so OGrammar
+> paces and retries Groq calls automatically.
+
+### Recommended Groq models (measured, pre-masking)
+
+| Model | OGrammar score | Latency | Best for |
+|-------|:--------------:|---------|----------|
+| **`gpt-oss-20b`** | **117/123** | ~3.3 s | **Best Groq quality.** Reasoning model — accurate but ~3–4× the output tokens. |
+| `qwen3-32b` | 113/123 | ~4.5 s | Quality alternate. |
+| `gpt-oss-120b` | 112/123 | ~2.6 s | Large reasoning model. |
+| **`llama-3.3-70b-versatile`** | 97/123 | **~0.4 s** | **Fastest** — pick this when latency beats peak accuracy. |
+| `llama-4-scout-17b` | 88/123 | ~0.4 s | Fast, lower quality. |
+| ~~`llama-3.1-8b-instant`~~ | 76/123 | ~1.6 s | **Skip for proofreading** — 13 hard failures. |
+
+---
+
+## 🔀 Abacus RouteLLM — flat fee, smart routing
+
+Routes each request across several top models for you. Solid quality (120/123, best
+sentence-review in cloud runs) at a **flat ~$10/month** subscription instead of per-token
+billing. Setup is identical: select **Abacus RouteLLM**, paste your key, use model
+`route-llm`. A good fit if you'd rather not meter tokens.
+
+---
+
+## 🟢 OpenAI · 🌐 OpenRouter · 🔷 Together AI — capable, but not scored by us
+
+These all work and are widely capable general models, but we **have not** run them through
+OGrammar's corpus, so we don't quote a score. Configure them like any other provider:
+
+| Provider | Get a key | Suggested model | Base URL |
+|----------|-----------|-----------------|----------|
+| **OpenAI** | [platform.openai.com](https://platform.openai.com) → API Keys (`sk-…`) | `gpt-4o-mini` (cheap) or `gpt-4o` (premium) | `https://api.openai.com/v1` |
+| **OpenRouter** | [openrouter.ai](https://openrouter.ai) → Keys | e.g. `anthropic/claude-3.5-sonnet`, `meta-llama/llama-3.1-70b` | `https://openrouter.ai/api/v1` |
+| **Together AI** | [api.together.ai](https://api.together.ai) → API Keys | `meta-llama/Meta-Llama-3.1-70B-Instruct` | `https://api.together.xyz/v1` |
+
+OpenAI and OpenRouter require adding credit; Together gives signup credit. If you bring one
+of these and want it benchmarked, the runner in docs/25 accepts arbitrary OpenAI-compatible
+endpoints.
+
+---
+
+## 🔧 Custom provider
+
+Any OpenAI-compatible endpoint (LocalAI, LM Studio, vLLM, a gateway, …):
+
+| Setting | Example |
+|---|---|
+| Provider | **Custom** |
+| Base URL | `http://localhost:1234/v1` (LM Studio) · `http://localhost:8080/v1` (LocalAI) |
+| Model | your model name |
+| API Key | if your endpoint needs one |
+
+---
+
+## 💵 Cost per correction (measured)
+
+`$/correction = avg-prompt-tokens × input-rate + avg-completion-tokens × output-rate`,
+using each provider's measured token usage on our corpus.
+
+| Model | $/1M in | $/1M out | $/correction |
+|---|---:|---:|---:|
+| **deepseek-chat** | 0.14 (0.0028 cached) | 0.28 | **~$0.00004** (cached) |
+| groq `llama-3.1-8b-instant` | 0.05 | 0.08 | $0.00002 *(but low quality)* |
+| groq `llama-4-scout` | 0.11 | 0.34 | $0.00007 |
+| groq `gpt-oss-20b` | 0.075 | 0.30 | $0.00016 |
+| groq `llama-3.3-70b-versatile` | 0.59 | 0.79 | $0.00026 |
+| groq `qwen3-32b` | 0.29 | 0.59 | $0.00032 |
+| groq `gpt-oss-120b` | 0.15 | 0.60 | $0.00034 |
+| abacus `route-llm` | — (subscription) | — | ~$10/mo flat |
+| Ollama (any local model) | — | — | **free** |
+
+Day-to-day writing stays in the **pennies-per-month** range on any cheap per-token option.
+Output tokens dominate, so DeepSeek's prompt caching (it caches the fixed system prompt)
+makes it both the highest-quality *and* the cheapest cloud choice.
+
+---
+
+## 🔄 Switching providers
+
+Change it anytime — extension: **Options**; desktop: tray → **Settings** → pick the
+provider, paste the key (if needed), choose the model, save. Settings persist
+automatically; the API key is stored encrypted (desktop: DPAPI; extension: browser sync
+storage).
+
+---
+
+## 🧪 Testing a provider from the terminal
+
 ```bash
-# Run LocalAI with Docker
-docker run -p 8080:8080 localai/localai
+# Groq
+curl https://api.groq.com/openai/v1/chat/completions \
+  -H "Authorization: Bearer gsk_xxx" -H "Content-Type: application/json" \
+  -d '{"model":"llama-3.3-70b-versatile","messages":[{"role":"user","content":"Fix: me and him went"}]}'
 
-# Configure in extension
-Provider: Custom
-Base URL: http://localhost:8080/v1
-Model: llama-3.1-70b
-```
+# DeepSeek
+curl https://api.deepseek.com/v1/chat/completions \
+  -H "Authorization: Bearer sk-xxx" -H "Content-Type: application/json" \
+  -d '{"model":"deepseek-chat","messages":[{"role":"user","content":"Fix: me and him went"}]}'
 
-### Example: LM Studio
-```bash
-# LM Studio runs locally
-# Configure in extension
-Provider: Custom
-Base URL: http://localhost:1234/v1
-Model: local-model
+# Ollama (local; use 127.0.0.1 if Ollama is in WSL)
+ollama run qwen3.5:4b "Fix this: me and him went to store"
 ```
 
 ---
 
-## 📊 Provider Comparison
+## 📚 Related documentation
 
-### Speed Comparison
-```
-Groq (Llama-70B)        ████████████████████ 200ms
-OpenAI (GPT-4o-mini)    ██████████ 1s
-Together (Llama-70B)    ████████████ 800ms
-OpenRouter (Claude)     ██████████████████ 2s
-Ollama (Qwen-1.5B)      ██████████████ 500ms (local)
-```
-
-### Quality Comparison
-```
-OpenAI (GPT-4o)         ████████████████████ 96%
-OpenRouter (Claude)     ████████████████████ 96%
-OpenAI (GPT-4o-mini)    ██████████████████ 95%
-Groq (Llama-70B)        ████████████████ 92%
-Ollama (Phi-4-mini)     ██████████████ 88%
-Ollama (Qwen-1.5B)      ████████████ 82%
-```
-
-### Cost Comparison (per 1K requests)
-```
-Ollama (Local)          $0.00 (free)
-Groq (Free tier)        $0.00 (100/day free)
-Together (Llama-70B)    $0.40
-OpenAI (GPT-4o-mini)    $0.15
-OpenRouter (Claude)     $3.00
-```
-
----
-
-## 🎯 Provider Selection Guide
-
-### Choose Groq If:
-- ✅ You want free usage
-- ✅ You need fast responses
-- ✅ You're okay with 100 requests/day limit
-- ✅ You want good quality
-
-### Choose OpenAI If:
-- ✅ You want the best quality
-- ✅ You don't mind paying
-- ✅ You need reliability
-- ✅ You want GPT-4 level intelligence
-
-### Choose OpenRouter If:
-- ✅ You want model variety
-- ✅ You want to try Claude
-- ✅ You want flexibility
-- ✅ You need specific models
-
-### Choose Together AI If:
-- ✅ You want cheap open-source
-- ✅ You like Llama models
-- ✅ You want good value
-- ✅ You need fast inference
-
-### Choose Ollama If:
-- ✅ Privacy is your priority
-- ✅ You have good hardware
-- ✅ You want offline access
-- ✅ You don't want API costs
-
----
-
-## 🔄 Switching Providers
-
-You can switch providers anytime:
-
-1. Click OGrammar icon
-2. Click **Settings**
-3. Change **Provider** dropdown
-4. Enter new API key (if required)
-5. Select new **Model**
-6. Click **Save**
-
-Your settings are saved automatically.
-
----
-
-## 📚 Related Documentation
-
-- [Browser extension setup](04-browser-extension-setup.md) - Install & configure the extension
-- [OGrammar Desktop](31-desktop-app.md) - Set the provider for the Windows app
-- [Troubleshooting](18-troubleshooting.md) - Common issues
-
----
-
-**Your AI provider is now configured! Start writing better! ✨**
+- [Local LLM model benchmark](25-local-llm-model-benchmark.md) — full methodology, the
+  masked per-model tables, and the cross-provider recommendation behind this page.
+- [Spell-suggestion benchmark](33-spell-suggestion-benchmark.md) — how much the LLM tier
+  adds over the local engine on real typos.
+- [Browser extension setup](04-browser-extension-setup.md) · [OGrammar Desktop](31-desktop-app.md)
+- [Troubleshooting](18-troubleshooting.md)
