@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenGrammar Documentation</title>
-    <meta name="description" content="Complete documentation for OpenGrammar - Your privacy-first, open-source writing assistant">
+    <title>OGrammar Documentation</title>
+    <meta name="description" content="Complete documentation for OGrammar - Your privacy-first, open-source writing assistant">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -29,9 +29,9 @@
                         </linearGradient>
                     </defs>
                 </svg>
-                <span class="logo-text">OpenGrammar</span>
+                <span class="logo-text">OGrammar</span>
             </div>
-            <span class="version-badge">v2.1.0</span>
+            <span class="version-badge">v0.9</span>
         </div>
 
         <nav class="sidebar-nav">
@@ -47,7 +47,7 @@
                     <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                     </svg>
-                    What is OpenGrammar?
+                    What is OGrammar?
                 </a>
             </div>
 
@@ -83,7 +83,7 @@
                     <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/>
                     </svg>
-                    Using OpenGrammar
+                    Using OGrammar
                 </a>
                 <a href="#tone-rewriting" class="nav-link" data-page="tone-rewriting">
                     <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor">
@@ -177,7 +177,7 @@
                         <span class="current">Quick Start</span>
                     </nav>
                     <h1><i data-lucide="rocket" class="icon-inline"></i> Quick Start</h1>
-                    <p class="section-description">Get OpenGrammar up and running in 5 minutes!</p>
+                    <p class="section-description">Get OGrammar up and running in 5 minutes!</p>
                 </div>
 
                 <div class="content-body">
@@ -185,7 +185,7 @@
                         <div class="callout-icon"><i data-lucide="zap" class="icon-inline"></i></div>
                         <div class="callout-content">
                             <strong>5-Minute Setup</strong>
-                            <p>Follow these steps to get OpenGrammar running quickly. You'll need an API key for the best experience.</p>
+                            <p>Follow these steps to get OGrammar running quickly. You'll need an API key for the best experience.</p>
                         </div>
                     </div>
 
@@ -202,7 +202,7 @@
                     <div class="callout callout-success">
                         <div class="callout-icon"><i data-lucide="check-circle-2" class="icon-inline"></i></div>
                         <div class="callout-content">
-                            <strong>Free Tier:</strong> 100 requests/day - enough for most users!
+                            <strong>Free tier:</strong> Groq's free tier is generous (rate-limited) — plenty for everyday writing. Prefer no key at all? Run Ollama locally.
                         </div>
                     </div>
 
@@ -224,10 +224,10 @@ git clone https://github.com/swadhinbiswas/opengrammar.git
 cd opengrammar/opengrammar/extension
 
 # Install dependencies
-bun install
+npm install
 
 # Build the extension
-bun run build</code></pre>
+npm run build</code></pre>
                     </div>
 
                     <p>This creates a <code>dist/</code> folder with the built extension.</p>
@@ -249,7 +249,7 @@ bun run build</code></pre>
                                     <li>Enable <strong>Developer mode</strong> (toggle in top-right)</li>
                                     <li>Click <strong>Load unpacked</strong></li>
                                     <li>Select the <code>opengrammar/extension/dist</code> folder</li>
-                                    <li><i data-lucide="check-circle-2" class="icon-inline"></i> Extension loaded! You'll see the OpenGrammar icon</li>
+                                    <li><i data-lucide="check-circle-2" class="icon-inline"></i> Extension loaded! You'll see the OGrammar icon</li>
                                 </ol>
                             </div>
                             <div class="tab-pane" id="brave">
@@ -293,11 +293,11 @@ bun run build</code></pre>
 
                     <h2 id="step-4-configure">Step 4: Configure</h2>
                     <ol class="step-list">
-                        <li>Click the OpenGrammar icon in your toolbar</li>
+                        <li>Click the OGrammar icon in your toolbar</li>
                         <li>Click <strong>Settings</strong> (gear icon)</li>
                         <li>Enter your API key (from Step 1)</li>
                         <li>Select Provider: <strong>Groq</strong></li>
-                        <li>Select Model: <strong>llama-3.1-70b-versatile</strong></li>
+                        <li>Select Model: <strong>llama-3.3-70b-versatile</strong> (or run Ollama locally with <strong>qwen3.5:4b</strong>)</li>
                     </ol>
 
                     <h2 id="step-5-start-writing">Step 5: Start Writing!</h2>
@@ -315,7 +315,7 @@ bun run build</code></pre>
                             <h4>Read Next</h4>
                             <ul class="link-list">
                                 <li><a href="#ai-providers">AI Provider Setup</a></li>
-                                <li><a href="#using-opengrammar">Using OpenGrammar</a></li>
+                                <li><a href="#using-opengrammar">Using OGrammar</a></li>
                             </ul>
                         </div>
                         <div class="feature-card">
@@ -324,7 +324,7 @@ bun run build</code></pre>
                             <div class="code-block small">
                                 <pre><code># Build the extension
 cd opengrammar/opengrammar/extension
-bun run build</code></pre>
+npm run build</code></pre>
                             </div>
                         </div>
                     </div>
@@ -357,7 +357,7 @@ bun run build</code></pre>
                         <span class="current">Browser Extension</span>
                     </nav>
                     <h1><i data-lucide="globe" class="icon-inline"></i> Browser Extension Setup</h1>
-                    <p class="section-description">Install and configure OpenGrammar on Chrome, Brave, Edge, and Firefox.</p>
+                    <p class="section-description">Install and configure OGrammar on Chrome, Brave, Edge, and Firefox.</p>
                 </div>
 
                 <div class="content-body">
@@ -425,10 +425,10 @@ bun run build</code></pre>
 cd opengrammar/opengrammar/extension
 
 # Install dependencies
-bun install
+npm install
 
 # Build for production
-bun run build</code></pre>
+npm run build</code></pre>
                     </div>
 
                     <h3>Step 2: Load in Chrome</h3>
@@ -443,7 +443,7 @@ bun run build</code></pre>
                     <div class="callout callout-success">
                         <div class="callout-icon"><i data-lucide="check-circle-2" class="icon-inline"></i></div>
                         <div class="callout-content">
-                            <strong>Extension loaded!</strong> You'll see the OpenGrammar icon in your toolbar.
+                            <strong>Extension loaded!</strong> You'll see the OGrammar icon in your toolbar.
                         </div>
                     </div>
 
@@ -451,7 +451,7 @@ bun run build</code></pre>
                     
                     <h3>Step 1: Open Settings</h3>
                     <ol>
-                        <li>Click the OpenGrammar icon in your toolbar</li>
+                        <li>Click the OGrammar icon in your toolbar</li>
                         <li>Click the <strong>Settings</strong> (gear) icon</li>
                     </ol>
 
@@ -459,22 +459,22 @@ bun run build</code></pre>
                     <p>The extension calls your chosen provider directly with your own key — there is no backend to configure.</p>
                     <div class="provider-cards">
                         <div class="provider-card">
-                            <div class="provider-icon"><i data-lucide="zap" class="icon-inline"></i></div>
-                            <h4>Groq (Free)</h4>
-                            <p>100 requests/day free</p>
-                            <code>llama-3.1-70b-versatile</code>
+                            <div class="provider-icon"><i data-lucide="bot" class="icon-inline"></i></div>
+                            <h4>Ollama (free)</h4>
+                            <p>Private &amp; offline</p>
+                            <code>qwen3.5:4b</code>
                         </div>
                         <div class="provider-card">
                             <div class="provider-icon"><i data-lucide="circle-dot" class="icon-inline"></i></div>
-                            <h4>OpenAI</h4>
-                            <p>Best quality</p>
-                            <code>gpt-4o-mini</code>
+                            <h4>DeepSeek</h4>
+                            <p>Best quality + cheapest</p>
+                            <code>deepseek-chat</code>
                         </div>
                         <div class="provider-card">
-                            <div class="provider-icon"><i data-lucide="bot" class="icon-inline"></i></div>
-                            <h4>Ollama</h4>
-                            <p>Local & offline</p>
-                            <code>qwen2.5:1.5b</code>
+                            <div class="provider-icon"><i data-lucide="zap" class="icon-inline"></i></div>
+                            <h4>Groq</h4>
+                            <p>Fastest cloud</p>
+                            <code>llama-3.3-70b-versatile</code>
                         </div>
                     </div>
 
@@ -530,17 +530,25 @@ bun run build</code></pre>
                         <span class="breadcrumb-sep">/</span>
                         <span>Getting Started</span>
                         <span class="breadcrumb-sep">/</span>
-                        <span class="current">What is OpenGrammar?</span>
+                        <span class="current">What is OGrammar?</span>
                     </nav>
-                    <h1><i data-lucide="book-open" class="icon-inline"></i> What is OpenGrammar?</h1>
+                    <h1><i data-lucide="book-open" class="icon-inline"></i> What is OGrammar?</h1>
                     <p class="section-description">Your privacy-first, open-source writing assistant</p>
                 </div>
 
                 <div class="content-body">
                     <div class="hero-card">
                         <div class="hero-card-content">
-                            <h2>Why OpenGrammar?</h2>
-                            <p>Most popular grammar assistants require you to send every keystroke to their servers and charge a hefty monthly fee for advanced features. OpenGrammar changes that.</p>
+                            <h2>Why OGrammar?</h2>
+                            <p>Most popular grammar assistants require you to send every keystroke to their servers and charge a hefty monthly fee for advanced features. OGrammar changes that.</p>
+                        </div>
+                    </div>
+
+                    <div class="callout callout-primary">
+                        <div class="callout-icon"><i data-lucide="layers" class="icon-inline"></i></div>
+                        <div class="callout-content">
+                            <strong>Now two products.</strong>
+                            <p>OGrammar ships as this <strong>browser extension</strong> and a separate <strong>Windows desktop app</strong> that proofreads OS-wide in any application. Both share the same Harper + LLM engine. This site documents the extension; the desktop app is covered in the <a href="https://github.com/swadhinbiswas/opengrammar" target="_blank">repository docs</a>.</p>
                         </div>
                     </div>
 
@@ -560,7 +568,7 @@ bun run build</code></pre>
                         <div class="feature-box">
                             <div class="feature-box-icon"><i data-lucide="shield" class="icon-inline"></i></div>
                             <h3>Absolute Privacy</h3>
-                            <p>We don't have a database, servers, or user accounts. Your API key never leaves your browser. If you use the AI features, your text is sent directly to the provider you chose — there is no OpenGrammar backend in between.</p>
+                            <p>We don't have a database, servers, or user accounts. Your API key never leaves your browser. If you use the AI features, your text is sent directly to the provider you chose — there is no OGrammar backend in between.</p>
                         </div>
                         <div class="feature-box">
                             <div class="feature-box-icon"><i data-lucide="package" class="icon-inline"></i></div>
@@ -645,71 +653,66 @@ bun run build</code></pre>
                 </div>
                 <div class="content-body">
                     <h2><i data-lucide="clipboard-list" class="icon-inline"></i> Overview</h2>
-                    <p>OpenGrammar supports <strong>6 AI providers</strong>, giving you flexibility in cost, quality, and privacy.</p>
+                    <p>OGrammar is <strong>bring-your-own-key</strong>: it calls your chosen provider directly with your own key — there is no OGrammar backend. The local Harper engine always works without a key; a provider only powers the optional <strong>LLM tier</strong> (sentence-level review and tone rewriting). The scores below are measured on OGrammar's own 46-case proofreading corpus (out of 123) with protected-text masking on — see the <a href="https://github.com/swadhinbiswas/opengrammar/blob/main/docs/07-ai-providers.md" target="_blank">full provider guide</a> for the methodology.</p>
 
                     <div class="provider-comparison">
+                        <div class="provider-card-large">
+                            <div class="provider-header">
+                                <span class="provider-icon"><i data-lucide="bot" class="icon-inline"></i></span>
+                                <h3>Ollama (local)</h3>
+                            </div>
+                            <div class="provider-stats">
+                                <div class="stat"><span>Score:</span> 123/123</div>
+                                <div class="stat"><span>Speed:</span> ~1s (GPU)</div>
+                                <div class="stat"><span>Cost:</span> Free</div>
+                            </div>
+                            <p class="provider-desc">Private &amp; offline. Model <code>qwen3.5:4b</code> — the shipped default and best local result tested.</p>
+                        </div>
+                        <div class="provider-card-large">
+                            <div class="provider-header">
+                                <span class="provider-icon"><i data-lucide="circle-dot" class="icon-inline"></i></span>
+                                <h3>DeepSeek</h3>
+                            </div>
+                            <div class="provider-stats">
+                                <div class="stat"><span>Score:</span> 123/123</div>
+                                <div class="stat"><span>Speed:</span> ~1–2s</div>
+                                <div class="stat"><span>Cost:</span> ~$0.00004/correction</div>
+                            </div>
+                            <p class="provider-desc">Best overall quality and cheapest cloud. Model <code>deepseek-chat</code>.</p>
+                        </div>
                         <div class="provider-card-large">
                             <div class="provider-header">
                                 <span class="provider-icon"><i data-lucide="zap" class="icon-inline"></i></span>
                                 <h3>Groq</h3>
                             </div>
                             <div class="provider-stats">
-                                <div class="stat"><span>Speed:</span> <i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i></div>
-                                <div class="stat"><span>Quality:</span> ⭐⭐⭐⭐</div>
+                                <div class="stat"><span>Score:</span> 97–117/123</div>
+                                <div class="stat"><span>Speed:</span> ~0.4s</div>
                                 <div class="stat"><span>Cost:</span> Free tier</div>
                             </div>
-                            <p class="provider-desc">Fast & free - 100 requests/day</p>
-                        </div>
-                        <div class="provider-card-large">
-                            <div class="provider-header">
-                                <span class="provider-icon"><i data-lucide="circle-dot" class="icon-inline"></i></span>
-                                <h3>OpenAI</h3>
-                            </div>
-                            <div class="provider-stats">
-                                <div class="stat"><span>Speed:</span> <i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i></div>
-                                <div class="stat"><span>Quality:</span> ⭐⭐⭐⭐⭐</div>
-                                <div class="stat"><span>Cost:</span> $$</div>
-                            </div>
-                            <p class="provider-desc">Best quality - GPT-4o-mini</p>
-                        </div>
-                        <div class="provider-card-large">
-                            <div class="provider-header">
-                                <span class="provider-icon"><i data-lucide="bot" class="icon-inline"></i></span>
-                                <h3>Ollama</h3>
-                            </div>
-                            <div class="provider-stats">
-                                <div class="stat"><span>Speed:</span> <i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i><i data-lucide="zap" class="icon-inline"></i></div>
-                                <div class="stat"><span>Quality:</span> ⭐⭐⭐</div>
-                                <div class="stat"><span>Cost:</span> Free</div>
-                            </div>
-                            <p class="provider-desc">Privacy, offline - Local LLM</p>
+                            <p class="provider-desc">Lowest latency. <code>llama-3.3-70b-versatile</code> (fastest) or <code>gpt-oss-20b</code> (best quality).</p>
                         </div>
                     </div>
 
-                    <h2><i data-lucide="zap" class="icon-inline"></i> Groq (Recommended - Free)</h2>
-                    
-                    <h3>Step 1: Create Account</h3>
+                    <p>Also supported: <strong>Abacus RouteLLM</strong> (flat ~$10/mo, <code>route-llm</code>), plus <strong>OpenAI</strong>, <strong>OpenRouter</strong>, <strong>Together AI</strong> and any OpenAI-compatible <strong>Custom</strong> endpoint. Those last three work well but have not been scored on our corpus.</p>
+
+                    <h2><i data-lucide="bot" class="icon-inline"></i> Ollama — private &amp; free (recommended)</h2>
                     <ol>
-                        <li>Visit <a href="https://console.groq.com" target="_blank">Groq Console</a></li>
-                        <li>Click <strong>Sign Up</strong></li>
-                        <li>Complete registration</li>
+                        <li>Install from <a href="https://ollama.com" target="_blank">ollama.com</a>, then run <code>ollama pull qwen3.5:4b</code>.</li>
+                        <li>In Settings: Provider <strong>Ollama</strong>, Base URL <code>http://localhost:11434/v1</code>, Model <code>qwen3.5:4b</code>, leave the API key empty.</li>
+                        <li><strong>Ollama in WSL?</strong> Use <code>http://127.0.0.1:11434/v1</code> — Windows resolves <code>localhost</code> to IPv6, which WSL's loopback doesn't forward.</li>
                     </ol>
 
-                    <h3>Step 2: Get API Key</h3>
+                    <h2><i data-lucide="circle-dot" class="icon-inline"></i> DeepSeek — best quality + cheapest</h2>
                     <ol>
-                        <li>Go to <strong>API Keys</strong> in left sidebar</li>
-                        <li>Click <strong>Create API Key</strong></li>
-                        <li>Give it a name (e.g., "OpenGrammar")</li>
-                        <li>Copy the key (starts with <code>gsk_</code>)</li>
+                        <li>Create a key at <a href="https://platform.deepseek.com" target="_blank">platform.deepseek.com</a>.</li>
+                        <li>In Settings: Provider <strong>DeepSeek</strong>, paste the key, Model <strong>deepseek-chat</strong>.</li>
                     </ol>
 
-                    <h3>Step 3: Configure in Extension</h3>
+                    <h2><i data-lucide="zap" class="icon-inline"></i> Groq — fastest cloud (free tier)</h2>
                     <ol>
-                        <li>Click OpenGrammar icon → Settings</li>
-                        <li>Provider: <strong>Groq</strong></li>
-                        <li>API Key: <code>gsk_xxx</code> (paste your key)</li>
-                        <li>Model: <strong>llama-3.1-70b-versatile</strong></li>
-                        <li>Click <strong>Save</strong></li>
+                        <li>Create a key at <a href="https://console.groq.com" target="_blank">console.groq.com</a> (starts with <code>gsk_</code>).</li>
+                        <li>In Settings: Provider <strong>Groq</strong>, paste the key, Model <strong>llama-3.3-70b-versatile</strong> (fastest) or <strong>gpt-oss-20b</strong> (best quality).</li>
                     </ol>
 
                     <div class="section-nav">
@@ -736,9 +739,9 @@ bun run build</code></pre>
                         <span class="breadcrumb-sep">/</span>
                         <span>User Guide</span>
                         <span class="breadcrumb-sep">/</span>
-                        <span class="current">Using OpenGrammar</span>
+                        <span class="current">Using OGrammar</span>
                     </nav>
-                    <h1><i data-lucide="book-open" class="icon-inline"></i> Using OpenGrammar</h1>
+                    <h1><i data-lucide="book-open" class="icon-inline"></i> Using OGrammar</h1>
                     <p class="section-description">Complete user guide to all features and functionality.</p>
                 </div>
                 <div class="content-body">
@@ -772,7 +775,7 @@ bun run build</code></pre>
                     <h3>Using Grammar Checking</h3>
                     <ol class="step-list">
                         <li><strong>Start Typing</strong> - Open any text input (Gmail, Google Docs, Notion, etc.)</li>
-                        <li><strong>Watch for Underlines</strong> - As you type, OpenGrammar automatically checks</li>
+                        <li><strong>Watch for Underlines</strong> - As you type, OGrammar automatically checks</li>
                         <li><strong>Review Suggestions</strong> - Click any underlined text to see suggestions</li>
                         <li><strong>Apply Changes</strong> - Click Apply, Ignore, or Add to Dictionary</li>
                     </ol>
@@ -918,7 +921,7 @@ bun run build</code></pre>
                     <ol>
                         <li>Select text you want to rewrite</li>
                         <li>Right-click</li>
-                        <li>Choose "Rewrite with OpenGrammar"</li>
+                        <li>Choose "Rewrite with OGrammar"</li>
                         <li>Choose tone and see preview</li>
                         <li>Apply or Copy result</li>
                     </ol>
@@ -1028,7 +1031,7 @@ bun run build</code></pre>
                         <span class="current">Keyboard Shortcuts</span>
                     </nav>
                     <h1>⌨️ Keyboard Shortcuts</h1>
-                    <p class="section-description">All keyboard shortcuts for quick access to OpenGrammar features.</p>
+                    <p class="section-description">All keyboard shortcuts for quick access to OGrammar features.</p>
                 </div>
                 <div class="content-body">
                     <h2>Default Shortcuts</h2>
@@ -1094,7 +1097,7 @@ bun run build</code></pre>
                         <span class="current">Troubleshooting</span>
                     </nav>
                     <h1><i data-lucide="wrench" class="icon-inline"></i> Troubleshooting</h1>
-                    <p class="section-description">Solve common OpenGrammar issues with this comprehensive guide.</p>
+                    <p class="section-description">Solve common OGrammar issues with this comprehensive guide.</p>
                 </div>
                 <div class="content-body">
                     <h2><i data-lucide="search" class="icon-inline"></i> Common Issues</h2>
@@ -1177,13 +1180,13 @@ bun run build</code></pre>
                         <span class="current">FAQ</span>
                     </nav>
                     <h1><i data-lucide="help-circle" class="icon-inline"></i> Frequently Asked Questions</h1>
-                    <p class="section-description">Common questions about OpenGrammar.</p>
+                    <p class="section-description">Common questions about OGrammar.</p>
                 </div>
                 <div class="content-body">
                     <div class="faq-list">
                         <div class="faq-item">
                             <div class="faq-question">
-                                <h3>Is OpenGrammar really free?</h3>
+                                <h3>Is OGrammar really free?</h3>
                                 <svg viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                                 </svg>
@@ -1195,13 +1198,13 @@ bun run build</code></pre>
 
                         <div class="faq-item">
                             <div class="faq-question">
-                                <h3>How does OpenGrammar protect my privacy?</h3>
+                                <h3>How does OGrammar protect my privacy?</h3>
                                 <svg viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                                 </svg>
                             </div>
                             <div class="faq-answer">
-                                <p>OpenGrammar has no databases, no user accounts, and no tracking. Your API key never leaves your browser. When using AI features, text is sent to a stateless edge function, processed, and immediately forgotten.</p>
+                                <p>OGrammar has no databases, no user accounts, and no tracking. Your API key never leaves your browser. When using AI features, text is sent to a stateless edge function, processed, and immediately forgotten.</p>
                             </div>
                         </div>
 
@@ -1213,13 +1216,13 @@ bun run build</code></pre>
                                 </svg>
                             </div>
                             <div class="faq-answer">
-                                <p>For free usage, we recommend <strong>Groq</strong> (100 requests/day free). For best quality, use <strong>OpenAI GPT-4o-mini</strong>. For complete privacy, use <strong>Ollama</strong> to run models locally offline.</p>
+                                <p>For privacy and zero cost, use <strong>Ollama</strong> locally with <code>qwen3.5:4b</code>. For the best quality at the lowest price, use <strong>DeepSeek</strong> (<code>deepseek-chat</code>). For the fastest cloud responses, use <strong>Groq</strong> (<code>llama-3.3-70b-versatile</code>). See the AI Providers page for measured scores.</p>
                             </div>
                         </div>
 
                         <div class="faq-item">
                             <div class="faq-question">
-                                <h3>Can I use OpenGrammar without internet?</h3>
+                                <h3>Can I use OGrammar without internet?</h3>
                                 <svg viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                                 </svg>
@@ -1231,13 +1234,13 @@ bun run build</code></pre>
 
                         <div class="faq-item">
                             <div class="faq-question">
-                                <h3>Does OpenGrammar work on Google Docs?</h3>
+                                <h3>Does OGrammar work on Google Docs?</h3>
                                 <svg viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                                 </svg>
                             </div>
                             <div class="faq-answer">
-                                <p>Yes, OpenGrammar works on Google Docs and most rich text editors. Google Docs support is actively being improved for better compatibility.</p>
+                                <p>Yes, OGrammar works on Google Docs and most rich text editors. Google Docs support is actively being improved for better compatibility.</p>
                             </div>
                         </div>
                     </div>
@@ -1257,7 +1260,7 @@ bun run build</code></pre>
         <footer class="content-footer">
             <div class="footer-content">
                 <p>Built with <i data-lucide="heart" class="icon-inline"></i>️ by <a href="https://github.com/swadhinbiswas" target="_blank">Swadhin Biswas</a></p>
-                <p>OpenGrammar is licensed under <a href="https://opensource.org/licenses/Apache-2.0" target="_blank">Apache 2.0</a></p>
+                <p>OGrammar is a modified fork of OpenGrammar, licensed under <a href="https://opensource.org/licenses/Apache-2.0" target="_blank">Apache 2.0</a></p>
             </div>
         </footer>
     </main>
