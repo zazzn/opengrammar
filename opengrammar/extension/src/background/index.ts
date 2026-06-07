@@ -78,7 +78,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.type === 'REPHRASE_TEXT') {
-    rephraseText(request.sentence, request.goal).then((r) => sendResponse(r));
+    rephraseText(request.sentence, request.goal)
+      .then((r) => sendResponse(r))
+      .catch((e) => sendResponse({ error: e instanceof Error ? e.message : String(e) }));
     return true;
   }
 
@@ -157,9 +159,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.type === 'GET_MODELS') {
-    getModels(request.provider, request.apiKey, request.baseUrl).then((models) =>
-      sendResponse({ models }),
-    );
+    getModels(request.provider, request.apiKey, request.baseUrl)
+      .then((models) => sendResponse({ models }))
+      .catch((e) => sendResponse({ models: [], error: e instanceof Error ? e.message : String(e) }));
     return true;
   }
 
@@ -169,9 +171,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.type === 'GET_OLLAMA_STATUS') {
-    getOllamaStatus(request.baseUrl, request.model, request.probe).then((s) =>
-      sendResponse(s),
-    );
+    getOllamaStatus(request.baseUrl, request.model, request.probe)
+      .then((s) => sendResponse(s))
+      .catch((e) => sendResponse({ error: e instanceof Error ? e.message : String(e) }));
     return true;
   }
 
@@ -206,6 +208,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   }
+
+  // Unknown message type — respond so a waiting sender never hangs on a dropped channel.
+  sendResponse({ error: `unknown message type: ${request?.type}` });
+  return false;
 });
 
 
