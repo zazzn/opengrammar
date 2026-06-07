@@ -109,7 +109,7 @@ protection so the model never sees protected spans as editable text.
 ## Clean Re-Run + Cloud Providers — 2026-06-01
 
 A follow-up run addressed two things: (1) a suspected resource-contention skew in
-the run above (GPU maxed, system RAM hit ~49 GB), and (2) adding cloud API models
+the run above (GPU saturated, with a transient system-RAM spike), and (2) adding cloud API models
 (Abacus RouteLLM, DeepSeek) as a quality ceiling for users with API keys.
 
 ### Method differences
@@ -126,7 +126,7 @@ New runner `scripts/benchmark-models.mjs` (same 46-case corpus + identical scori
 
 All six local models ran at **GPU 100%**, and the clean latencies reproduce the
 earlier contended numbers closely (e.g. `qwen2.5:1.5b` 2496 ms vs 2500;
-`qwen3:4b-instruct` 902 ms vs 859). The 49 GB spike was transient (KV-cache during
+`qwen3:4b-instruct` 902 ms vs 859). The RAM spike was transient (KV-cache during
 load) and did **not** corrupt the per-model quality or latency. The "1.5B slower
 than 4B" oddity is real — a generation-efficiency difference, not a measurement
 artifact (terse `qwen3:4b-instruct` vs verbose `qwen2.5:1.5b`).
@@ -167,7 +167,7 @@ Command:
 ```bash
 cd opengrammar/extension
 node scripts/benchmark-models.mjs --remote --repeats=2
-# cloud keys read from env or ~/.ogrammar-bench/{deepseek,abacus}.key
+# cloud keys read from $DEEPSEEK_API_KEY / $ABACUS_API_KEY (or a local key file)
 ```
 
 Note: `deepseek-chat`'s perfect protected-span score still does not remove the need

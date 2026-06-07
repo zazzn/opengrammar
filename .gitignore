@@ -20,6 +20,9 @@ opengrammar/extension/scripts/.fp-corpora/
 # Local agent/tooling config — never publish
 .claude/
 
+# Private local docs (machine/account-specific setup; never publish)
+docs/*.local.md
+
 # Local Netlify folder
 .netlify
 
