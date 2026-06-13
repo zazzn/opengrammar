@@ -10,6 +10,10 @@ mod config;
 #[cfg(windows)]
 mod diff;
 #[cfg(windows)]
+mod dictionary;
+#[cfg(windows)]
+mod engine_data;
+#[cfg(windows)]
 mod overlay;
 #[cfg(windows)]
 mod pill;

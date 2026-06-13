@@ -1,6 +1,8 @@
 pub mod cli;
 pub mod context;
+pub mod conviction;
 pub mod harper_engine;
+pub mod learned;
 pub mod llm;
 pub mod ollama;
 pub mod protected;

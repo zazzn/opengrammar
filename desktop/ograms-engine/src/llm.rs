@@ -888,7 +888,7 @@ impl RewriteTone {
     pub fn label(self) -> &'static str {
         match self {
             Self::Polish => "Polish",
-            Self::Formalize => "Formalize",
+            Self::Formalize => "Formal",
             Self::Casual => "Casual",
         }
     }

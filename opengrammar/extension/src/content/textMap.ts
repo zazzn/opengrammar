@@ -154,6 +154,56 @@ export function offsetToRange(map: TextMap, start: number, end: number): Range |
  * within a small window so a still-present error is relocated rather than
  * applied to the wrong place. Returns the corrected [start,end) or null to drop.
  */
+const RE_SPECIAL = /[.*+?^${}()|[\]\\]/g;
+function escapeRe(s: string): string {
+  return s.replace(RE_SPECIAL, '\\$&');
+}
+
+/**
+ * Last-resort match for `original` in `text`, tolerant of the differences a live
+ * editor introduces vs the analyzed snapshot: inter-word WHITESPACE (a long sentence
+ * wraps across nodes → newlines / NBSP / double spaces) and QUOTE GLYPHS (composers
+ * smart-quote ' " into ' ' " "). Builds a flexible regex over the word tokens and
+ * returns the match nearest the expected `offset` (disambiguates repeats). Returns the
+ * RAW [start,end) so the caller replaces exactly what's live in the field.
+ */
+function flexibleMatch(
+  text: string,
+  original: string,
+  near: number,
+): { start: number; end: number } | null {
+  const trimmed = original.trim();
+  if (!trimmed) return null;
+  const APOS = "['‘’ʼ]";
+  const QUOTE = '["“”]';
+  const pattern = trimmed
+    .split(/\s+/)
+    .map((tok) =>
+      escapeRe(tok)
+        .replace(/['‘’ʼ]/g, APOS)
+        .replace(/["“”]/g, QUOTE),
+    )
+    .join('\\s+');
+  let re: RegExp;
+  try {
+    re = new RegExp(pattern, 'g');
+  } catch {
+    return null;
+  }
+  let m: RegExpExecArray | null;
+  let best: { start: number; end: number } | null = null;
+  let bestDist = Infinity;
+  while ((m = re.exec(text)) !== null) {
+    const dist = Math.abs(m.index - near);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = { start: m.index, end: m.index + m[0].length };
+    }
+    if (re.lastIndex === m.index) re.lastIndex++; // guard against zero-width loops
+  }
+  return best;
+}
+
 export function resolveInString(
   text: string,
   offset: number,
@@ -164,16 +214,22 @@ export function resolveInString(
     return { start: offset, end: offset + length };
   }
   if (!original) return null;
-  const WINDOW = 40;
+  // Windowed exact search. The window SCALES with the original length so a long
+  // sentence can still be relocated after offset drift — a fixed ±40 is smaller than
+  // most sentences and could never re-find one (the "text changed" on a valid rewrite).
+  const WINDOW = Math.max(40, original.length + 40);
   const from = Math.max(0, offset - WINDOW);
   const to = Math.min(text.length, offset + length + WINDOW);
   const hay = text.slice(from, to);
   const first = hay.indexOf(original);
-  if (first === -1) return null;
-  // Reject ambiguous matches (same substring appears twice in the window).
-  if (hay.indexOf(original, first + 1) !== -1) return null;
-  const start = from + first;
-  return { start, end: start + original.length };
+  if (first !== -1 && hay.indexOf(original, first + 1) === -1) {
+    const start = from + first;
+    return { start, end: start + original.length };
+  }
+  // Exact search failed or was ambiguous: fall back to a whitespace/quote-tolerant
+  // match near the expected offset (handles editors that reflow whitespace or
+  // smart-quote apostrophes — the usual cause of a failed sentence apply).
+  return flexibleMatch(text, original, offset);
 }
 
 export function resolveSpan(

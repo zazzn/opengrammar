@@ -53,6 +53,7 @@ use windows::core::{PCWSTR, PWSTR};
 
 use crate::autocorrect;
 use crate::config::{self, Config};
+use crate::dictionary;
 use crate::overlay::{Overlay, OverlayRect, WM_OVERLAY_CLICK};
 use crate::pill;
 use crate::suggestion;
@@ -64,6 +65,7 @@ const WM_FOCUS_CHANGED: u32 = WM_APP + 1;
 const WM_TEXT_CHANGED: u32 = WM_APP + 2;
 const WM_LLM_RESULT: u32 = WM_APP + 3;
 const WM_REWRITE_RESULT: u32 = WM_APP + 4;
+const WM_CONTEXT_RESULT: u32 = WM_APP + 5;
 const POLL_INTERVAL: Duration = Duration::from_millis(450);
 const DEBOUNCE_DELAY: Duration = Duration::from_millis(600);
 // Autocorrect's idle delay is user-configurable (Settings → "Autocorrect" delay
@@ -105,6 +107,11 @@ const HOTKEY_CANDIDATES: &[HotkeyConfig] = &[
     },
 ];
 const CLIPBOARD_RESTORE_DELAY: Duration = Duration::from_millis(250);
+/// After a programmatic Ctrl+A, wait this long before pasting so the editor has
+/// actually applied the select-all. ProseMirror/Chromium process input async; without
+/// the pause the paste can land before the selection exists and append instead of
+/// replace (the "…logs Check" failure seen in apply.log).
+const SELECT_SETTLE_DELAY: Duration = Duration::from_millis(90);
 
 #[derive(Clone, Copy, Debug)]
 struct HotkeyConfig {
@@ -246,6 +253,9 @@ struct MonitorState<'a> {
     /// A rewrite the user is previewing: (original field text, proposed rewrite).
     /// Applied only when they click Apply and the text is still `original`.
     pending_rewrite: Option<(String, String)>,
+    /// User dictionary + LLM-taught learned corrections (persisted to userdict.json),
+    /// for parity with the extension's custom-dictionary / ignore + self-learning.
+    userdict: dictionary::UserDict,
 }
 
 /// Worker→main-thread payload for a finished proactive LLM review. Boxed and
@@ -264,6 +274,15 @@ struct RewriteResultMsg {
     original: String,
     rewritten: String,
     tone: RewriteTone,
+}
+
+/// Worker→main payload for a finished "Review in context" sentence correction. The
+/// corrected sentence is already spliced back into the full field (`rewritten_field`),
+/// so it reuses the rewrite preview + apply path. Empty `rewritten_field` = no change.
+struct ContextResultMsg {
+    seq: u64,
+    field_text: String,
+    rewritten_field: String,
 }
 
 #[derive(Clone, Debug)]
@@ -416,12 +435,19 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             monitor.apply_clicked(msg.wParam.0, msg.lParam.0 as usize);
         } else if msg.message == suggestion::WM_OVERLAY_DISMISS {
             monitor.dismiss_clicked(msg.wParam.0);
+        } else if msg.message == suggestion::WM_OVERLAY_CONTEXT {
+            monitor.on_context_review(msg.wParam.0);
+        } else if msg.message == suggestion::WM_OVERLAY_DICTIONARY {
+            monitor.on_add_to_dictionary(msg.wParam.0);
         } else if msg.message == suggestion::WM_CARD_LIGHT_DISMISS {
             // A click landed outside the open card — close it (light dismiss).
             suggestion::close();
         } else if msg.message == WM_REWRITE_RESULT {
             let boxed = unsafe { Box::from_raw(msg.lParam.0 as *mut RewriteResultMsg) };
             monitor.on_rewrite_ready(*boxed);
+        } else if msg.message == WM_CONTEXT_RESULT {
+            let boxed = unsafe { Box::from_raw(msg.lParam.0 as *mut ContextResultMsg) };
+            monitor.on_context_ready(*boxed);
         } else if msg.message == pill::WM_PILL_CLICK {
             monitor.on_pill_click();
         } else if msg.message == pill::WM_PILL_TONE {
@@ -471,6 +497,7 @@ impl<'a> MonitorState<'a> {
             was_paused: false,
             autocorrect_ledger: autocorrect::RejectionLedger::load(),
             pending_rewrite: None,
+            userdict: dictionary::UserDict::load(),
         }
     }
 
@@ -668,16 +695,14 @@ impl<'a> MonitorState<'a> {
         target.last_linted_text = Some(target.last_snapshot.clone());
 
         // Harper tier (local, instant): lint, draw the red solid layer now.
-        let opts = EngineOptions {
-            dialect: self.config.dialect(),
-            ..EngineOptions::default()
-        };
+        let opts = crate::engine_data::engine_options(self.config.dialect());
         let (rects, drawn) = lint_to_overlay(
             &target.element,
             &target.app,
             &target.last_snapshot,
             &opts,
             &target.dismissed,
+            &self.userdict,
         );
 
         // Revert learning runs on EVERY lint (independent of caret position): if
@@ -737,11 +762,85 @@ impl<'a> MonitorState<'a> {
         if msg.seq != LLM_SEQ.load(Ordering::SeqCst) {
             return; // a newer request superseded this one
         }
+        let autocorrect_on = self.config.autocorrect_enabled;
+        let userdict = &mut self.userdict;
         let Some(target) = &mut self.target else {
             return;
         };
         if target.last_snapshot != msg.text {
             return; // text changed since the request was issued
+        }
+
+        // LEARN (self-learning, parity with the extension): remember the LLM's fix for
+        // any word the LOCAL engine also flagged as spelling — context-independent, so
+        // the engine applies it locally next time with no LLM round-trip.
+        let local_spelling: std::collections::HashSet<String> = target
+            .drawn
+            .iter()
+            .filter(|d| d.kicker == "Spelling")
+            .map(|d| d.original.to_ascii_lowercase())
+            .collect();
+        for issue in &msg.issues {
+            if local_spelling.contains(&issue.original.to_ascii_lowercase()) {
+                userdict.record_learned(&issue.original, &issue.suggestion);
+            }
+        }
+
+        // AUTO-APPLY high-conviction (quick-fix) LLM corrections to the settled text
+        // when autocorrect is on — extension parity (the extension's applySettledQuickFixes).
+        // The SUBTLE ones (homophones / word-choice) stay as the blue click-to-accept
+        // layer drawn below. Applied right-to-left so earlier offsets stay valid; reverts
+        // feed the same RejectionLedger as Harper autofixes; the field edit re-lints fresh.
+        if autocorrect_on {
+            let ledger = &self.autocorrect_ledger;
+            let mut quick: Vec<_> = msg
+                .issues
+                .iter()
+                .filter(|i| {
+                    ograms_engine::conviction::route_llm_correction(&i.original, &i.suggestion)
+                        == ograms_engine::conviction::LlmRoute::QuickFix
+                })
+                .filter(|i| !ledger.is_suppressed(&i.original, &i.suggestion))
+                .collect();
+            quick.sort_by_key(|i| std::cmp::Reverse(i.start));
+            let now = Instant::now();
+            let mut applied_any = false;
+            for issue in quick {
+                let synthetic = DrawnIssue {
+                    char_start: issue.start,
+                    char_end: issue.end,
+                    utf16_start: issue.utf16_start,
+                    utf16_end: issue.utf16_end,
+                    argb: argb_for_kind("Spelling"),
+                    dashed: false,
+                    original: issue.original.clone(),
+                    candidates: vec![issue.suggestion.clone()],
+                    reason: issue.reason.clone(),
+                    kicker: "Learned".to_string(),
+                };
+                let pre = read_element_text_lossy(&target.element);
+                if apply_single_fix(&target.element, &synthetic, &issue.suggestion) {
+                    autocorrect::record_applied(
+                        &mut target.recent_autofixes,
+                        &pre,
+                        &issue.original,
+                        &issue.suggestion,
+                        now,
+                    );
+                    userdict.record_learned(&issue.original, &issue.suggestion);
+                    applied_any = true;
+                }
+            }
+            if applied_any {
+                target.drawn.clear();
+                target.last_rects.clear();
+                target.last_linted_text = None;
+                target.last_llm_text = None;
+                if let Some(overlay) = &self.overlay {
+                    overlay.clear();
+                }
+                return;
+            }
         }
 
         // mergeLlmIssues: append each LLM issue that doesn't overlap a Harper
@@ -847,9 +946,19 @@ impl<'a> MonitorState<'a> {
     /// straight back — matching the extension's per-field "ignore" behavior.
     fn dismiss_clicked(&mut self, index: usize) {
         suggestion::close();
+        let mut to_ignore: Option<(String, String)> = None;
+        let mut to_dictionary: Option<String> = None;
         if let Some(target) = self.target.as_mut() {
             if let Some(issue) = target.drawn.get(index) {
                 let key = (issue.original.clone(), issue.kicker.clone());
+                // Persist the dismissal GLOBALLY by KIND+WORD (not position) so it
+                // sticks across fields + sessions, matching the extension's word-keyed
+                // ignore list. A dismissed SPELLING false-positive additionally joins
+                // the dictionary so it counts as a known-good word everywhere.
+                to_ignore = Some(key.clone());
+                if issue.kicker == "Spelling" {
+                    to_dictionary = Some(issue.original.clone());
+                }
                 if !target.dismissed.contains(&key) {
                     target.dismissed.push(key);
                 }
@@ -862,6 +971,33 @@ impl<'a> MonitorState<'a> {
             target.last_rects = rects_for_drawn(&target.element, &target.drawn);
             if let Some(overlay) = &self.overlay {
                 overlay.set_rects(&target.last_rects);
+            }
+        }
+        if let Some((word, kind)) = to_ignore {
+            self.userdict.add_ignored(&word, &kind);
+        }
+        if let Some(word) = to_dictionary {
+            self.userdict.add_word(&word);
+        }
+    }
+
+    /// "Add to dictionary" clicked: add the flagged word to the user dictionary so it
+    /// is never flagged again (in any field), then clear + re-lint so it disappears.
+    fn on_add_to_dictionary(&mut self, index: usize) {
+        suggestion::close();
+        let word = self
+            .target
+            .as_ref()
+            .and_then(|t| t.drawn.get(index))
+            .map(|issue| issue.original.clone());
+        if let Some(word) = word {
+            self.userdict.add_word(&word);
+            if let Some(target) = self.target.as_mut() {
+                target.drawn.clear();
+                target.last_linted_text = None;
+            }
+            if let Some(overlay) = &self.overlay {
+                overlay.clear();
             }
         }
     }
@@ -917,6 +1053,61 @@ impl<'a> MonitorState<'a> {
             pill::show_preview(ax - 380, ay - 240, &msg.original, &msg.rewritten, msg.tone.label());
         }
         self.pending_rewrite = Some((msg.original, msg.rewritten));
+    }
+
+    /// "Review in context" clicked on a blue/AI card: re-run the LLM on the SENTENCE
+    /// around the issue and preview the corrected sentence (spliced back into the
+    /// field) in the rewrite diff preview — mirroring the extension's blue-underline
+    /// "Review in context" action.
+    fn on_context_review(&mut self, index: usize) {
+        suggestion::close();
+        let Some(cfg) = self.config.llm_config() else {
+            return;
+        };
+        let Some(target) = self.target.as_ref() else {
+            return;
+        };
+        let Some(issue) = target.drawn.get(index) else {
+            return;
+        };
+        let field = read_element_text_lossy(&target.element);
+        let chars: Vec<char> = field.chars().collect();
+        let (s_start, s_end) = sentence_span(&chars, issue.char_start, issue.char_end);
+        if s_end <= s_start {
+            return;
+        }
+        let sentence: String = chars[s_start..s_end].iter().collect();
+        if let Some((ax, ay)) = target.last_pill_anchor {
+            pill::show_working(ax - 150, ay - 60);
+        }
+        spawn_context_review(field, s_start, s_end, sentence, cfg);
+    }
+
+    /// A "Review in context" sentence correction finished — preview it (Apply/Cancel),
+    /// reusing the pill rewrite preview + apply path. The corrected sentence is already
+    /// spliced into the full field, so `pending_rewrite` + `on_rewrite_apply` apply it.
+    fn on_context_ready(&mut self, msg: ContextResultMsg) {
+        if msg.seq != REWRITE_SEQ.load(Ordering::SeqCst) {
+            return;
+        }
+        pill::close_working();
+        let anchor = self.target.as_ref().and_then(|t| t.last_pill_anchor);
+        if msg.rewritten_field.trim().is_empty() || msg.rewritten_field == msg.field_text {
+            if let Some((ax, ay)) = anchor {
+                pill::show_notice(ax - 200, ay - 60, "No changes suggested");
+            }
+            return;
+        }
+        if let Some((ax, ay)) = anchor {
+            pill::show_preview(
+                ax - 380,
+                ay - 240,
+                &msg.field_text,
+                &msg.rewritten_field,
+                "Sentence review",
+            );
+        }
+        self.pending_rewrite = Some((msg.field_text, msg.rewritten_field));
     }
 
     /// Apply clicked in the preview: now replace the field with the rewrite (only
@@ -1171,6 +1362,81 @@ fn spawn_rewrite(text: String, tone: RewriteTone, cfg: LlmConfig) {
     });
 }
 
+/// Run a "Review in context" sentence correction on a worker thread: LLM-correct the
+/// one sentence, splice it back into the full field, and post WM_CONTEXT_RESULT so the
+/// UI previews it via the existing rewrite preview/apply path. Shares REWRITE_SEQ so a
+/// newer rewrite/review supersedes it.
+fn spawn_context_review(
+    field_text: String,
+    s_start: usize,
+    s_end: usize,
+    sentence: String,
+    cfg: LlmConfig,
+) {
+    let seq = REWRITE_SEQ.fetch_add(1, Ordering::SeqCst) + 1;
+    let main_thread = MAIN_THREAD_ID.load(Ordering::SeqCst);
+    if main_thread == 0 {
+        return;
+    }
+    thread::spawn(move || {
+        let corrected = match llm::llm_correct_text(&sentence, &cfg) {
+            Ok(Some(text)) => text,
+            Ok(None) => String::new(), // model made no change
+            Err(error) => {
+                eprintln!("context review failed: {error}");
+                String::new()
+            }
+        };
+        let rewritten_field = if corrected.trim().is_empty() {
+            String::new()
+        } else {
+            let chars: Vec<char> = field_text.chars().collect();
+            let end = s_end.min(chars.len());
+            let start = s_start.min(end);
+            let head: String = chars[..start].iter().collect();
+            let tail: String = chars[end..].iter().collect();
+            format!("{head}{}{tail}", corrected.trim())
+        };
+        let payload = Box::new(ContextResultMsg {
+            seq,
+            field_text,
+            rewritten_field,
+        });
+        let ptr = Box::into_raw(payload) as isize;
+        unsafe {
+            if PostThreadMessageW(main_thread, WM_CONTEXT_RESULT, WPARAM(0), LPARAM(ptr)).is_err() {
+                drop(Box::from_raw(ptr as *mut ContextResultMsg));
+            }
+        }
+    });
+}
+
+/// The sentence containing `[issue_start, issue_end)` as a char-index span: from just
+/// after the previous `. ! ?` (skipping whitespace) to just past the next terminator.
+/// Always contains the issue span. Used by "Review in context".
+fn sentence_span(chars: &[char], issue_start: usize, issue_end: usize) -> (usize, usize) {
+    let n = chars.len();
+    let is_end = |c: char| matches!(c, '.' | '!' | '?');
+    let issue_start = issue_start.min(n);
+    let issue_end = issue_end.min(n);
+    let mut s = issue_start;
+    while s > 0 && !is_end(chars[s - 1]) {
+        s -= 1;
+    }
+    while s < issue_start && chars[s].is_whitespace() {
+        s += 1;
+    }
+    let mut e = issue_end;
+    while e < n {
+        let c = chars[e];
+        e += 1;
+        if is_end(c) {
+            break;
+        }
+    }
+    (s.min(issue_start), e.max(issue_end))
+}
+
 fn unregister_hotkey() {
     if let Err(error) = unsafe { UnregisterHotKey(None, HOTKEY_ID) } {
         eprintln!("failed to unregister hotkey: {error}");
@@ -1208,10 +1474,7 @@ fn run_once(automation: &UIAutomation) -> Result<String, Box<dyn Error>> {
     }
 
     let config = Config::load();
-    let options = EngineOptions {
-        dialect: config.dialect(),
-        ..EngineOptions::default()
-    };
+    let options = crate::engine_data::engine_options(config.dialect());
     let issues = lint(&text, &options);
     // Start with Harper's safe local spelling fixes.
     let mut corrected = apply_safe_corrections(&text, &issues);
@@ -1253,6 +1516,7 @@ fn print_current_overlay_json(automation: &UIAutomation) -> Result<(), Box<dyn E
         &text,
         &EngineOptions::default(),
         &[],
+        &dictionary::UserDict::default(),
     );
     Ok(())
 }
@@ -1265,6 +1529,7 @@ fn lint_to_overlay(
     text: &str,
     options: &EngineOptions,
     dismissed: &[(String, String)],
+    userdict: &dictionary::UserDict,
 ) -> (Vec<OverlayRect>, Vec<DrawnIssue>) {
     let issues = lint(text, options);
     let mut overlay_rects: Vec<OverlayRect> = Vec::new();
@@ -1280,7 +1545,20 @@ fn lint_to_overlay(
         {
             continue;
         }
+        // Suppress spelling flags for words the user added to their dictionary (or
+        // dismissed as jargon/names) — extension parity, false-positive control.
+        if kicker == "Spelling" && userdict.is_dictionary(&issue.original) {
+            continue;
+        }
+        // Honor a prior dismissal of this (kind, word) persisted globally, so a
+        // dismissal sticks across fields + sessions (extension parity).
+        if userdict.is_ignored(&issue.original, kicker) {
+            continue;
+        }
         let argb = argb_for_kind(issue.lint_kind.as_str());
+        // Style / clarity issues (grey) draw DOTTED, like the extension's local
+        // sentence-review layer; correctness issues (red) stay solid underlines.
+        let dashed = argb == 0xFF6B_7280;
         let idx = drawn.len();
         drawn.push(DrawnIssue {
             char_start: issue.start,
@@ -1288,7 +1566,7 @@ fn lint_to_overlay(
             utf16_start: issue.utf16_start,
             utf16_end: issue.utf16_end,
             argb,
-            dashed: false,
+            dashed,
             original: issue.original.clone(),
             candidates: issue.suggestions.clone(),
             reason: issue.message.clone(),
@@ -1302,7 +1580,7 @@ fn lint_to_overlay(
                 w: rect.w,
                 h: rect.h,
                 argb,
-                dashed: false,
+                dashed,
                 issue_index: idx,
             });
         }
@@ -1327,6 +1605,56 @@ fn lint_to_overlay(
             "rects": rects,
             "note": issue_rects.note,
         }));
+    }
+
+    // Inject LLM-taught learned corrections so the engine fixes what the LLM taught it
+    // with NO LLM round-trip (self-learning parity with the extension). Deduped against
+    // issues already drawn + filtered by the dictionary / dismissed lists.
+    if !userdict.learned.is_empty() {
+        for hit in ograms_engine::learned::find_learned_corrections(text, &userdict.learned) {
+            if drawn
+                .iter()
+                .any(|d| hit.start < d.char_end && d.char_start < hit.end)
+            {
+                continue;
+            }
+            if userdict.is_dictionary(&hit.original)
+                || userdict.is_ignored(&hit.original, "Learned")
+                || dismissed
+                    .iter()
+                    .any(|(orig, kind)| orig == &hit.original && kind == "Learned")
+            {
+                continue;
+            }
+            let utf16_start: usize = text.chars().take(hit.start).map(char::len_utf16).sum();
+            let utf16_end: usize =
+                utf16_start + hit.original.chars().map(char::len_utf16).sum::<usize>();
+            let argb = argb_for_kind("Spelling");
+            let idx = drawn.len();
+            drawn.push(DrawnIssue {
+                char_start: hit.start,
+                char_end: hit.end,
+                utf16_start,
+                utf16_end,
+                argb,
+                dashed: false,
+                original: hit.original.clone(),
+                candidates: vec![hit.suggestion.clone()],
+                reason: format!("Learned correction: {} \u{2192} {}.", hit.original, hit.suggestion),
+                kicker: "Learned".to_string(),
+            });
+            for rect in &compute_issue_rects(element, utf16_start, utf16_end).rects {
+                overlay_rects.push(OverlayRect {
+                    x: rect.x,
+                    y: rect.y,
+                    w: rect.w,
+                    h: rect.h,
+                    argb,
+                    dashed: false,
+                    issue_index: idx,
+                });
+            }
+        }
     }
 
     print_overlay_json(app, text, payload_issues);
@@ -1376,15 +1704,39 @@ fn current_foreground_rect() -> Option<(i32, i32, i32, i32)> {
 /// is available and the text is worth rewriting; hide it otherwise. Returns the
 /// pill's anchor (screen coords) so it can be shifted on a window move.
 fn show_field_pill(config: &Config, element: &UIElement, text: &str) -> Option<(i32, i32)> {
-    if config.llm_config().is_none() || !llm::proactive_text_eligible(text) {
+    if config.llm_config().is_none() {
+        log_pill(&format!(
+            "hidden: llm_config=None (enabled={} llm_enabled={} provider={} key_set={})",
+            config.enabled,
+            config.llm_enabled,
+            config.provider,
+            !crate::config::load_api_key().is_empty()
+        ));
+        pill::close();
+        return None;
+    }
+    if !llm::proactive_text_eligible(text) {
+        log_pill(&format!(
+            "hidden: text not eligible (chars={} words={})",
+            text.chars().count(),
+            text.split_whitespace().count()
+        ));
         pill::close();
         return None;
     }
     let Ok(rect) = element.get_bounding_rectangle() else {
+        log_pill("hidden: get_bounding_rectangle failed");
         pill::close();
         return None;
     };
     let anchor = pill::show_pill(rect.get_right(), rect.get_bottom(), rect.get_top());
+    log_pill(&format!(
+        "shown: anchor={:?} field(right={} bottom={} top={})",
+        anchor,
+        rect.get_right(),
+        rect.get_bottom(),
+        rect.get_top()
+    ));
     Some(anchor)
 }
 
@@ -1563,11 +1915,19 @@ fn apply_single_fix(element: &UIElement, issue: &DrawnIssue, suggestion: &str) -
     // text instead of replacing the word — the "appended to the end" bug.
     let _ = element.set_focus();
 
-    // Preferred: select the exact range and paste the fix into it — but only
-    // after CONFIRMING the range actually covers the flagged word. If the offset
-    // math lands the range elsewhere (e.g. a control whose Character unit isn't
-    // UTF-16), we must NOT paste, or the correction would be inserted at the
-    // caret and the original left in place ("teh" → "teh … the").
+    // The fully-corrected field text: the source of truth for verifying each
+    // attempt and for the universal fallback below. `read_element_text_lossy`
+    // returns the WHOLE field (get_value / get_text(-1)), so this is complete.
+    let expected: String = chars[..issue.char_start].iter().collect::<String>()
+        + suggestion
+        + &chars[issue.char_end..].iter().collect::<String>();
+
+    // Attempt 1: select the exact word range and paste just the fix (best UX —
+    // leaves the rest of the field and the caret untouched) — but only after
+    // CONFIRMING the range covers the flagged word, AND verifying the result.
+    // On Chromium/Electron contenteditable, `select()` can report OK without
+    // actually selecting, so the paste appends and leaves a duplicate ("teh the");
+    // the post-verify catches that and falls through instead of claiming success.
     if let Ok(text_pattern) = element.get_pattern::<UITextPattern>() {
         if let Ok(document) = text_pattern.get_document_range() {
             let range = document.clone();
@@ -1597,23 +1957,121 @@ fn apply_single_fix(element: &UIElement, issue: &DrawnIssue, suggestion: &str) -
                     .get_text(-1)
                     .map(|t| t == issue.original)
                     .unwrap_or(false);
-            if covers_word && range.select().is_ok() && paste_replacement(suggestion).is_ok() {
+            if covers_word
+                && range.select().is_ok()
+                && paste_replacement(suggestion).is_ok()
+                && fix_verified(element, &expected)
+            {
                 return true;
             }
         }
     }
 
-    // Fallback (also used when the range couldn't be verified above): splice the
-    // new value directly — precise, and can never append.
+    // Attempt 2: ValuePattern splice (works for <input>/<textarea>-style fields;
+    // contenteditable usually has no ValuePattern, so this no-ops there).
     if let Ok(value) = element.get_pattern::<UIValuePattern>() {
-        let new_value: String = chars[..issue.char_start].iter().collect::<String>()
-            + suggestion
-            + &chars[issue.char_end..].iter().collect::<String>();
-        if value.set_value(&new_value).is_ok() {
+        if value.set_value(&expected).is_ok() && fix_verified(element, &expected) {
             return true;
         }
     }
+
+    // Attempt 3 (universal fallback): select the whole field and paste the fully
+    // corrected text. Ctrl+A + Ctrl+V works even on Chromium/Electron contenteditable
+    // where range-select and ValuePattern both fail, and it HEALS any partial edit a
+    // misfired Attempt 1 left behind (it overwrites everything). Cost: the caret moves
+    // to the end and the field reflows — acceptable only as a last resort.
+    // Try select-all-then-paste up to twice: an editor under active typing can swallow
+    // the first chord, and the settle delay lets the select-all land BEFORE the paste so
+    // it replaces (rather than appends). The second pass also overwrites any stray paste
+    // Attempt 1 left behind, since Ctrl+A re-selects the whole — now wrong — field.
+    for _ in 0..2 {
+        if send_ctrl_a().is_ok() {
+            thread::sleep(SELECT_SETTLE_DELAY);
+            if paste_replacement(&expected).is_ok() && fix_verified(element, &expected) {
+                return true;
+            }
+        }
+    }
+
+    log_apply_failure(element, issue, suggestion);
     false
+}
+
+/// Re-read the field after an apply attempt and confirm the corrected text actually
+/// landed. A misfired paste that left the original in place (or duplicated it) fails
+/// this check, so the caller falls through to a more forceful strategy instead of
+/// reporting a no-op as success. The short sleep lets the target app reconcile.
+fn fix_verified(element: &UIElement, expected: &str) -> bool {
+    thread::sleep(Duration::from_millis(120));
+    // Whitespace-tolerant compare: editors may collapse runs of spaces or trim, so a
+    // cosmetic reflow isn't mistaken for a failed apply — but an appended/duplicated
+    // word still differs and correctly fails, falling through to the next strategy.
+    let collapse = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
+    collapse(&read_element_text_lossy(element)) == collapse(expected)
+}
+
+/// Append an apply-failure record to %APPDATA%\OGrammar\apply.log, so an intermittent
+/// "accept didn't replace" can be diagnosed from the user's NORMAL (no-console) build:
+/// it captures the target app and which UI-Automation patterns the field exposes.
+fn log_apply_failure(element: &UIElement, issue: &DrawnIssue, suggestion: &str) {
+    use std::io::Write;
+    let ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    let line = format!(
+        "{ms} apply FAILED {:?} -> {:?} | app: {} | TextPattern={} ValuePattern={} | field[0..120]={:?}\n",
+        issue.original,
+        suggestion,
+        describe_element(element),
+        element.get_pattern::<UITextPattern>().is_ok(),
+        element.get_pattern::<UIValuePattern>().is_ok(),
+        read_element_text_lossy(element).chars().take(120).collect::<String>(),
+    );
+    eprintln!("[OGrammar] {}", line.trim_end());
+    let path = crate::config::config_dir().join("apply.log");
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+        let _ = file.write_all(line.as_bytes());
+    }
+}
+
+/// Append a pill-visibility record to %APPDATA%\OGrammar\pill.log, deduped on the
+/// reason so typing doesn't spam it. Lets a "rewrite pill missing" be diagnosed from
+/// the no-console build: it names WHICH gate hid the pill (no LLM config / text not
+/// eligible / field-rect failed) or the on-screen anchor + field rect when shown.
+fn log_pill(reason: &str) {
+    use std::cell::RefCell;
+    use std::io::Write;
+    thread_local! {
+        static LAST: RefCell<String> = const { RefCell::new(String::new()) };
+    }
+    let changed = LAST.with(|last| {
+        if *last.borrow() == reason {
+            false
+        } else {
+            *last.borrow_mut() = reason.to_string();
+            true
+        }
+    });
+    if !changed {
+        return;
+    }
+    let ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    let line = format!("{ms} {reason}\n");
+    eprintln!("[OGrammar] pill {}", line.trim_end());
+    let path = crate::config::config_dir().join("pill.log");
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+        let _ = file.write_all(line.as_bytes());
+    }
 }
 
 /// Replace the current selection in the focused field by pasting `text`, then

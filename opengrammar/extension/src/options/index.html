@@ -66,6 +66,23 @@
         </div>
 
         <div class="setting-group">
+          <label for="autocompleteDelay">
+            <span class="setting-label">Autocomplete delay</span>
+            <span class="setting-description">
+              How long to wait after you stop typing before autocomplete
+              suggests a continuation. Longer is less eager.
+            </span>
+          </label>
+          <select id="autocompleteDelay" class="text-input" style="margin-top: 8px;">
+            <option value="400">After 0.4 seconds</option>
+            <option value="700">After 0.7 seconds</option>
+            <option value="1000">After 1 second</option>
+            <option value="1500">After 1.5 seconds</option>
+            <option value="2000">After 2 seconds</option>
+          </select>
+        </div>
+
+        <div class="setting-group">
           <label for="harperDialect">
             <span class="setting-label">Spelling dialect</span>
             <span class="setting-description">

@@ -222,7 +222,9 @@ function filterIssues(issues: Issue[] | undefined, ignoredIssues: string[], dict
   const normalizedIgnored = normalizeIgnoredIssues(ignoredIssues);
   if (normalizedIgnored.length > 0) {
     filtered = filtered.filter((issue) => {
-      const issueId = issue.id || `${issue.type}-${issue.offset}-${issue.original}`;
+      // Word-keyed (TYPE + WORD, not position) so a dismissal sticks wherever the
+      // word reappears — parity with the desktop's persisted ignore list.
+      const issueId = `${issue.type}-${issue.original.toLowerCase().trim()}`;
       return !normalizedIgnored.includes(issueId);
     });
   }
@@ -594,7 +596,7 @@ async function handleAutocomplete(
         'autocompleteEnabled',
       ]);
 
-    if (autocompleteEnabled === false) {
+    if (autocompleteEnabled !== true) {
       sendResponse({
         suggestion: '',
         confidence: 0,

@@ -35,9 +35,18 @@ pub const WM_OVERLAY_DISMISS: u32 = WM_APP + 22;
 /// Posted when a click lands outside the open card — the monitor closes it
 /// (light dismiss, matching the extension's click-away behavior).
 pub const WM_CARD_LIGHT_DISMISS: u32 = WM_APP + 24;
+/// "Review in context" clicked on an AI/blue card — re-run the LLM on the whole
+/// sentence and preview the result (mirrors the extension's blue-underline
+/// "Review in context" action). WPARAM = issue index.
+pub const WM_OVERLAY_CONTEXT: u32 = WM_APP + 23;
+/// "Add to dictionary" clicked on a spelling card — never flag this word again, in
+/// any field (extension parity). WPARAM = issue index.
+pub const WM_OVERLAY_DICTIONARY: u32 = WM_APP + 28;
 
 const ID_ACCEPT_BASE: i32 = 100;
 const ID_DISMISS: i32 = 2;
+const ID_CONTEXT: i32 = 3;
+const ID_DICTIONARY: i32 = 4;
 const MAX_CANDIDATES: usize = 3;
 
 struct CardInfo {
@@ -158,6 +167,10 @@ pub fn show(
         RegisterClassW(&wc);
 
         let n = candidates.len().clamp(1, MAX_CANDIDATES);
+        // "Add to dictionary" shows on spelling AND learned-correction cards — on a
+        // learned card it marks the word as fine, which stops the learned find-replace
+        // (parity with the extension, where learned fixes surface as spelling items).
+        let show_add_dict = kicker == "Spelling" || kicker == "Learned";
         INFO.with(|i| {
             *i.borrow_mut() = CardInfo {
                 kicker: kicker.to_string(),
@@ -169,8 +182,10 @@ pub fn show(
         let scale = (dpi_for_point(x, y) as f32) / 96.0;
         let s = |v: i32| (v as f32 * scale).round() as i32;
         let cw = s(380);
-        // kicker(20) + reason(40) + n candidate rows(32 each) + dismiss(34) + pad
-        let ch = s(64 + 32 * n as i32 + 40);
+        // kicker(20) + reason(40) + n candidate rows(32 each) + [AI: review-in-context
+        // row] + dismiss(34) + pad
+        let ch =
+            s(64 + 32 * n as i32 + 40 + if is_ai { 30 } else { 0 } + if show_add_dict { 30 } else { 0 });
 
         // Keep the card fully on-screen: flip it above the word if it would spill
         // off the bottom, then clamp into the monitor's work area.
@@ -255,6 +270,18 @@ pub fn show(
             by += s(32);
         }
         by += s(4);
+        if is_ai {
+            // Blue/AI issues get the extension's "Review in context" affordance: a
+            // whole-sentence LLM re-review shown in a diff preview before applying.
+            mk(w!("Review in context"), bx, by, bw, s(26), ID_CONTEXT);
+            by += s(30);
+        }
+        if show_add_dict {
+            // Spelling / learned cards get "Add to dictionary": never flag this word
+            // again, in any field (which also stops any learned correction for it).
+            mk(w!("Add to dictionary"), bx, by, bw, s(26), ID_DICTIONARY);
+            by += s(30);
+        }
         mk(w!("Dismiss"), bx, by, bw, s(26), ID_DISMISS);
 
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, index as isize);
@@ -335,6 +362,12 @@ unsafe extern "system" fn card_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam
                         WPARAM(index),
                         LPARAM(cand as isize),
                     );
+                    let _ = DestroyWindow(hwnd);
+                } else if id == ID_CONTEXT {
+                    let _ = PostThreadMessageW(tid, WM_OVERLAY_CONTEXT, WPARAM(index), LPARAM(0));
+                    let _ = DestroyWindow(hwnd);
+                } else if id == ID_DICTIONARY {
+                    let _ = PostThreadMessageW(tid, WM_OVERLAY_DICTIONARY, WPARAM(index), LPARAM(0));
                     let _ = DestroyWindow(hwnd);
                 } else if id == ID_DISMISS {
                     let _ = PostThreadMessageW(tid, WM_OVERLAY_DISMISS, WPARAM(index), LPARAM(0));

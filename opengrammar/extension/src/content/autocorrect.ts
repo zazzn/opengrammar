@@ -273,3 +273,57 @@ export function maybeAutocorrect(
     pendingTimer = setTimeout(applyEligible, remaining);
   }
 }
+
+export interface SettledApplyResult {
+  /** Issue ids that were applied (the caller drops these from the highlighted set). */
+  appliedIds: Set<string>;
+  /** (original, suggestion) pairs applied — the caller persists LLM ones to the learned store. */
+  applied: Array<{ original: string; suggestion: string }>;
+}
+
+/**
+ * Apply high-conviction `route: 'quick-fix'` issues to the SETTLED text of
+ * `element`, ANYWHERE in the field — unlike maybeAutocorrect, which only touches a
+ * word freshly typed before the caret. This is the vehicle for (a) LLM-confirmed
+ * fixes after the proactive review resolves and (b) learned corrections injected
+ * into the local pass. Honors the same revert-learning rejected-set and records
+ * each apply so a user undo is detected and learned. Carries no LLM/store deps — the
+ * caller wires capture + re-lint. Applies right-to-left so earlier offsets stay
+ * valid as the text length shifts.
+ */
+export function applySettledQuickFixes(
+  element: HTMLElement,
+  text: string,
+  issues: Issue[],
+): SettledApplyResult {
+  const appliedIds = new Set<string>();
+  const applied: Array<{ original: string; suggestion: string }> = [];
+  if (deepActiveElement() !== element) return { appliedIds, applied };
+
+  const eligible = issues
+    .filter((i) => i.route === 'quick-fix' && !!i.suggestion && i.suggestion !== i.original)
+    .filter((i) => !isRejected(i.original, i.suggestion))
+    .sort((a, b) => b.offset - a.offset);
+  if (eligible.length === 0) return { appliedIds, applied };
+
+  pruneRecentApplies(Date.now());
+  for (const issue of eligible) {
+    const ok = applyFix(element, {
+      original: issue.original,
+      offset: issue.offset,
+      length: issue.length,
+      replacement: issue.suggestion,
+    });
+    if (ok) {
+      appliedIds.add(issue.id ?? `${issue.offset}-${issue.original}`);
+      applied.push({ original: issue.original, suggestion: issue.suggestion });
+      recentApplies.push({
+        preText: text,
+        original: issue.original,
+        suggestion: issue.suggestion,
+        at: Date.now(),
+      });
+    }
+  }
+  return { appliedIds, applied };
+}

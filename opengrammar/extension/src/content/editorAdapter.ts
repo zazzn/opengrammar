@@ -111,35 +111,6 @@ function applyToFormField(
   return true;
 }
 
-/**
- * Did the replacement actually land? Re-reads the field's current text and
- * confirms `replacement` is present at the offset we targeted (tolerating the
- * fact that frameworks may renormalize whitespace/nodes around it). This is
- * how we distinguish a real apply from one a framework silently reverted.
- */
-function replacementLanded(el: HTMLElement, span: { start: number }, fix: Fix): boolean {
-  if (fix.replacement === '') {
-    // Deletion: success means the original text is no longer sitting at `start`.
-    const now = buildTextMap(el).text;
-    return now.slice(span.start, span.start + fix.original.length) !== fix.original;
-  }
-  const now = buildTextMap(el).text;
-  // Primary check: the replacement sits exactly where we inserted it.
-  if (now.slice(span.start, span.start + fix.replacement.length) === fix.replacement) {
-    return true;
-  }
-  // Tolerant check: some editors re-wrap or shift by a character (e.g. a
-  // leading/trailing space normalization). Accept if the replacement appears in
-  // a small window around the target AND the original no longer occupies it.
-  const windowStart = Math.max(0, span.start - 2);
-  const windowEnd = span.start + fix.replacement.length + 2;
-  const around = now.slice(windowStart, windowEnd);
-  const stillOriginal =
-    fix.original !== fix.replacement &&
-    now.slice(span.start, span.start + fix.original.length) === fix.original;
-  return around.includes(fix.replacement) && !stillOriginal;
-}
-
 /** contenteditable + framework editors: select the span, drive
  *  execCommand('insertText'); fall back to a minimal, caret-preserving
  *  DOM splice (never normalize()). After applying we VERIFY the insert
@@ -150,15 +121,27 @@ function applyToRichEditor(el: HTMLElement, fix: Fix, kind: EditorKind): boolean
   const span = resolveSpan(map, fix.offset, fix.length, fix.original);
   if (!span) return false;
 
-  // Perform one insert attempt. Re-resolves the span each time so a retry works
-  // against the editor's current DOM (a partial/reverted first attempt may have
-  // shifted nodes). Returns whether the insert verifiably landed.
+  // The EXACT field text we expect after a clean replace. Verifying against the whole
+  // expected string (not just "is the replacement present at the offset") is what
+  // distinguishes a real replacement from a duplicate insert — the "damn" → "DamnDamn"
+  // bug — because a duplicate makes the field longer than `expected` and never matches.
+  const before = map.text;
+  const expected = before.slice(0, span.start) + fix.replacement + before.slice(span.end);
+  const norm = (s: string) =>
+    s
+      .replace(/[​-‍﻿]/g, '') // zero-width chars (Lexical/Draft insert these)
+      .replace(/['‘’ʼ]/g, "'")
+      .replace(/["“”]/g, '"')
+      .replace(/\s+/g, ' ')
+      .trim();
+  const cleanlyReplaced = () => norm(buildTextMap(el).text) === norm(expected);
+
+  // One insert attempt. Re-resolves the span each call so a retry works against the
+  // editor's current DOM. Returns whether the field now equals the clean replacement.
   const attempt = (): boolean => {
     const liveMap = buildTextMap(el);
     const liveSpan = resolveSpan(liveMap, fix.offset, fix.length, fix.original);
-    // If the original span is already gone, the change may have landed on a
-    // prior tick — verify against the offset we originally targeted.
-    if (!liveSpan) return replacementLanded(el, span, fix);
+    if (!liveSpan) return cleanlyReplaced(); // may already have landed on a prior tick
     const range = offsetToRange(liveMap, liveSpan.start, liveSpan.end);
     if (!range) return false;
 
@@ -190,37 +173,44 @@ function applyToRichEditor(el: HTMLElement, fix: Fix, kind: EditorKind): boolean
       }
     }
     fireInput(el, fix.replacement);
-    return replacementLanded(el, liveSpan, fix);
+    return cleanlyReplaced();
   };
 
-  // Synchronous first attempt for everything. Draft.js / Gmail reconcile their
-  // state on a tick, so a same-frame insert can race the reconciler — for those
-  // we ALSO schedule a verify+retry on the next tick. For all other editors we
-  // verify immediately and only retry-on-tick if the synchronous insert didn't
-  // verify (covers any framework that silently reverts).
-  if (kind === 'draft' || kind === 'gmail') {
-    // These editors are known to revert synchronous inserts; the authoritative
-    // apply is the deferred one. We can't report the deferred result back
-    // synchronously, so do a best-effort sync insert, then re-apply + verify on
-    // the next tick, and report optimistic success (the field is editable and
-    // the span matched). The caller's own re-analysis will re-flag if it fails.
+  // Reconcile on the next tick (frameworks apply async). Three outcomes:
+  //  - CLEAN replace → done.
+  //  - field UNCHANGED → the framework reverted us (a no-op) → retry ONCE.
+  //  - field changed but NOT into the clean replacement → the insert landed WRONG
+  //    (duplicated the word: "damn" → "DamnDamn") → UNDO it so we never leave corrupted
+  //    text. We NEVER blindly re-insert after a change — that is exactly what compounds
+  //    into a duplicate. The field's own re-analysis re-flags the issue for a clean retry.
+  const reconcile = () => {
+    if (cleanlyReplaced()) return;
+    if (buildTextMap(el).text === before) {
+      attempt();
+      return;
+    }
+    try {
+      document.execCommand('undo');
+    } catch {
+      /* best effort — no worse than leaving the bad edit */
+    }
+  };
+
+  if (kind !== 'contenteditable') {
+    // Framework editors (Draft, Gmail, Lexical, ProseMirror, Slate, Quill, CKEditor,
+    // CodeMirror) reconcile on a tick, so a same-frame insert can race the reconciler.
+    // Do a best-effort sync insert, reconcile on the next tick, and report optimistic
+    // success — the caller's re-analysis re-flags if it didn't hold.
     attempt();
-    setTimeout(() => {
-      if (!replacementLanded(el, span, fix)) attempt();
-    }, 0);
+    setTimeout(reconcile, 0);
     return true;
   }
 
   if (attempt()) return true;
-  // The synchronous insert did not verify. It may be a framework that applies
-  // on a microtask/tick; retry ONCE on the next tick as a best-effort so the
-  // user's text still gets corrected. We can't block to report that deferred
-  // result, so the synchronous return below stays false — the caller treats it
-  // as a failed apply (keeps the underline/card), and the field's own
-  // re-analysis will clear it if the retry did land.
-  setTimeout(() => {
-    if (!replacementLanded(el, span, fix)) attempt();
-  }, 0);
+  // Plain contenteditable: the sync insert didn't verify. Reconcile once on the next
+  // tick (no-op → retry, bad insert → undo) and report the accurate sync result so a
+  // stale span keeps its underline.
+  setTimeout(reconcile, 0);
   return false;
 }
 

@@ -7,6 +7,7 @@ interface Settings {
   autocompleteEnabled: boolean;
   autocorrectEnabled: boolean;
   autocorrectDelayMs: number;
+  autocompleteDelayMs: number;
   harperDialect: HarperDialect;
   debugLogging: boolean;
   llmProtectedMasking: boolean;
@@ -20,6 +21,7 @@ const elements = {
   autocompleteEnabled: document.getElementById('autocompleteEnabled') as HTMLInputElement,
   autocorrectEnabled: document.getElementById('autocorrectEnabled') as HTMLInputElement,
   autocorrectDelay: document.getElementById('autocorrectDelay') as HTMLSelectElement,
+  autocompleteDelay: document.getElementById('autocompleteDelay') as HTMLSelectElement,
   harperDialect: document.getElementById('harperDialect') as HTMLSelectElement,
   debugLogging: document.getElementById('debugLogging') as HTMLInputElement,
   llmProtectedMasking: document.getElementById('llmProtectedMasking') as HTMLInputElement,
@@ -52,9 +54,10 @@ const elements = {
 };
 
 let settings: Settings = {
-  autocompleteEnabled: true,
+  autocompleteEnabled: false,
   autocorrectEnabled: false,
   autocorrectDelayMs: 2000,
+  autocompleteDelayMs: 700,
   harperDialect: 'American',
   debugLogging: false,
   llmProtectedMasking: false,
@@ -97,6 +100,7 @@ async function loadSettings() {
         'autocompleteEnabled',
         'autocorrectEnabled',
         'autocorrectDelayMs',
+        'autocompleteDelayMs',
         'harperDialect',
         'debugLogging',
         'llmProtectedMasking',
@@ -106,10 +110,12 @@ async function loadSettings() {
       ],
       (result) => {
         settings = {
-          autocompleteEnabled: result.autocompleteEnabled !== false,
+          autocompleteEnabled: result.autocompleteEnabled === true,
           autocorrectEnabled: result.autocorrectEnabled === true,
           autocorrectDelayMs:
             typeof result.autocorrectDelayMs === 'number' ? result.autocorrectDelayMs : 2000,
+          autocompleteDelayMs:
+            typeof result.autocompleteDelayMs === 'number' ? result.autocompleteDelayMs : 700,
           harperDialect: normalizeDialect(result.harperDialect),
           debugLogging: result.debugLogging === true,
           llmProtectedMasking: result.llmProtectedMasking === true,
@@ -122,6 +128,7 @@ async function loadSettings() {
         elements.autocompleteEnabled.checked = settings.autocompleteEnabled;
         elements.autocorrectEnabled.checked = settings.autocorrectEnabled;
         elements.autocorrectDelay.value = String(settings.autocorrectDelayMs);
+        elements.autocompleteDelay.value = String(settings.autocompleteDelayMs);
         elements.harperDialect.value = settings.harperDialect;
         elements.debugLogging.checked = settings.debugLogging;
         elements.llmProtectedMasking.checked = settings.llmProtectedMasking;
@@ -176,6 +183,7 @@ async function saveSettings() {
         autocompleteEnabled: settings.autocompleteEnabled,
         autocorrectEnabled: settings.autocorrectEnabled,
         autocorrectDelayMs: settings.autocorrectDelayMs,
+        autocompleteDelayMs: settings.autocompleteDelayMs,
         harperDialect: settings.harperDialect,
         debugLogging: settings.debugLogging,
         llmProtectedMasking: settings.llmProtectedMasking,
@@ -208,6 +216,11 @@ function setupEventListeners() {
 
   elements.autocorrectDelay.addEventListener('change', () => {
     settings.autocorrectDelayMs = parseInt(elements.autocorrectDelay.value, 10) || 2000;
+    saveSettings();
+  });
+
+  elements.autocompleteDelay.addEventListener('change', () => {
+    settings.autocompleteDelayMs = parseInt(elements.autocompleteDelay.value, 10) || 700;
     saveSettings();
   });
 

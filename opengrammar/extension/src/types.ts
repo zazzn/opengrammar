@@ -126,7 +126,7 @@ export interface Issue {
   ignored?: boolean;
   confidence?: number;
   priority?: number;
-  source?: 'rule' | 'llm' | 'context';
+  source?: 'rule' | 'llm' | 'context' | 'learned';
   route?: 'quick-fix' | 'sentence-review' | 'suppress';
   routeReason?: string;
 }

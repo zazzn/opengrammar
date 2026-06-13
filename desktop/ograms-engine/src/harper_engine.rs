@@ -1,4 +1,6 @@
-use std::path::PathBuf;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use harper_core::linting::{LintGroup, Linter, Suggestion};
 use harper_core::parsers::PlainEnglish;
@@ -115,6 +117,34 @@ pub fn count_safe_corrections(issues: &[Issue]) -> usize {
     issues.iter().filter(|issue| safe_auto_fix(issue).is_some()).count()
 }
 
+/// Cache the loaded SymSpell dictionary by path so the 82k-word frequency list
+/// is parsed ONCE, not on every lint — `check_text_with_options` runs on the
+/// inline, per-keystroke path. Mirrors the extension's module-level freq cache.
+fn cached_symspell(path: &Path) -> Option<Arc<SymSpell>> {
+    static CACHE: OnceLock<Mutex<HashMap<PathBuf, Option<Arc<SymSpell>>>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut guard = cache.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(entry) = guard.get(path) {
+        return entry.clone();
+    }
+    let loaded = SymSpell::from_path(path).ok().map(Arc::new);
+    guard.insert(path.to_path_buf(), loaded.clone());
+    loaded
+}
+
+/// Same one-time caching for the OGN1 n-gram context model.
+fn cached_ngram(path: &Path) -> Option<Arc<NgramModel>> {
+    static CACHE: OnceLock<Mutex<HashMap<PathBuf, Option<Arc<NgramModel>>>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut guard = cache.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(entry) = guard.get(path) {
+        return entry.clone();
+    }
+    let loaded = NgramModel::from_path(path).ok().map(Arc::new);
+    guard.insert(path.to_path_buf(), loaded.clone());
+    loaded
+}
+
 pub fn check_text_with_options(text: &str, options: &EngineOptions) -> Vec<Issue> {
     if text.trim().is_empty() {
         return Vec::new();
@@ -122,15 +152,14 @@ pub fn check_text_with_options(text: &str, options: &EngineOptions) -> Vec<Issue
 
     let symspell = match options.spell_engine {
         SpellEngine::Harper => None,
-        SpellEngine::SymSpell | SpellEngine::Combined => options
-            .dictionary_path
-            .as_ref()
-            .and_then(|path| SymSpell::from_path(path).ok()),
+        SpellEngine::SymSpell | SpellEngine::Combined => {
+            options.dictionary_path.as_deref().and_then(cached_symspell)
+        }
     };
     let context_model = options
         .context_model_path
-        .as_ref()
-        .and_then(|path| NgramModel::from_path(path).ok());
+        .as_deref()
+        .and_then(cached_ngram);
 
     let parser = PlainEnglish;
     let document = Document::new_curated(text, &parser);
@@ -148,7 +177,7 @@ pub fn check_text_with_options(text: &str, options: &EngineOptions) -> Vec<Issue
     let mut lints = linter.lint(&document);
     remove_overlaps(&mut lints);
 
-    lints
+    let mut issues = lints
         .into_iter()
         .filter_map(|lint| {
             if lint.suggestions.is_empty() {
@@ -184,8 +213,8 @@ pub fn check_text_with_options(text: &str, options: &EngineOptions) -> Vec<Issue
                 &original,
                 is_spelling,
                 options.spell_engine,
-                symspell.as_ref(),
-                context_model.as_ref(),
+                symspell.as_deref(),
+                context_model.as_deref(),
                 &mut suggestions,
                 &mut message,
             );
@@ -205,7 +234,33 @@ pub fn check_text_with_options(text: &str, options: &EngineOptions) -> Vec<Issue
                 message,
             })
         })
-        .collect()
+        .collect::<Vec<_>>();
+
+    // Capitalize the start of sentences Harper MISSES. Harper only flags the first
+    // sentence (+ the pronoun "i"); 2nd+ sentences after `. ! ?` go unflagged. Emit
+    // those as mechanical single-letter "Capitalization" fixes so the autocorrect pass
+    // (safe_auto_fix) applies them. Skip a boundary overlapping an existing issue (so
+    // Harper's first-sentence flag isn't duplicated) or a protected span.
+    for (idx, upper) in sentence_cap_positions(&source) {
+        let end = idx + 1;
+        if issues.iter().any(|i| idx < i.end && i.start < end) {
+            continue;
+        }
+        if overlaps_protected_span(idx, end, &protected) {
+            continue;
+        }
+        issues.push(Issue {
+            start: idx,
+            end,
+            utf16_start: cp_to_utf16(idx),
+            utf16_end: cp_to_utf16(end),
+            original: source[idx].to_string(),
+            suggestions: vec![upper.to_string()],
+            lint_kind: "Capitalization".to_string(),
+            message: "This sentence does not start with a capital letter.".to_string(),
+        });
+    }
+    issues
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -235,6 +290,64 @@ fn safe_auto_fix(issue: &Issue) -> Option<SafeEdit<'_>> {
 fn is_safe_spelling_or_typo_lint(lint_kind: &str) -> bool {
     let lint_kind = lint_kind.to_ascii_lowercase();
     lint_kind.contains("spell") || lint_kind.contains("typo")
+}
+
+/// Lowercase abbreviations after which the next word should NOT be capitalized
+/// (mid-sentence connectors). Titles like Dr./Mr. are intentionally absent — the
+/// word after them is usually a name that SHOULD be capitalized.
+const SENTENCE_CAP_SKIP: &[&str] = &["etc", "vs", "al", "ie", "eg"];
+
+/// Indices into `source` of sentence-initial LOWERCASE letters that should be
+/// capitalized: the first letter of the text, and the first letter after a `. ! ?`
+/// followed by whitespace. Returns (index, uppercase_char). Conservative: a boundary
+/// whose preceding token is a single letter (initials / e.g / i.e / U.S) or a known
+/// mid-sentence abbreviation is skipped, and `3.14` never triggers (no space after dot).
+fn sentence_cap_positions(source: &[char]) -> Vec<(usize, char)> {
+    let n = source.len();
+    let mut out = Vec::new();
+    let mut at_sentence_start = true;
+    let mut idx = 0;
+    while idx < n {
+        let c = source[idx];
+        if at_sentence_start && !c.is_whitespace() {
+            if c.is_ascii_lowercase() && !preceded_by_non_boundary(source, idx) {
+                out.push((idx, c.to_ascii_uppercase()));
+            }
+            at_sentence_start = false;
+        }
+        if matches!(c, '.' | '!' | '?') && idx + 1 < n && source[idx + 1].is_whitespace() {
+            at_sentence_start = true;
+        }
+        idx += 1;
+    }
+    out
+}
+
+/// True if the boundary before `start` is an abbreviation / initial, not a real
+/// sentence end — so the following word must NOT be capitalized.
+fn preceded_by_non_boundary(source: &[char], start: usize) -> bool {
+    let mut j = start;
+    while j > 0 && source[j - 1].is_whitespace() {
+        j -= 1;
+    }
+    if j == 0 {
+        return false; // start of text — a genuine sentence start
+    }
+    while j > 0 && matches!(source[j - 1], '.' | '!' | '?') {
+        j -= 1;
+    }
+    let mut word = Vec::new();
+    let mut k = j;
+    while k > 0 && source[k - 1].is_ascii_alphabetic() {
+        word.push(source[k - 1].to_ascii_lowercase());
+        k -= 1;
+    }
+    if word.len() <= 1 {
+        return true; // single letter: initial (J.) or e.g / i.e / U.S style
+    }
+    word.reverse();
+    let w: String = word.into_iter().collect();
+    SENTENCE_CAP_SKIP.contains(&w.as_str())
 }
 
 fn blend_spell_suggestions(
@@ -274,6 +387,13 @@ fn blend_spell_suggestions(
             }
         }
         SpellEngine::Combined => {
+            // Mirror the EXTENSION orchestration (harperEngine.ts + parity-harness.mjs):
+            // the branch is keyed on SymSpell, NOT Harper. When SymSpell yields candidates,
+            // rank a SymSpell-FIRST pool (Harper's extras appended) with rank_spell_candidates;
+            // only when SymSpell is empty do we fall back to ranking Harper's own pool with
+            // rank_candidates. This is what demotes Harper's word-split #1 ("clas"->"cl as"):
+            // the old Harper-first + rank_candidates path bailed via the model-contains guard
+            // (a space-joined "cl as" is never a unigram) and kept the split pinned at the top.
             let Some(symspell) = symspell else {
                 *suggestions = rank_candidates(context_model, text, start, end, original, suggestions);
                 return;
@@ -283,26 +403,19 @@ fn blend_spell_suggestions(
                 *suggestions = rank_candidates(context_model, text, start, end, original, suggestions);
                 return;
             }
-
-            if suggestions.is_empty() {
-                *suggestions =
-                    rank_spell_candidates(context_model, text, start, end, original, &symspell_suggestions);
-                if let Some(first) = suggestions.first() {
-                    *message = format!("Did you mean to spell `{original}` as `{first}`?");
+            let mut pool = symspell_suggestions;
+            for candidate in suggestions.iter() {
+                if candidate.is_empty() || candidate.eq_ignore_ascii_case(original) {
+                    continue;
                 }
-                return;
-            }
-
-            let mut blended = suggestions.clone();
-            for candidate in symspell_suggestions {
-                if !blended
-                    .iter()
-                    .any(|seen| seen.eq_ignore_ascii_case(&candidate))
-                {
-                    blended.push(candidate);
+                if !pool.iter().any(|seen| seen.eq_ignore_ascii_case(candidate)) {
+                    pool.push(candidate.clone());
                 }
             }
-            *suggestions = rank_candidates(context_model, text, start, end, original, &blended);
+            *suggestions = rank_spell_candidates(context_model, text, start, end, original, &pool);
+            if let Some(first) = suggestions.first() {
+                *message = format!("Did you mean to spell `{original}` as `{first}`?");
+            }
         }
     }
 }

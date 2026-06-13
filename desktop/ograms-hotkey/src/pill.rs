@@ -46,7 +46,7 @@ pub const WM_PILL_APPLY: u32 = WM_APP + 27;
 const ID_TONE_BASE: i32 = 200;
 const ID_APPLY: i32 = 210;
 const ID_CANCEL: i32 = 211;
-pub const TONES: [&str; 3] = ["Polish", "Formalize", "Casual"];
+pub const TONES: [&str; 3] = ["Polish", "Formal", "Casual"];
 const INDIGO: u32 = 0x4F46E5;
 
 // RichEdit control messages — the WindowsAndMessaging set we import doesn't include

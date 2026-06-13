@@ -142,6 +142,9 @@ pub fn is_auto_applicable(kind: &str, original: &str, suggestion: &str) -> bool 
         return false;
     }
     match kind {
+        // LLM-taught learned corrections are user/engine-vetted — always safe to
+        // auto-apply (parity with the extension's learned-correction quick-fixes).
+        "Learned" => true,
         // i→I and sentence-initial capitalization: high confidence — but NOT brand
         // re-casing (Datadog→DataDog, websocket→WebSocket), which Harper gets wrong
         // and would corrupt correct text. Matches the extension's issuePolicy guard.

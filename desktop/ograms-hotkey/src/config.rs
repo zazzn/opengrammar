@@ -57,7 +57,7 @@ impl Default for Config {
             enabled: true,
             llm_enabled: true,
             autocorrect_enabled: false,
-            autocorrect_delay_ms: 3000,
+            autocorrect_delay_ms: 2000,
             provider: "openai".to_string(),
             model: "gpt-4o-mini".to_string(),
             custom_base_url: String::new(),

@@ -1,4 +1,4 @@
-use std::io::{self, Read};
+use std::io::{self, BufRead, Read};
 use std::path::PathBuf;
 
 use clap::{Parser, ValueEnum};
@@ -31,6 +31,11 @@ pub struct Args {
     /// Disable protected-text filtering for parity A/B runs.
     #[arg(long)]
     no_protect: bool,
+
+    /// Batch/parity mode: read one sentence per stdin line and print one compact
+    /// JSON line of issues each (loads the dictionary + model once, cached).
+    #[arg(long)]
+    jsonl: bool,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -71,6 +76,25 @@ impl From<CliSpellEngine> for SpellEngine {
 
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
+    let opts = EngineOptions {
+        dialect: args.dialect.into(),
+        spell_engine: args.spell_engine.into(),
+        dictionary_path: args.dictionary_path,
+        context_model_path: args.context_model_path,
+        protect: !args.no_protect,
+    };
+
+    // Batch/parity mode: one sentence per stdin line → one compact JSON line of
+    // issues. The dictionary + model load once (cached in the engine).
+    if args.jsonl {
+        let stdin = io::stdin();
+        for line in stdin.lock().lines() {
+            let issues = check_text_with_options(&line?, &opts);
+            println!("{}", serde_json::to_string(&issues)?);
+        }
+        return Ok(());
+    }
+
     let text = match args.text {
         Some(text) => text,
         None => {
@@ -79,18 +103,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             text
         }
     };
-
-    let issues = check_text_with_options(
-        &text,
-        &EngineOptions {
-            dialect: args.dialect.into(),
-            spell_engine: args.spell_engine.into(),
-            dictionary_path: args.dictionary_path,
-            context_model_path: args.context_model_path,
-            protect: !args.no_protect,
-        },
-    );
+    let issues = check_text_with_options(&text, &opts);
     println!("{}", serde_json::to_string_pretty(&issues)?);
-
     Ok(())
 }

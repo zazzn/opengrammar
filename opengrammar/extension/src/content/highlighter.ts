@@ -54,7 +54,11 @@ function placeBubble(
   slot: 0 | 1,
 ) {
   const r = target.getBoundingClientRect();
-  if (r.height < MIN_FIELD_HEIGHT || r.width === 0) {
+  // Prose fields (contenteditable / textarea) are legitimately short sometimes —
+  // YouTube / Twitter / forum comment boxes are ~20px. Only apply the tall-field
+  // gate to <input> (search bars etc.), where a bubble would just be noise.
+  const minHeight = target.tagName === 'INPUT' ? MIN_FIELD_HEIGHT : 20;
+  if (r.height < minHeight || r.width === 0) {
     bubble.style.display = 'none';
     return;
   }
@@ -851,9 +855,12 @@ function showSpellingMenu(anchor: HTMLElement, issue: Issue, element: HTMLElemen
       e.stopPropagation();
       const i = Number(btn.dataset.i || 0);
       const chosen = options[i]!;
-      applySuggestion(element, { ...issue, suggestion: chosen }, anchor);
-      removeIssueUnderline(issue, element);
-      menu.remove(); currentSpellMenu = null;
+      if (applySuggestion(element, { ...issue, suggestion: chosen }, anchor)) {
+        removeIssueUnderline(issue, element);
+        menu.remove(); currentSpellMenu = null;
+      } else {
+        flashApplyFailure(menu);
+      }
     });
   });
 
@@ -1555,8 +1562,8 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
   if (suggClick) {
     suggClick.addEventListener('click', (e) => {
       e.stopPropagation();
-      applySuggestion(element, issue, anchor);
-      hideTooltip();
+      if (applySuggestion(element, issue, anchor)) hideTooltip();
+      else flashApplyFailure(card);
     });
     suggClick.addEventListener('mouseenter', () => { suggClick.style.background = '#f0f0ff'; });
     suggClick.addEventListener('mouseleave', () => { suggClick.style.background = '#fafafa'; });
@@ -1568,8 +1575,8 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
 
   applyBtn.addEventListener('click', (e) => {
     e.stopPropagation(); e.preventDefault();
-    applySuggestion(element, issue, anchor);
-    hideTooltip();
+    if (applySuggestion(element, issue, anchor)) hideTooltip();
+    else flashApplyFailure(card);
   });
   applyBtn.addEventListener('mouseenter', () => { applyBtn.style.background = '#4338CA'; });
   applyBtn.addEventListener('mouseleave', () => { applyBtn.style.background = '#4F46E5'; });
@@ -1832,8 +1839,9 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
         useBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           const text = useBtn.dataset.text ? decodeHtmlEntities(useBtn.dataset.text) : '';
-          if (text && element) {
-            applySuggestion(element, { ...issue, suggestion: text }, highlightAnchor);
+          if (text && element && !applySuggestion(element, { ...issue, suggestion: text }, highlightAnchor)) {
+            if (currentRephrasePanel) flashApplyFailure(currentRephrasePanel);
+            return;
           }
           hideTooltip();
           currentRephrasePanel?.remove();
@@ -2906,7 +2914,9 @@ function ignoreIssue(issue: Issue, highlightEl: HTMLElement) {
 
   chrome.storage.sync.get(['ignoredIssues'], (result) => {
     const ignoredIssues = normalizeIgnoredIssues(result.ignoredIssues);
-    const issueId = `${issue.type}-${issue.offset}-${issue.original}`;
+    // Key the ignore by TYPE + WORD (not position) so dismissing a word keeps it
+    // dismissed wherever it reappears — parity with the desktop's word-keyed ignore.
+    const issueId = `${issue.type}-${issue.original.toLowerCase().trim()}`;
     if (!ignoredIssues.some((e) => e.id === issueId)) {
       ignoredIssues.push({ id: issueId, type: issue.type, original: issue.original, suggestion: issue.suggestion, ignoredAt: Date.now() });
       chrome.storage.sync.set({ ignoredIssues });
