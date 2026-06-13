@@ -1,12 +1,22 @@
 import type { AnalysisContext, AutocompleteResponse, Issue } from '../types';
 import { isProtectedNonProseText } from '../shared/protectedText';
 import {
+  applySettledQuickFixes,
   cancelPendingAutocorrect,
   initAutocorrect,
   maybeAutocorrect,
   noteAutocorrectEdit,
   onRejectedStorageChange,
 } from './autocorrect';
+import { routeLlmCorrection } from '../background/issuePolicy';
+import { findLearnedCorrections } from '../shared/learnedCorrections';
+import { findSentenceCapitalizations } from '../shared/sentenceCaps';
+import {
+  getLearnedMap,
+  initLearnedCorrections,
+  onLearnedStorageChange,
+  recordLearnedCorrection,
+} from './learnedStore';
 import { autocompleteManager } from './autocomplete';
 import {
   clearHighlights,
@@ -68,6 +78,7 @@ let disabledDomains: string[] = [];
 let autocompleteEnabled = false; // opt-in; see loadUserSettings()
 let autocorrectEnabled = false; // opt-in; see loadUserSettings()
 let autocorrectDelayMs = 2000; // idle (ms) before autocorrect applies; see settings
+let autocompleteDelayMs = 700; // idle (ms) before autocomplete fires; see settings
 
 let isContextInvalidated = false;
 
@@ -250,6 +261,7 @@ async function loadUserSettings() {
       'autocompleteEnabled',
       'autocorrectEnabled',
       'autocorrectDelayMs',
+      'autocompleteDelayMs',
     ]);
     disabledDomains = result.disabledDomains || [];
     // Tab/ghost autocomplete is OPT-IN (default off). This is a proofreading
@@ -262,7 +274,12 @@ async function loadUserSettings() {
     if (typeof result.autocorrectDelayMs === 'number') {
       autocorrectDelayMs = result.autocorrectDelayMs;
     }
+    if (typeof result.autocompleteDelayMs === 'number') {
+      autocompleteDelayMs = result.autocompleteDelayMs;
+      rebuildDebouncedAutocomplete();
+    }
     void initAutocorrect();
+    void initLearnedCorrections();
   } catch (e) {
     if (e instanceof Error && e.message.includes('context invalidated')) {
       isContextInvalidated = true;
@@ -663,11 +680,61 @@ function handleKeyDown(event: Event) {
 }
 
 /**
+ * Fold learned corrections (taught by prior high-conviction LLM fixes) into the
+ * local issue set: emit a quick-fix for each occurrence of a learned typo that does
+ * not overlap an existing local issue. They then ride the normal highlight +
+ * caret-gated autocorrect path — so the local engine now fixes, with NO LLM call,
+ * exactly what the LLM taught it. The pure matcher is shared with the desktop engine
+ * and the self-learning benchmark.
+ */
+function mergeLearnedCorrections(localIssues: Issue[], text: string): Issue[] {
+  const learnedIssues = findLearnedCorrections(text, getLearnedMap());
+  if (learnedIssues.length === 0) return localIssues;
+  const out = localIssues.slice();
+  for (const li of learnedIssues) {
+    const overlaps = out.some(
+      (e) => li.offset < e.offset + e.length && e.offset < li.offset + li.length,
+    );
+    if (!overlaps) out.push(li);
+  }
+  return out;
+}
+
+/**
+ * Fold the desktop's sentence-start capitalization detector into the local issue
+ * set: Harper only flags the FIRST sentence; 2nd+ sentences after `. ! ?` go
+ * unflagged. Emit a quick-fix for each mid-sentence lowercase start that does NOT
+ * overlap an existing issue (so Harper's first-sentence flag isn't duplicated).
+ * Same overlap pattern as mergeLearnedCorrections. The pure detector is a faithful
+ * port of the desktop engine, so the extension flags + (caret-gated) auto-applies
+ * these exactly like the desktop.
+ */
+function mergeSentenceCaps(localIssues: Issue[], text: string): Issue[] {
+  const capIssues = findSentenceCapitalizations(text);
+  if (capIssues.length === 0) return localIssues;
+  const out = localIssues.slice();
+  for (const ci of capIssues) {
+    const overlaps = out.some(
+      (e) => ci.offset < e.offset + e.length && e.offset < ci.offset + ci.length,
+    );
+    if (!overlaps) out.push(ci);
+  }
+  return out;
+}
+
+/**
  * Check grammar for an element
  */
 function handleGrammarSuccess(element: HTMLElement, text: string, issues: Issue[]) {
   const editableElement = activeElements.get(element);
-  const localIssues = issues || [];
+  // Self-learning: fold in corrections the local engine learned from prior LLM
+  // fixes, so it now flags + (caret-gated) auto-applies them with NO LLM round-trip.
+  // Then fold in the desktop's sentence-start capitalization fixes (Harper misses
+  // 2nd+ sentences) so local parity matches the desktop engine.
+  const localIssues = mergeSentenceCaps(
+    mergeLearnedCorrections(issues || [], text),
+    text,
+  );
   if (editableElement) {
     editableElement.lastLocalIssues = localIssues;
     if (editableElement.lastLlmText !== text) editableElement.lastLlmIssues = [];
@@ -827,6 +894,7 @@ function buildLlmIssues(text: string, corrections: LlmCorrection[] | undefined):
     if (offset < 0) continue;
     const end = offset + original.length;
     used.push({ start: offset, end });
+    const route = routeLlmCorrection(original, suggestion);
     issues.push({
       id: `llm-${offset}-${original}-${suggestion}`,
       type: llmTypeToIssueType(correction.type),
@@ -838,13 +906,16 @@ function buildLlmIssues(text: string, corrections: LlmCorrection[] | undefined):
       confidence: confidenceScore(correction.confidence),
       priority: 2,
       source: 'llm',
-      // LLM/context fixes are the SUBTLE ones (loose/lose, their/there) where a
-      // wrong one-click replace is most damaging. Route them to sentence-review
-      // so they surface as a distinct inline underline that opens a preview card
-      // (Accept/Dismiss) instead of a destructive quick-fix — preserving the
-      // false-positive guards in issuePolicy.
-      route: 'sentence-review',
-      routeReason: 'Proactive sentence-level review after typing paused.',
+      // Conviction routing (issuePolicy.routeLlmCorrection, the SAME FP guards as
+      // local issues): a mechanical caps/punct fix or a high-confidence single-word
+      // spelling fix becomes 'quick-fix' (the proactive pass auto-applies + learns
+      // it); everything subtle (loose/lose, their/there — they fail the guards)
+      // stays 'sentence-review' as a non-destructive Accept/Dismiss card.
+      route,
+      routeReason:
+        route === 'quick-fix'
+          ? 'high-confidence LLM fix (auto-apply + learn)'
+          : 'Proactive sentence-level review after typing paused.',
     });
   }
 
@@ -908,6 +979,33 @@ async function runProactiveLlmReview(element: HTMLElement) {
     }
 
     const llmIssues = buildLlmIssues(text, response.corrections);
+    // LEARN (Option A) — ALWAYS, regardless of the autocorrect opt-in (parity with the
+    // desktop, which learns on every LLM result; previously this was gated behind
+    // autocorrect and so never ran for default users). Remember the LLM's fix for any
+    // word the LOCAL engine also flagged as a spelling typo — context-independent, so
+    // next time it's typed the local engine corrects it with NO LLM call. Gated on a
+    // local SPELLING flag to exclude homophones / word-choice (their/there, loose/lose).
+    const localTypos = new Set(
+      (currentState.lastLocalIssues || [])
+        .filter((i) => i.type === 'spelling')
+        .map((i) => i.original.toLowerCase()),
+    );
+    for (const li of llmIssues) {
+      if (localTypos.has(li.original.toLowerCase())) {
+        recordLearnedCorrection(li.original, li.suggestion);
+      }
+    }
+    if (autocorrectEnabled) {
+      // Auto-apply the high-conviction (quick-fix) LLM fixes into the settled text
+      // (also learned). Applying mutates the field, whose input event retriggers a
+      // fresh local+LLM cycle that repaints cleanly — so on success we clear and bail.
+      const { applied } = applySettledQuickFixes(element, text, llmIssues);
+      for (const a of applied) recordLearnedCorrection(a.original, a.suggestion);
+      if (applied.length > 0) {
+        clearHighlights();
+        return;
+      }
+    }
     currentState.lastLlmIssues = llmIssues;
     const merged = mergeLlmIssues(currentState.lastLocalIssues || [], llmIssues);
     currentState.lastIssues = merged;
@@ -1301,7 +1399,13 @@ const requestAutocomplete = async (element: HTMLElement) => {
   }
 };
 
-const debouncedAutocomplete = debounce(requestAutocomplete, 700);
+// Rebuilt whenever `autocompleteDelayMs` changes (debounce() captures its wait at
+// construction). Default delay = 700ms.
+let debouncedAutocomplete = debounce(requestAutocomplete, autocompleteDelayMs);
+
+function rebuildDebouncedAutocomplete() {
+  debouncedAutocomplete = debounce(requestAutocomplete, autocompleteDelayMs);
+}
 
 // Add CSS animations
 const style = document.createElement('style');
@@ -1342,7 +1446,14 @@ chrome.storage?.onChanged?.addListener((changes) => {
   if (changes.autocorrectDelayMs && typeof changes.autocorrectDelayMs.newValue === 'number') {
     autocorrectDelayMs = changes.autocorrectDelayMs.newValue;
   }
+  if (changes.autocompleteDelayMs && typeof changes.autocompleteDelayMs.newValue === 'number') {
+    autocompleteDelayMs = changes.autocompleteDelayMs.newValue;
+    rebuildDebouncedAutocomplete();
+  }
   if (changes.autocorrectRejected) {
     onRejectedStorageChange(changes.autocorrectRejected.newValue);
+  }
+  if (changes.learnedCorrections) {
+    onLearnedStorageChange(changes.learnedCorrections.newValue);
   }
 });

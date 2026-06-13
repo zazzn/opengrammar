@@ -46,6 +46,7 @@ that share one Harper + LLM engine.
 
 - [**False-positive audit**](24-og-rewrite-false-positive-audit.md) — methodology + the FP follow-up backlog
 - [**Local LLM model benchmark**](25-local-llm-model-benchmark.md) — provider/model comparison
+- [**Spell-suggestion benchmark**](33-spell-suggestion-benchmark.md) — Harper vs SymSpell+n-gram on real typos, and the LLM headroom (incl. DeepSeek)
 - [**OS-wide grammar-checking research**](29-os-wide-grammar-checking-research.md) — the rationale behind the desktop app
 
 ---

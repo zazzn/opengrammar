@@ -69,7 +69,7 @@ function levenshtein(a: string, b: string): number {
 
 // All candidate replacements for a spelling issue, best-first: the chosen
 // suggestion followed by any "Other suggestions: …" parsed out of the reason.
-function spellingOptions(issue: Issue): string[] {
+function spellingOptions(issue: Pick<Issue, 'original' | 'suggestion' | 'reason'>): string[] {
   const options: string[] = [];
   const seen = new Set<string>();
   const add = (raw: string) => {
@@ -86,7 +86,7 @@ function spellingOptions(issue: Issue): string[] {
   return options;
 }
 
-function spellingOptionCount(issue: Issue): number {
+function spellingOptionCount(issue: Pick<Issue, 'original' | 'suggestion' | 'reason'>): number {
   return spellingOptions(issue).length;
 }
 
@@ -123,7 +123,7 @@ function isMechanicalCaseOrPunct(original: string, suggestion: string): boolean 
   return true;
 }
 
-function isHighConfidenceSpelling(issue: Issue): boolean {
+function isHighConfidenceSpelling(issue: Pick<Issue, 'original' | 'suggestion' | 'reason'>): boolean {
   const original = (issue.original || '').trim();
   const suggestion = (issue.suggestion || '').trim();
   if (!original || !suggestion || original === suggestion) return false;
@@ -208,6 +208,41 @@ function routeIssue(issue: Issue): { route: Route; reason: string; confidence?: 
   }
 
   return { route: 'sentence-review', reason: 'clarity/style belongs in sentence review', confidence: 0.5 };
+}
+
+/**
+ * Conviction route for an LLM-proposed correction (original -> suggestion), reusing
+ * the SAME false-positive guards as local issues so the two engines stay consistent.
+ * A genuinely mechanical capitalization/punctuation fix (isMechanicalCaseOrPunct) or
+ * a high-confidence single-word spelling fix (isHighConfidenceSpelling) is safe to
+ * silently auto-apply ('quick-fix'); a subtle word-choice / homophone fix
+ * (their/there, loose/lose — they fall below the 0.82 char-retention bar) or any
+ * multi-word rephrase is NOT, and stays 'sentence-review' for the user to accept.
+ * Type-agnostic: checks the mechanical-case path FIRST so an LLM mislabel can't push
+ * a caps fix through the spelling-distance gate. Pure & dependency-free so the desktop
+ * Rust mirror (desktop/ograms-engine) can match it byte-for-byte.
+ */
+export function routeLlmCorrection(original: string, suggestion: string): Route {
+  const o = (original || '').trim();
+  const s = (suggestion || '').trim();
+  if (!s || s === o) return 'sentence-review';
+  // Case/punctuation-only change (bare forms equal): the only safe silent apply is a
+  // genuinely MECHANICAL one (sentence-initial caps, contraction apostrophes). Decide
+  // SOLELY here — do NOT fall through to the spelling path below, whose transposition
+  // check treats same-letters-different-case (websocket->WebSocket, Datadog->DataDog
+  // brand re-casing) as a "typo" and would wrongly auto-apply it.
+  if (bare(o) === bare(s)) {
+    return isMechanicalCaseOrPunct(o, s) ? 'quick-fix' : 'sentence-review';
+  }
+  // A real edit: auto-apply only a high-confidence single-word spelling fix.
+  if (
+    isPlainWord(o) &&
+    isPlainWord(s) &&
+    isHighConfidenceSpelling({ original: o, suggestion: s, reason: '' })
+  ) {
+    return 'quick-fix';
+  }
+  return 'sentence-review';
 }
 
 export function applyIssuePolicy(issues: Issue[]): Issue[] {
