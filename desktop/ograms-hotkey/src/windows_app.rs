@@ -832,6 +832,11 @@ impl<'a> MonitorState<'a> {
                 }
             }
             if applied_any {
+                // Return the caret to the end of the text. The user paused there to
+                // let the check run; like try_autocorrect, restore it so they aren't
+                // left typing back at the word we just fixed mid-sentence.
+                set_caret_to_end(&target.element);
+                target.last_snapshot = read_element_text_lossy(&target.element);
                 target.drawn.clear();
                 target.last_rects.clear();
                 target.last_linted_text = None;
