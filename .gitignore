@@ -36,3 +36,4 @@ desktop/**/config.json
 
 # packaged extension zip for the Chrome Web Store
 opengrammar/extension/ogrammar-*.zip
+opengrammar/extension/store-screenshots/
