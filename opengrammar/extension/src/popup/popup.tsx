@@ -1,7 +1,6 @@
 /**
- * OpenGrammar Popup — Grammarly-faithful React UI
- * Layout: Header → Score ring → Issue chips → AI card →
- *         Quick actions → Enable toggle → Settings → Footer
+ * OGrammar Popup — React UI
+ * Layout: Header → Score ring → Issue chips → AI card → Settings → Footer
  */
 import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom/client';
@@ -37,13 +36,13 @@ function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
   const r      = (size - 6) / 2;
   const circ   = 2 * Math.PI * r;
   const offset = circ - (score / 100) * circ;
-  // Color theory: indigo=excellent, amber=good, red=issues
-  const color  = score >= 80 ? '#4F46E5' : score >= 55 ? '#f59e0b' : '#e53935';
+  // green = good, ochre = ok, rose = needs work
+  const color  = score >= 80 ? '#1FA463' : score >= 55 ? '#C7821A' : '#D1495B';
 
   return (
     <div className="score-ring" style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#EEF2FF" strokeWidth={5} />
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#E7F4EC" strokeWidth={5} />
         <circle
           cx={size/2} cy={size/2} r={r}
           fill="none" stroke={color} strokeWidth={5}
@@ -140,26 +139,10 @@ const SettingsPanel = ({
 }: any) => (
   <div className={`settings-area ${!settings.enabled ? 'muted' : ''}`}>
     <div className="field-group">
-      <label className="toggle-label">
-        <div className="toggle-text">
-          <strong>Enable OGrammar</strong>
-          <span>Check grammar on every page</span>
-        </div>
-        <input
-          type="checkbox"
-          checked={settings.enabled}
-          onChange={(e) => saveSettings({ enabled: e.target.checked })}
-          className="toggle-input"
-        />
-        <span className="toggle-track" />
-      </label>
-    </div>
-
-    <div className="field-group">
       <label className="field-label">AI Provider</label>
       <select value={settings.provider} onChange={handleProviderChange} className="select-input">
         {providers.map((p: any) => (
-          <option key={p.id} value={p.id}>{p.name} {p.requiresApiKey ? '🔑' : '✅ Free'}</option>
+          <option key={p.id} value={p.id}>{p.name}</option>
         ))}
       </select>
       {selectedProvider && <p className="field-hint">{selectedProvider.description}</p>}
@@ -173,9 +156,8 @@ const SettingsPanel = ({
             type={showApiKey ? 'text' : 'password'}
             value={settings.apiKey}
             onChange={(e) => saveSettings({ apiKey: e.target.value })}
-            placeholder={settings.provider === 'ollama' ? 'Not required' : 'sk-…'}
+            placeholder="sk-…"
             className="text-input"
-            disabled={settings.provider === 'ollama'}
           />
           <button type="button" onClick={() => setShowApiKey((v: boolean) => !v)} className="icon-btn" title={showApiKey ? 'Hide' : 'Show'}>
             <EyeIcon show={showApiKey} />
@@ -236,12 +218,14 @@ const SettingsPanel = ({
       })()}
     </div>
 
-    <button type="button" className={`advanced-toggle ${showAdvanced ? 'open' : ''}`} onClick={() => setAdvanced((v: boolean) => !v)}>
-      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><SettingsIcon /> Advanced settings</span>
-      <ChevronIcon />
-    </button>
+    {(settings.provider === 'ollama' || settings.provider === 'custom') && (
+      <button type="button" className={`advanced-toggle ${showAdvanced ? 'open' : ''}`} onClick={() => setAdvanced((v: boolean) => !v)}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><SettingsIcon /> Advanced settings</span>
+        <ChevronIcon />
+      </button>
+    )}
 
-    {showAdvanced && (
+    {showAdvanced && (settings.provider === 'ollama' || settings.provider === 'custom') && (
       <div className="advanced-panel" ref={advancedRef}>
         {settings.provider === 'custom' && (
           <div className="field-group">
@@ -606,7 +590,7 @@ const Popup = () => {
     <div>
       <header className="popup-header">
         <div className="brand">
-          <div className="brand-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M20 4C15 4 10 7 8 12L4 20l8-4c5-2 8-7 8-12z" fill="white" fillOpacity="0.92"/><path d="M8 12 L4 20" stroke="rgba(255,255,255,0.6)" strokeWidth="1.3" strokeLinecap="round"/><path d="M5 18l2 2 4-5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg></div>
+          <div className="brand-icon"><svg viewBox="0 0 128 128" fill="none" aria-hidden="true"><rect width="128" height="128" rx="28" fill="#16191D"/><circle cx="64" cy="52" r="26" fill="none" stroke="#F4F6F4" strokeWidth="11"/><path d="M36 93 q7 -11 14 0 t14 0 t14 0 t14 0" fill="none" stroke="#34C77F" strokeWidth="8" strokeLinecap="round"/></svg></div>
           <span className="brand-name">O<span>Grammar</span></span>
         </div>
         <button className={`status-pill ${settings.enabled ? 'active' : 'paused'}`} onClick={() => saveSettings({ enabled: !settings.enabled })} title={settings.enabled ? 'Click to pause' : 'Click to enable'}>
@@ -614,23 +598,11 @@ const Popup = () => {
         </button>
       </header>
 
-      <div className="enable-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', borderBottom: '1px solid #f0f0f0' }}>
-        <strong style={{ fontSize: 13 }}>Enable OGrammar</strong>
-        <button
-          type="button"
-          className={`status-pill ${settings.enabled ? 'active' : 'paused'}`}
-          onClick={() => saveSettings({ enabled: !settings.enabled })}
-          title={settings.enabled ? 'Click to turn off' : 'Click to turn on'}
-        >
-          <span className="dot" />{settings.enabled ? 'On' : 'Off'}
-        </button>
-      </div>
-
       <ScoreSection issueStats={issueStats} writingScore={writingScore} />
 
 
       <div className="ai-card">
-        <div className="ai-card-left"><strong>AI Engine</strong><span>{selectedProvider?.name || 'OpenAI'} · {settings.model}</span></div>
+        <div className="ai-card-left"><strong>AI Engine</strong><span>{selectedProvider?.requiresApiKey && !settings.apiKey ? 'Off — add a key for AI suggestions' : `${selectedProvider?.name || 'OpenAI'} · ${settings.model}`}</span></div>
       </div>
 
       <hr className="divider" />

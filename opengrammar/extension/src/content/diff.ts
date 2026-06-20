@@ -185,7 +185,7 @@ export function renderCorrectedWithChangesHTML(original: string, suggestion: str
     const punctOnly = /^[^\sA-Za-z0-9]+$/.test(op.text.trim());
     const style = punctOnly
       ? 'background:#dcfce7;border-radius:3px;padding:0 3px;color:#047857;border-bottom:1.5px solid #10b981;font-weight:800;'
-      : 'background:#dbeafe;border-radius:3px;padding:0 2px;color:#1d4ed8;border-bottom:1.5px solid #60a5fa;font-weight:800;';
+      : 'background:#E7F4EC;border-radius:3px;padding:0 2px;color:#127A48;border-bottom:1.5px solid #34C77F;font-weight:800;';
     html += `<span style="${style}">${esc(op.text)}</span>`;
   }
   return html;

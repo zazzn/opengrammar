@@ -268,7 +268,7 @@ function isUnderlinable(i: Issue): boolean {
  * only collision left to resolve is local-vs-review, which dotted-vs-straight
  * and red-vs-blue handle.
  */
-const REVIEW_LLM_LINE = '#3b82f6';
+const REVIEW_LLM_LINE = '#3D7DCA';
 function getUnderlineStyle(issue: Issue): { line: string; dashed: boolean } {
   if (isInlineReview(issue)) {
     return { line: isLlmIssue(issue) ? REVIEW_LLM_LINE : getC(issue.type).line, dashed: true };
@@ -849,7 +849,7 @@ function showSpellingMenu(anchor: HTMLElement, issue: Issue, element: HTMLElemen
   menu.addEventListener('mousedown', (e) => e.preventDefault());
 
   menu.querySelectorAll<HTMLButtonElement>('.og-sp-opt').forEach((btn) => {
-    btn.addEventListener('mouseenter', () => { btn.style.background = '#EEF2FF'; });
+    btn.addEventListener('mouseenter', () => { btn.style.background = '#E7F4EC'; });
     btn.addEventListener('mouseleave', () => { btn.style.background = '#fff'; });
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -957,7 +957,7 @@ function renderAssistantBadge(state: AssistantState, issues: Issue[]): string {
       ? '#16a34a'
       : totalCount > 0
         ? getAssistantSeverity(issues)
-        : '#4F46E5';
+        : '#1FA463';
   const badgeText =
     state.phase === 'clean'
       ? '✓'
@@ -973,7 +973,7 @@ function renderAssistantBadge(state: AssistantState, issues: Issue[]): string {
     ? `<span style="
         position:absolute; bottom:-7px; right:-11px;
         height:12px; min-width:16px; padding:0 3px;
-        border-radius:999px; background:#4F46E5; color:white;
+        border-radius:999px; background:#1FA463; color:white;
         font-size:7px; font-weight:800; line-height:12px;
         border:1.5px solid white;
         font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -1023,7 +1023,7 @@ export function setAssistantState(element: HTMLElement, state: AssistantState) {
       display: inline-flex; align-items: center; justify-content: center;
       width: ${BUBBLE_SIZE}px; height: ${BUBBLE_SIZE}px; padding: 0;
       border-radius: 50%;
-      background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+      background: linear-gradient(135deg, #1FA463 0%, #1FA463 100%);
       box-shadow: 0 1px 6px rgba(79,70,229,0.45), 0 1px 3px rgba(0,0,0,0.18);
       z-index: 2147483646;
       cursor: pointer; pointer-events: auto;
@@ -1103,7 +1103,7 @@ export function updateSelectionBubble(
     display: inline-flex; align-items: center; justify-content: center;
     width: ${BUBBLE_SIZE}px; height: ${BUBBLE_SIZE}px; padding: 0;
     border-radius: 50%;
-    background: linear-gradient(135deg, #7C3AED 0%, #DB2777 100%);
+    background: linear-gradient(135deg, #1FA463 0%, #1FA463 100%);
     box-shadow: 0 1px 6px rgba(124,58,237,0.45), 0 1px 3px rgba(0,0,0,0.18);
     z-index: 2147483646; cursor: pointer; pointer-events: auto;
     border: none; outline: none; transition: transform 0.12s ease;
@@ -1162,12 +1162,12 @@ function openSelectionMenu(anchor: HTMLElement) {
     chip.textContent = label;
     chip.style.cssText = `
       flex:1 1 auto; min-width:70px; padding:6px 8px;
-      background:#F5F3FF; color:#6D28D9; border:1px solid #DDD6FE;
+      background:#E7F4EC; color:#6D28D9; border:1px solid #A7E0C2;
       border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;
       font-family:inherit; transition:background 0.12s;
     `;
     chip.addEventListener('mouseenter', () => { chip.style.background = '#E0E7FF'; });
-    chip.addEventListener('mouseleave', () => { chip.style.background = '#F5F3FF'; });
+    chip.addEventListener('mouseleave', () => { chip.style.background = '#E7F4EC'; });
     chips.appendChild(chip);
   }
 
@@ -1182,8 +1182,8 @@ function openSelectionMenu(anchor: HTMLElement) {
       <div style="font-size:10px;color:#8e8e93;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">
         Preview · ${escapeHtml(label)}
       </div>
-      <div style="font-size:12px;color:#1c1c1e;line-height:1.45;background:#F5F3FF;
-        border:1px solid #DDD6FE;border-radius:6px;padding:7px 9px;white-space:pre-wrap;
+      <div style="font-size:12px;color:#1c1c1e;line-height:1.45;background:#E7F4EC;
+        border:1px solid #A7E0C2;border-radius:6px;padding:7px 9px;white-space:pre-wrap;
         max-height:140px;overflow:auto;">${escapeHtml(proposed)}</div>
       <div style="display:flex;gap:6px;margin-top:7px;">
         <button class="og-sel-apply" type="button" style="flex:1;padding:6px 8px;background:#6D28D9;
@@ -1329,7 +1329,7 @@ function showInlineReviewCard(anchor: HTMLElement, issue: Issue, element: HTMLEl
       <div style="display:flex; align-items:center; gap:7px; margin-bottom:5px;">
         <span style="width:7px;height:7px;border-radius:50%;background:${accent};display:inline-block;border:1px dotted ${accent};"></span>
         <span style="font-size:11px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:0.5px;">${escapeHtml(kicker)}</span>
-        ${ai ? `<span style="margin-left:auto;font-size:10px;font-weight:600;color:#6b7280;background:#eef2ff;border:1px solid #c7d2fe;border-radius:999px;padding:1px 7px;">context</span>` : ''}
+        ${ai ? `<span style="margin-left:auto;font-size:10px;font-weight:600;color:#6b7280;background:#E7F4EC;border:1px solid #A7E0C2;border-radius:999px;padding:1px 7px;">context</span>` : ''}
       </div>
       <div style="font-size:14px;font-weight:600;color:#1c1c1e;line-height:1.4;">
         ${escapeHtml(headline)}
@@ -1355,7 +1355,7 @@ function showInlineReviewCard(anchor: HTMLElement, issue: Issue, element: HTMLEl
 
     <div style="display:flex; border-top: 1px solid #f0f0f0;">
       <button class="og-rv-accept" style="
-        flex: 1.4; padding: 11px 12px; background: #4F46E5; color: white;
+        flex: 1.4; padding: 11px 12px; background: #1FA463; color: white;
         border: none; cursor: pointer; font-size: 13px; font-weight: 600;
         border-radius: 0 0 0 12px; font-family: inherit; transition: background 0.12s;
         display: flex; align-items: center; justify-content: center; gap: 5px;
@@ -1366,7 +1366,7 @@ function showInlineReviewCard(anchor: HTMLElement, issue: Issue, element: HTMLEl
         Accept
       </button>
       <button class="og-rv-context" style="
-        flex: 1.3; padding: 11px 10px; background: white; color: #4F46E5;
+        flex: 1.3; padding: 11px 10px; background: white; color: #1FA463;
         border: none; border-left: 1px solid #f0f0f0; cursor: pointer;
         font-size: 12px; font-weight: 600; font-family: inherit; transition: background 0.12s;
       " title="Review the whole sentence with AI">Review in context</button>
@@ -1404,8 +1404,8 @@ function showInlineReviewCard(anchor: HTMLElement, issue: Issue, element: HTMLEl
   const acceptBtn = card.querySelector('.og-rv-accept') as HTMLButtonElement | null;
   if (acceptBtn) {
     acceptBtn.addEventListener('click', (e) => { e.stopPropagation(); accept(); });
-    acceptBtn.addEventListener('mouseenter', () => { acceptBtn.style.background = '#4338CA'; });
-    acceptBtn.addEventListener('mouseleave', () => { acceptBtn.style.background = '#4F46E5'; });
+    acceptBtn.addEventListener('mouseenter', () => { acceptBtn.style.background = '#127A48'; });
+    acceptBtn.addEventListener('mouseleave', () => { acceptBtn.style.background = '#1FA463'; });
   }
 
   const contextBtn = card.querySelector('.og-rv-context') as HTMLButtonElement | null;
@@ -1416,7 +1416,7 @@ function showInlineReviewCard(anchor: HTMLElement, issue: Issue, element: HTMLEl
       // Explicit deeper review — the ONLY path that re-invokes the model.
       showSentenceReview([issue], element, 0);
     });
-    contextBtn.addEventListener('mouseenter', () => { contextBtn.style.background = '#f5f3ff'; });
+    contextBtn.addEventListener('mouseenter', () => { contextBtn.style.background = '#E7F4EC'; });
     contextBtn.addEventListener('mouseleave', () => { contextBtn.style.background = 'white'; });
   }
 
@@ -1518,7 +1518,7 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
     <div style="display:flex; border-top: 1px solid #f0f0f0;">
       <button class="og-apply-btn" style="
         flex: 1; padding: 11px 16px;
-        background: #4F46E5; color: white;
+        background: #1FA463; color: white;
         border: none; cursor: pointer;
         font-size: 13px; font-weight: 600;
         border-radius: 0 0 0 12px;
@@ -1578,8 +1578,8 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
     if (applySuggestion(element, issue, anchor)) hideTooltip();
     else flashApplyFailure(card);
   });
-  applyBtn.addEventListener('mouseenter', () => { applyBtn.style.background = '#4338CA'; });
-  applyBtn.addEventListener('mouseleave', () => { applyBtn.style.background = '#4F46E5'; });
+  applyBtn.addEventListener('mouseenter', () => { applyBtn.style.background = '#127A48'; });
+  applyBtn.addEventListener('mouseleave', () => { applyBtn.style.background = '#1FA463'; });
 
   rephraseBtn.addEventListener('click', (e) => {
     e.stopPropagation(); e.preventDefault();
@@ -1645,7 +1645,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
   panel.innerHTML = `
     <div style="padding: 12px 14px; border-bottom: 1px solid #f0f0f0; display:flex;align-items:center;justify-content:space-between;">
       <div style="display:flex;align-items:center;gap:7px;">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#4F46E5" stroke-width="1.6" stroke-linecap="round">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1FA463" stroke-width="1.6" stroke-linecap="round">
           <path d="M2 8a6 6 0 1 1 1.5 4M2 12V8h4"/>
         </svg>
         <span style="font-size:13px;font-weight:700;color:#1c1c1e;">✨ Rephrase Sentence</span>
@@ -1662,9 +1662,9 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
       ${goals.map(g => `
         <button class="og-goal-btn" data-goal="${g.id}" style="
           padding: 5px 10px;
-          background: ${g.id === 'clarity' ? '#EEF2FF' : '#f4f4f5'};
+          background: ${g.id === 'clarity' ? '#E7F4EC' : '#f4f4f5'};
           color: ${g.id === 'clarity' ? '#3730A3' : '#5f6368'};
-          border: 1px solid ${g.id === 'clarity' ? '#C7D2FE' : '#e5e7eb'};
+          border: 1px solid ${g.id === 'clarity' ? '#A7E0C2' : '#e5e7eb'};
           border-radius: 999px;
           font-size: 12px; font-weight: 600;
           cursor: pointer; transition: all 0.12s;
@@ -1682,7 +1682,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
       ">
         <div style="
           width: 22px; height: 22px;
-          border: 2px solid #e5e7eb; border-top-color: #4F46E5;
+          border: 2px solid #e5e7eb; border-top-color: #1FA463;
           border-radius: 50%;
           animation: og-spin 0.7s linear infinite;
         "></div>
@@ -1732,9 +1732,9 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
     activeGoal = goal;
     goalBtns.forEach((btn) => {
       const isActive = btn.dataset.goal === goal;
-      btn.style.background = isActive ? '#EEF2FF' : '#f4f4f5';
+      btn.style.background = isActive ? '#E7F4EC' : '#f4f4f5';
       btn.style.color        = isActive ? '#3730A3' : '#5f6368';
-      btn.style.borderColor  = isActive ? '#C7D2FE' : '#e5e7eb';
+      btn.style.borderColor  = isActive ? '#A7E0C2' : '#e5e7eb';
     });
     triggerRephrase(goal);
   };
@@ -1758,7 +1758,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px 0;">
         <div style="
           width:22px;height:22px;
-          border:2px solid #e5e7eb;border-top-color:#4F46E5;
+          border:2px solid #e5e7eb;border-top-color:#1FA463;
           border-radius:50%;animation:og-spin 0.7s linear infinite;
         "></div>
         <span style="font-size:12px;color:#8e8e93;">Generating alternatives…</span>
@@ -1813,7 +1813,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
             flex-shrink:0;
             display:inline-flex;align-items:center;justify-content:center;
             width:20px;height:20px;border-radius:50%;
-            background:#EEF2FF;border:1px solid #C7D2FE;
+            background:#E7F4EC;border:1px solid #A7E0C2;
             font-size:11px;font-weight:700;color:#3730A3;
             margin-top:1px;
           ">${i + 1}</span>
@@ -1823,7 +1823,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
           <button class="og-use-btn" data-text="${escapeHtml(s.text)}" style="
             flex-shrink:0;
             padding: 4px 10px;
-            background: #4F46E5; color: white;
+            background: #1FA463; color: white;
             border: none; border-radius: 6px;
             font-size: 11px; font-weight: 700;
             cursor: pointer; transition: background 0.12s;
@@ -1847,8 +1847,8 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
           currentRephrasePanel?.remove();
           currentRephrasePanel = null;
         });
-        useBtn.addEventListener('mouseenter', () => { useBtn.style.background = '#4338CA'; });
-        useBtn.addEventListener('mouseleave', () => { useBtn.style.background = '#4F46E5'; });
+        useBtn.addEventListener('mouseenter', () => { useBtn.style.background = '#127A48'; });
+        useBtn.addEventListener('mouseleave', () => { useBtn.style.background = '#1FA463'; });
       });
 
       // Hover effect on rows
@@ -2079,7 +2079,7 @@ function showCheckingCard(element: HTMLElement) {
   `;
   card.innerHTML = `
     <div style="display:flex; align-items:center; gap:10px; padding:16px 18px;">
-      <div style="width:18px;height:18px;border:2px solid #e5e7eb;border-top-color:#4F46E5;border-radius:50%;animation:og-spin 0.7s linear infinite;"></div>
+      <div style="width:18px;height:18px;border:2px solid #e5e7eb;border-top-color:#1FA463;border-radius:50%;animation:og-spin 0.7s linear infinite;"></div>
       <div>
         <div class="og-checking-primary" style="font-size:13px; color:#3c3c43; font-weight:600;">Checking your writing…</div>
         <div class="og-checking-secondary" style="font-size:11px; color:#8e8e93; margin-top:3px; display:none;"></div>
@@ -2135,7 +2135,7 @@ function showReviewStatusCard(
     </div>
     <div style="display:flex; border-top:1px solid #f0f0f0;">
       ${retry ? `<button class="og-review-retry" type="button" style="
-        flex:1; padding:11px 14px; background:#4F46E5; color:#fff;
+        flex:1; padding:11px 14px; background:#1FA463; color:#fff;
         border:none; cursor:pointer; font-size:13px; font-weight:700; font-family:inherit;
       ">Retry</button>` : ''}
       <button class="og-review-close" type="button" style="
@@ -2193,9 +2193,9 @@ async function maybeShowModelHint(card: HTMLElement, anchorEl: HTMLElement) {
   slot.style.display = 'block';
   slot.style.marginTop = '10px';
   slot.style.padding = '9px 10px';
-  slot.style.border = '1px solid #C7D2FE';
+  slot.style.border = '1px solid #A7E0C2';
   slot.style.borderRadius = '7px';
-  slot.style.background = '#EEF2FF';
+  slot.style.background = '#E7F4EC';
   slot.style.color = '#3730A3';
   slot.style.fontSize = '12px';
   slot.style.lineHeight = '1.45';
@@ -2206,7 +2206,7 @@ async function maybeShowModelHint(card: HTMLElement, anchorEl: HTMLElement) {
         <a href="${MODEL_BENCHMARK_URL}" target="_blank" rel="noreferrer" style="color:#3730A3; font-weight:700; text-decoration:underline;">See benchmark results</a>.
       </div>
       <button class="og-model-hint-dismiss" type="button" style="
-        flex-shrink:0; border:none; background:transparent; color:#4F46E5;
+        flex-shrink:0; border:none; background:transparent; color:#1FA463;
         font-size:11px; font-weight:700; cursor:pointer; padding:1px 0 0 4px;
         font-family:inherit;
       ">Dismiss</button>
@@ -2377,14 +2377,14 @@ function showSentenceReview(
         <span style="
           display:inline-flex; align-items:center; justify-content:center;
           width:28px; height:28px; border-radius:50%;
-          background:#4F46E518; flex-shrink:0;
+          background:#1FA46318; flex-shrink:0;
         ">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#4F46E5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#1FA463" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M2 11.5 11 2.5l2.5 2.5L4.5 14H2z"/><path d="M9.5 4 12 6.5"/>
           </svg>
         </span>
         <div>
-          <div style="font-size:12px; font-weight:600; color:#4F46E5; text-transform:uppercase; letter-spacing:0.5px;">Sentence ${idx + 1} of ${total}</div>
+          <div style="font-size:12px; font-weight:600; color:#1FA463; text-transform:uppercase; letter-spacing:0.5px;">Sentence ${idx + 1} of ${total}</div>
           <div style="font-size:11px; color:#8e8e93;">${changeCount} change${changeCount !== 1 ? 's' : ''}${typeSummary ? ' · ' + escapeHtml(typeSummary) : ''}</div>
         </div>
       </div>
@@ -2430,7 +2430,7 @@ function showSentenceReview(
       <div class="og-sr-corrected-label" style="font-size:10px; color:#8e8e93; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:5px;">Corrected sentence</div>
       <div class="og-sr-corrected-text" style="
         font-size:13px; color:#1c1c1e; line-height:1.6; word-break:break-word; font-weight:500;
-        background:#EEF2FF; border:1px solid #C7D2FE; border-radius:7px; padding:8px 10px;
+        background:#E7F4EC; border:1px solid #A7E0C2; border-radius:7px; padding:8px 10px;
         transition:background 0.12s;
       ">${correctedHtml}</div>
     </div>
@@ -2450,7 +2450,7 @@ function showSentenceReview(
       <button class="og-sr-improve-toggle" type="button" style="
         width:100%; display:flex; align-items:center; justify-content:center; gap:6px;
         background:#fff; border:1px solid #e5e5ea; border-radius:7px; padding:7px 10px;
-        font-size:12px; font-weight:600; color:#4F46E5; cursor:pointer; font-family:inherit;
+        font-size:12px; font-weight:600; color:#1FA463; cursor:pointer; font-family:inherit;
         transition:background 0.12s;
       ">✦ Improve sentence ▾</button>
       <div class="og-sr-improve-menu" style="display:none; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
@@ -2464,7 +2464,7 @@ function showSentenceReview(
       ${total > 1 ? `
       <button class="og-sr-fix-all" style="
         flex:1; padding:10px 8px;
-        background:white; color:#4F46E5;
+        background:white; color:#1FA463;
         border:none; border-right:1px solid #f0f0f0; cursor:pointer;
         font-size:11px; font-weight:700; line-height:1.35;
         font-family:inherit; transition:background 0.12s;
@@ -2480,7 +2480,7 @@ function showSentenceReview(
       " title="Revert to the original correction (undo tone rewrite)">Original</button>
       <button class="og-sr-accept" style="
         flex:2; padding:11px 10px;
-        background:#4F46E5; color:white;
+        background:#1FA463; color:white;
         border:none; cursor:pointer;
         font-size:13px; font-weight:600;
         font-family:inherit; transition:background 0.12s;
@@ -2596,14 +2596,14 @@ function showSentenceReview(
   if (acceptBox) {
     acceptBox.addEventListener('click', (e) => { e.stopPropagation(); acceptSentence(); });
     acceptBox.addEventListener('mouseenter', () => { if (correctedInner) correctedInner.style.background = '#E0E7FF'; });
-    acceptBox.addEventListener('mouseleave', () => { if (correctedInner) correctedInner.style.background = '#EEF2FF'; });
+    acceptBox.addEventListener('mouseleave', () => { if (correctedInner) correctedInner.style.background = '#E7F4EC'; });
   }
 
   const acceptBtn = card.querySelector('.og-sr-accept') as HTMLButtonElement | null;
   if (acceptBtn) {
     acceptBtn.addEventListener('click', (e) => { e.stopPropagation(); acceptSentence(); });
-    acceptBtn.addEventListener('mouseenter', () => { acceptBtn.style.background = '#4338CA'; });
-    acceptBtn.addEventListener('mouseleave', () => { acceptBtn.style.background = '#4F46E5'; });
+    acceptBtn.addEventListener('mouseenter', () => { acceptBtn.style.background = '#127A48'; });
+    acceptBtn.addEventListener('mouseleave', () => { acceptBtn.style.background = '#1FA463'; });
   }
 
   const fixAllBtn = card.querySelector('.og-sr-fix-all') as HTMLButtonElement | null;
@@ -2690,12 +2690,12 @@ function showSentenceReview(
       chip.textContent = label;
       chip.style.cssText = `
         flex:1 1 auto; min-width:72px; padding:6px 8px;
-        background:#F5F3FF; color:#4F46E5; border:1px solid #DDD6FE;
+        background:#E7F4EC; color:#1FA463; border:1px solid #A7E0C2;
         border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;
         font-family:inherit; transition:background 0.12s;
       `;
       chip.addEventListener('mouseenter', () => { chip.style.background = '#E0E7FF'; });
-      chip.addEventListener('mouseleave', () => { chip.style.background = '#F5F3FF'; });
+      chip.addEventListener('mouseleave', () => { chip.style.background = '#E7F4EC'; });
       improveMenu.appendChild(chip);
     }
 
@@ -2721,7 +2721,7 @@ function showSentenceReview(
         });
       }
     });
-    improveToggle.addEventListener('mouseenter', () => { improveToggle.style.background = '#f5f3ff'; });
+    improveToggle.addEventListener('mouseenter', () => { improveToggle.style.background = '#E7F4EC'; });
     improveToggle.addEventListener('mouseleave', () => { improveToggle.style.background = '#fff'; });
 
     // Tone chip click: fetch the rewrite and swap the Corrected box content

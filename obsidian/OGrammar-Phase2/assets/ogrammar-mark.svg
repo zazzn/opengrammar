@@ -1,8 +1,11 @@
 <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OGrammar">
   <title>OGrammar</title>
   <desc>The letter O above a green spellcheck wave: private writing help that checks your text on-device.</desc>
+  <!-- Off-black squircle tile -->
   <rect width="128" height="128" rx="28" fill="#16191D"/>
   <rect x="0.75" y="0.75" width="126.5" height="126.5" rx="27.4" fill="none" stroke="#F4F6F4" stroke-opacity="0.06" stroke-width="1.5"/>
+  <!-- O (for OGrammar), off-white -->
   <circle cx="64" cy="52" r="26" fill="none" stroke="#F4F6F4" stroke-width="11"/>
+  <!-- Spellcheck wave, signal green -->
   <path d="M36 93 q7 -11 14 0 t14 0 t14 0 t14 0" fill="none" stroke="#34C77F" stroke-width="8" stroke-linecap="round"/>
 </svg>

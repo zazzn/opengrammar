@@ -1,0 +1,26 @@
+/* OGrammar design tokens — the single source of truth for popup, options, and
+   the in-page UI. Identity: one signal-green accent, off-black / off-white canvas,
+   Geist type, replacing the retired OpenGrammar indigo palette and old web font.
+   Light-only for now; dark mode is a tracked follow-up. */
+:root {
+  --ogt-accent: #1FA463;
+  --ogt-accent-dark: #127A48;
+  --ogt-accent-strong: #34C77F;
+  --ogt-accent-quiet: #E7F4EC;
+  --ogt-accent-ring: rgba(31, 164, 99, 0.28);
+  --ogt-accent-shadow: rgba(31, 164, 99, 0.30);
+
+  --ogt-bg: #FBFCFB;
+  --ogt-surface: #F2F4F2;
+  --ogt-border: #DDE2DD;
+  --ogt-text-1: #16191D;
+  --ogt-text-2: #474D54;
+  --ogt-text-3: #6B7178;
+
+  --ogt-issue-grammar: #D1495B;
+  --ogt-issue-style: #3D7DCA;
+  --ogt-issue-clarity: #C7821A;
+
+  --ogt-font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --ogt-font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', 'JetBrains Mono', monospace;
+}

@@ -3,46 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenGrammar — The Free, Privacy-First Writing Assistant</title>
-    <meta name="description" content="OpenGrammar is a powerful, open-source browser extension for grammar, spelling, and tone adjustments. Complete privacy. Zero monthly fees. Local-first, bring your own AI key.">
-    <meta name="keywords" content="OpenGrammar, Grammarly alternative, open source grammar checker, privacy writing assistant, AI grammar">
-    <meta name="author" content="Swadhin Biswas">
-    <meta property="og:title" content="OpenGrammar — Privacy-First Writing Assistant">
+    <title>OGrammar - The free, privacy-first writing assistant</title>
+    <meta name="description" content="OGrammar is a powerful, open-source browser extension for grammar, spelling, and tone adjustments. Complete privacy. Zero monthly fees. Local-first, bring your own AI key.">
+    <meta name="keywords" content="OGrammar, Grammarly alternative, open source grammar checker, privacy writing assistant, AI grammar">
+    <meta name="author" content="OGrammar">
+    <meta property="og:title" content="OGrammar - Privacy-first writing assistant">
     <meta property="og:description" content="Free, open-source Grammarly alternative. Local grammar checking + bring-your-own AI. Zero subscriptions.">
     <meta property="og:type" content="website">
-    <meta property="og:image" content="https://raw.githubusercontent.com/swadhinbiswas/opengrammar/main/logo.svg">
+    <meta property="og:image" content="https://raw.githubusercontent.com/zazzn/opengrammar/og-rewrite/logo.svg">
     <link rel="icon" href="logo.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
 /* ========== RESET & TOKENS ========== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#fdfbf7;--bg2:#f4f1eb;--bg3:#eae7e0;
-  --fg:#1a1816;--fg2:#4a4640;--fg3:#7a756e;
-  --primary:#4f46e5;--primary-l:#818cf8;--primary-d:#3730a3;
-  --accent:#7c3aed;--accent-l:#a78bfa;
+  --bg:#FBFCFB;--bg2:#F2F4F2;--bg3:#E8EBE8;
+  --fg:#16191D;--fg2:#474D54;--fg3:#6B7178;
+  --primary:#1FA463;--primary-l:#34C77F;--primary-d:#0F5132;
+  --accent:#34C77F;--accent-l:#6FE0AC;
   --green:#059669;--green-bg:#ecfdf5;
   --red:#dc2626;--red-bg:#fef2f2;
   --amber:#d97706;--amber-bg:#fffbeb;
-  --blue:#2563eb;--blue-bg:#eff6ff;
-  --border:#e5e1d8;--card-bg:rgba(255,255,255,.72);
+  --blue:#3D7DCA;--blue-bg:#eff6ff;
+  --border:#DDE2DD;--card-bg:rgba(255,255,255,.72);
   --radius:16px;--radius-sm:10px;
-  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+  --font:'Geist',system-ui,sans-serif;--mono:'Geist Mono',monospace;
   --shadow:0 4px 24px rgba(0,0,0,.06);
   --shadow-lg:0 20px 60px rgba(0,0,0,.1);
   --transition:.3s cubic-bezier(.4,0,.2,1);
   --nav-h:72px;
 }
 [data-theme="dark"]{
-  --bg:#0c0a14;--bg2:#14111f;--bg3:#1e1a2e;
-  --fg:#eae8f0;--fg2:#b0adb8;--fg3:#76737e;
-  --border:#2a2640;--card-bg:rgba(20,17,31,.72);
+  --bg:#0F1215;--bg2:#171B1F;--bg3:#22272C;
+  --fg:#F4F6F4;--fg2:#B6BDBE;--fg3:#878E90;
+  --border:#2A2F35;--card-bg:rgba(20,17,31,.72);
   --shadow:0 4px 24px rgba(0,0,0,.3);
   --shadow-lg:0 20px 60px rgba(0,0,0,.4);
-  --primary:#818cf8;--primary-l:#a5b4fc;--primary-d:#6366f1;
-  --accent:#a78bfa;--accent-l:#c4b5fd;
+  --primary:#34C77F;--primary-l:#6FE0AC;--primary-d:#1FA463;
+  --accent:#6FE0AC;--accent-l:#A7E0C2;
   --green:#34d399;--green-bg:rgba(5,150,105,.12);
   --red:#f87171;--red-bg:rgba(220,38,38,.12);
   --amber:#fbbf24;--amber-bg:rgba(217,119,6,.12);
@@ -66,7 +66,7 @@ button{font-family:inherit;cursor:pointer}
 [data-theme="dark"] .hero-bg .orb{opacity:.2}
 .orb-1{width:600px;height:600px;background:var(--primary);top:-200px;left:-100px;animation-delay:0s}
 .orb-2{width:500px;height:500px;background:var(--accent);top:100px;right:-150px;animation-delay:-7s}
-.orb-3{width:400px;height:400px;background:#06b6d4;bottom:-100px;left:30%;animation-delay:-14s}
+.orb-3{width:400px;height:400px;background:#127A48;bottom:-100px;left:30%;animation-delay:-14s}
 @keyframes float{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-40px) scale(1.05)}66%{transform:translate(-20px,30px) scale(.95)}}
 
 /* ========== GRID PATTERN ========== */
@@ -162,8 +162,8 @@ section{padding:100px 0}
 .how-step{display:flex;gap:20px;align-items:flex-start}
 .step-num{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff;flex-shrink:0}
 .step-num.s1{background:linear-gradient(135deg,var(--primary),var(--accent))}
-.step-num.s2{background:linear-gradient(135deg,var(--accent),#ec4899)}
-.step-num.s3{background:linear-gradient(135deg,#06b6d4,var(--green))}
+.step-num.s2{background:linear-gradient(135deg,var(--accent),#34C77F)}
+.step-num.s3{background:linear-gradient(135deg,#127A48,var(--green))}
 .how-step h4{font-size:17px;font-weight:700;margin-bottom:4px}
 .how-step p{font-size:15px;color:var(--fg2);line-height:1.6}
 .how-visual{background:var(--card-bg);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:var(--radius);padding:32px;box-shadow:var(--shadow)}
@@ -267,8 +267,8 @@ section{padding:100px 0}
     <nav class="navbar" id="navbar">
         <div class="container">
             <a href="#" class="nav-logo">
-                <img src="logo.svg" alt="OpenGrammar Logo">
-                <span>OpenGrammar</span>
+                <img src="logo.svg" alt="OGrammar Logo">
+                <span>OGrammar</span>
             </a>
             <div class="nav-links">
                 <a href="#features">Features</a>
@@ -276,7 +276,7 @@ section{padding:100px 0}
                 <a href="#providers">Providers</a>
                 <a href="#comparison">Compare</a>
                 <a href="docs/index.html">Docs</a>
-                <a href="https://github.com/swadhinbiswas/opengrammar" target="_blank">GitHub</a>
+                <a href="https://github.com/zazzn/opengrammar" target="_blank">GitHub</a>
             </div>
             <div class="nav-actions">
                 <button class="theme-btn" id="themeToggle" aria-label="Toggle theme">
@@ -296,7 +296,7 @@ section{padding:100px 0}
         <a href="#providers">Providers</a>
         <a href="#comparison">Compare</a>
         <a href="docs/index.html">Docs</a>
-        <a href="https://github.com/swadhinbiswas/opengrammar" target="_blank">GitHub</a>
+        <a href="https://github.com/zazzn/opengrammar" target="_blank">GitHub</a>
         <a href="#get-started" class="btn btn-primary" style="text-align:center;margin-top:8px">Get Started</a>
     </div>
 
@@ -311,13 +311,13 @@ section{padding:100px 0}
         <div class="container hero-content">
             <div class="hero-badge"><span class="dot"></span> v2.1 — Open Source & Free Forever</div>
             <h1>Write with clarity.<br><span class="gradient-text">Own your privacy.</span></h1>
-            <p>OpenGrammar is the free, open-source Grammarly alternative. 40+ grammar rules run offline. Plug in your AI API key for advanced edits — no subscriptions, no data harvesting.</p>
+            <p>OGrammar is the free, open-source Grammarly alternative. 40+ grammar rules run offline. Plug in your AI API key for advanced edits — no subscriptions, no data harvesting.</p>
             <div class="hero-buttons">
                 <a href="#get-started" class="btn btn-primary">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
                     Download Extension
                 </a>
-                <a href="https://github.com/swadhinbiswas/opengrammar" target="_blank" class="btn btn-ghost">
+                <a href="https://github.com/zazzn/opengrammar" target="_blank" class="btn btn-ghost">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd"/></svg>
                     Star on GitHub
                 </a>
@@ -331,7 +331,7 @@ section{padding:100px 0}
                         <span>compose — Gmail</span>
                     </div>
                     <div class="demo-body">
-                        Most popular grammar assistants require you to send every keystroke to their servers and <span class="err">charge a hefty monthly fee<span class="demo-tooltip"><strong><i data-lucide="alert-circle" class="icon-inline"></i> Cliché Detected</strong>Consider "are expensive" instead.</span></span> for advanced features. OpenGrammar changes that. The core engine runs locally in your browser, checking for <span class="style-h">passive voice</span> and <span class="warn">repetition</span> without needing a server.
+                        Most popular grammar assistants require you to send every keystroke to their servers and <span class="err">charge a hefty monthly fee<span class="demo-tooltip"><strong><i data-lucide="alert-circle" class="icon-inline"></i> Cliché Detected</strong>Consider "are expensive" instead.</span></span> for advanced features. OGrammar changes that. The core engine runs locally in your browser, checking for <span class="style-h">passive voice</span> and <span class="warn">repetition</span> without needing a server.
                     </div>
                     <div class="demo-badge-row">
                         <span class="dbadge red">● 1 Grammar</span>
@@ -468,7 +468,7 @@ section{padding:100px 0}
             </div>
             <div style="overflow-x:auto" class="fade-in">
                 <table class="compare-table">
-                    <thead><tr><th>Feature</th><th>Grammarly</th><th class="highlight-col">OpenGrammar</th><th>LanguageTool</th></tr></thead>
+                    <thead><tr><th>Feature</th><th>Grammarly</th><th class="highlight-col">OGrammar</th><th>LanguageTool</th></tr></thead>
                     <tbody>
                         <tr><td><strong>Price</strong></td><td>$12/mo</td><td class="highlight-col yes">Free</td><td>$4.99/mo</td></tr>
                         <tr><td><strong>Open Source</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i> Apache 2.0</td><td>Partial</td></tr>
@@ -495,7 +495,7 @@ section{padding:100px 0}
             <div class="terminal fade-in">
                 <div class="terminal-bar"><div class="demo-dot r"></div><div class="demo-dot y"></div><div class="demo-dot g"></div></div>
                 <pre><span class="comment"># 1. Clone the repository</span>
-<span class="cmd">git clone</span> https://github.com/swadhinbiswas/opengrammar.git
+<span class="cmd">git clone</span> https://github.com/zazzn/opengrammar.git
 
 <span class="comment"># 2. Build the extension</span>
 <span class="cmd">cd</span> opengrammar/opengrammar/extension
@@ -509,7 +509,7 @@ section{padding:100px 0}
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                     Read Full Documentation
                 </a>
-                <a href="https://github.com/swadhinbiswas/opengrammar" target="_blank" class="btn btn-ghost" style="padding:16px 32px;font-size:16px;border-radius:12px">
+                <a href="https://github.com/zazzn/opengrammar" target="_blank" class="btn btn-ghost" style="padding:16px 32px;font-size:16px;border-radius:12px">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd"/></svg>
                     View Source Code
                 </a>
@@ -522,7 +522,7 @@ section{padding:100px 0}
         <div class="container">
             <div class="footer-grid">
                 <div class="footer-brand">
-                    <a href="#" class="nav-logo"><img src="logo.svg" alt="OpenGrammar"><span>OpenGrammar</span></a>
+                    <a href="#" class="nav-logo"><img src="logo.svg" alt="OGrammar"><span>OGrammar</span></a>
                     <p>Your privacy-first, open-source writing assistant. Free forever under Apache 2.0.</p>
                 </div>
                 <div class="footer-col">
@@ -541,18 +541,18 @@ section{padding:100px 0}
                 </div>
                 <div class="footer-col">
                     <h4>Community</h4>
-                    <a href="https://github.com/swadhinbiswas/opengrammar" target="_blank">GitHub</a>
-                    <a href="https://github.com/swadhinbiswas/opengrammar/discussions" target="_blank">Discussions</a>
-                    <a href="https://github.com/swadhinbiswas/opengrammar/issues" target="_blank">Issues</a>
+                    <a href="https://github.com/zazzn/opengrammar" target="_blank">GitHub</a>
+                    <a href="https://github.com/zazzn/opengrammar/discussions" target="_blank">Discussions</a>
+                    <a href="https://github.com/zazzn/opengrammar/issues" target="_blank">Issues</a>
                     <a href="ROADMAP.md">Roadmap</a>
                 </div>
             </div>
             <div class="footer-bottom">
-                <span>© 2026 OpenGrammar. Released under the Apache 2.0 License.</span>
+                <span>© 2026 OGrammar. Released under the Apache 2.0 License.</span>
                 <div class="footer-bottom-links">
-                    <a href="https://github.com/swadhinbiswas/opengrammar" target="_blank">GitHub</a>
+                    <a href="https://github.com/zazzn/opengrammar" target="_blank">GitHub</a>
                     <a href="docs/index.html">Docs</a>
-                    <a href="https://github.com/swadhinbiswas/opengrammar/discussions" target="_blank">Community</a>
+                    <a href="https://github.com/zazzn/opengrammar/discussions" target="_blank">Community</a>
                 </div>
             </div>
         </div>

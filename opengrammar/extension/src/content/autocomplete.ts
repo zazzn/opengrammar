@@ -50,7 +50,7 @@ export class AutocompletePopup {
       `;
       this.box.innerHTML = `
         <span style="opacity: 0.6;">(Tab)</span> 
-        <strong style="color: #60a5fa; font-weight: 500;">${this.escapeHtml(response.suggestion)}</strong>
+        <strong style="color: #1FA463; font-weight: 500;">${this.escapeHtml(response.suggestion)}</strong>
       `;
     } else {
       // ContentEditable true ghost text logic can be placed inline more easily, but for consistency we use the tooltip popup
@@ -73,7 +73,7 @@ export class AutocompletePopup {
       `;
       this.box.innerHTML = `
         <span style="opacity: 0.6;">(Tab)</span> 
-        <strong style="color: #60a5fa; font-weight: 500;">${this.escapeHtml(response.suggestion)}</strong>
+        <strong style="color: #1FA463; font-weight: 500;">${this.escapeHtml(response.suggestion)}</strong>
       `;
     }
 

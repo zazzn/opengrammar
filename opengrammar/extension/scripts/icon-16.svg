@@ -1,0 +1,7 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OGrammar">
+  <title>OGrammar</title>
+  <desc>16px-optimized OGrammar mark: bold O over a two-hump green wave.</desc>
+  <rect width="128" height="128" rx="26" fill="#16191D"/>
+  <circle cx="64" cy="50" r="29" fill="none" stroke="#F4F6F4" stroke-width="14"/>
+  <path d="M32 98 q16 -17 32 0 t32 0" fill="none" stroke="#34C77F" stroke-width="12" stroke-linecap="round"/>
+</svg>

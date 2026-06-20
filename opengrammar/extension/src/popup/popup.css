@@ -1,47 +1,45 @@
 /* ════════════════════════════════════════════════════════
-   OpenGrammar Popup — Indigo brand (trust + intelligence)
-   Color theory: Indigo = truth, precision, trust
-   Inspired by: Notion, Figma, Linear — clean & premium
+   OGrammar Popup — signal-green on off-black / off-white.
+   Colors come from the shared token source so popup + options never drift.
 ════════════════════════════════════════════════════════ */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('../styles/tokens.css');
 
 *, *::before, *::after {
   margin: 0; padding: 0; box-sizing: border-box;
 }
 
 :root {
-  /* ── Brand: Indigo ── */
-  --og-primary:       #4F46E5;   /* Indigo 600 — truth & trust */
-  --og-primary-dark:  #4338CA;   /* Indigo 700 */
-  --og-primary-light: #EEF2FF;   /* Indigo 50  */
-  --og-primary-ring:  #C7D2FE;   /* Indigo 200 */
-  --og-primary-mid:   #818CF8;   /* Indigo 400 — for hover states */
+  /* Brand: signal green (was indigo/violet) — values from tokens.css */
+  --og-primary:       var(--ogt-accent);
+  --og-primary-dark:  var(--ogt-accent-dark);
+  --og-primary-light: var(--ogt-accent-quiet);
+  --og-primary-ring:  #A7E0C2;
+  --og-primary-mid:   var(--ogt-accent-strong);
 
-  /* ── Violet accent ── */
-  --og-accent:        #7C3AED;   /* Violet 600 */
-  --og-accent-light:  #F5F3FF;   /* Violet 50  */
+  --og-accent:        var(--ogt-accent);
+  --og-accent-light:  var(--ogt-accent-quiet);
 
   /* ── Neutral palette ── */
-  --og-bg:            #FFFFFF;
-  --og-surface:       #F8F9FC;   /* barely-there tint */
-  --og-border:        #E9EAEC;
+  --og-bg:            var(--ogt-bg);
+  --og-surface:       var(--ogt-surface);
+  --og-border:        var(--ogt-border);
   --og-border-mid:    #D4D5DD;
-  --og-text-1:        #1A1A2E;   /* near-black with slight indigo */
-  --og-text-2:        #5C5F7A;   /* mid gray-indigo */
-  --og-text-3:        #A0A3B1;   /* placeholder */
+  --og-text-1:        var(--ogt-text-1);
+  --og-text-2:        var(--ogt-text-2);
+  --og-text-3:        var(--ogt-text-3);
 
-  /* ── Issue colors ── */
-  --c-grammar:        #E53935;
-  --c-style:          #0288D1;   /* blue — not competing with brand indigo */
-  --c-clarity:        #F59E0B;
+  /* ── Issue colors (functional) ── */
+  --c-grammar:        var(--ogt-issue-grammar);
+  --c-style:          var(--ogt-issue-style);
+  --c-clarity:        var(--ogt-issue-clarity);
 
-  /* ── Shadows ── */
-  --og-shadow-sm:     0 1px 4px rgba(79,70,229,0.08);
-  --og-shadow-md:     0 4px 16px rgba(79,70,229,0.12);
+  /* ── Shadows (green-tinted) ── */
+  --og-shadow-sm:     0 1px 4px rgba(31,164,99,0.08);
+  --og-shadow-md:     0 4px 16px rgba(31,164,99,0.12);
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--ogt-font-sans);
   width: 340px;
   min-height: 200px;
   background: var(--og-bg);
@@ -75,15 +73,16 @@ body {
 }
 .brand { display: flex; align-items: center; gap: 9px; }
 
-/* Logo mark: gradient indigo→violet circle with quill icon */
+/* Logo mark: the new "O + wave" SVG carries its own dark tile, so the
+   container is just a sizing box (no gradient, no glow). */
 .brand-icon {
   width: 34px; height: 34px;
-  background: linear-gradient(135deg, var(--og-primary) 0%, var(--og-accent) 100%);
-  border-radius: 50%;
+  border-radius: 9px;
   display: inline-flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 8px rgba(79,70,229,0.35);
+  overflow: hidden;
   flex-shrink: 0;
 }
+.brand-icon svg { width: 100%; height: 100%; display: block; }
 .brand-name {
   font-size: 15px; font-weight: 700;
   color: var(--og-text-1); letter-spacing: -0.2px;
@@ -125,7 +124,7 @@ body {
   padding: 16px 15px 13px;
   display: flex; align-items: center; gap: 14px;
   border-bottom: 1px solid var(--og-border);
-  background: linear-gradient(180deg, #FAFBFF 0%, #FFFFFF 100%);
+  background: var(--og-surface);
 }
 .score-ring {
   flex-shrink: 0; position: relative;
@@ -234,7 +233,7 @@ body {
 }
 .select-input:focus, .text-input:focus {
   border-color: var(--og-primary);
-  box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+  box-shadow: 0 0 0 3px var(--ogt-accent-ring);
 }
 .input-row { display: flex; gap: 6px; }
 .input-row .text-input { flex: 1; }
