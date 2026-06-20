@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OGrammar - Privacy Policy</title>
+  <meta name="description" content="OGrammar privacy policy. Local-first by default: nothing leaves your device unless you turn on AI with your own key.">
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#FBFCFB;--surface:#F2F4F2;--border:#DDE2DD;--fg:#16191D;--fg2:#474D54;--accent:#1FA463;--accent-d:#127A48}
+    @media (prefers-color-scheme: dark){:root{--bg:#0F1215;--surface:#171B1F;--border:#2A2F35;--fg:#F4F6F4;--fg2:#B6BDBE;--accent:#34C77F;--accent-d:#34C77F}}
+    body{font-family:'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--fg);line-height:1.7;-webkit-font-smoothing:antialiased}
+    .wrap{max-width:760px;margin:0 auto;padding:48px 24px 96px}
+    header{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+    header svg{width:44px;height:44px;border-radius:11px}
+    h1{font-size:30px;font-weight:600;letter-spacing:-0.02em}
+    .updated{color:var(--fg2);font-size:14px;margin:4px 0 40px 58px}
+    h2{font-size:19px;font-weight:600;margin:36px 0 10px;letter-spacing:-0.01em}
+    p,li{color:var(--fg2);font-size:16px}
+    p{margin:0 0 12px}
+    ul{margin:0 0 12px 22px}
+    li{margin:6px 0}
+    strong{color:var(--fg);font-weight:600}
+    a{color:var(--accent-d);text-decoration:none;border-bottom:1px solid var(--border)}
+    a:hover{border-color:var(--accent)}
+    .lede{font-size:18px;color:var(--fg);background:var(--surface);border:0.5px solid var(--border);border-left:3px solid var(--accent);border-radius:0 12px 12px 0;padding:16px 20px;margin:0 0 28px}
+    .tag{display:inline-block;font-family:'Geist Mono',monospace;font-size:12px;color:var(--accent-d);background:var(--surface);border:0.5px solid var(--border);border-radius:6px;padding:2px 8px;margin-right:6px}
+    footer{margin-top:56px;padding-top:20px;border-top:0.5px solid var(--border);color:var(--fg2);font-size:14px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <svg viewBox="0 0 128 128" fill="none" aria-hidden="true"><rect width="128" height="128" rx="28" fill="#16191D"/><circle cx="64" cy="52" r="26" fill="none" stroke="#F4F6F4" stroke-width="11"/><path d="M36 93 q7 -11 14 0 t14 0 t14 0 t14 0" fill="none" stroke="#34C77F" stroke-width="8" stroke-linecap="round"/></svg>
+      <h1>Privacy Policy</h1>
+    </header>
+    <p class="updated">OGrammar browser extension and desktop app &middot; Last updated June 2026</p>
+
+    <p class="lede">OGrammar is private by default. Its grammar, spelling, and style checking runs entirely on your device. Nothing you type is sent anywhere unless you explicitly turn on the optional AI features with your own API key, and then only to the provider you choose.</p>
+
+    <h2>What stays on your device</h2>
+    <ul>
+      <li>The core checker (grammar, spelling, style, and the writing score) runs <strong>locally</strong> using an on-device engine. The text in your editable fields is analyzed in your browser and never transmitted to OGrammar or any third party.</li>
+      <li>Your <strong>custom dictionary</strong>, <strong>ignored suggestions</strong>, <strong>per-site preferences</strong>, and <strong>settings</strong> are stored in your browser's own storage (synced through your Google account if you have Chrome Sync enabled, exactly like your bookmarks). We never receive them.</li>
+      <li>Usage <strong>analytics</strong> (counts of issues found, for your own writing-history view) are kept in your browser's local storage. They are not transmitted to us or anyone else.</li>
+    </ul>
+
+    <h2>What leaves your device (only if you enable AI)</h2>
+    <p>The AI tiers (advanced corrections, tone rewriting, and optional autocomplete) are <strong>off by default</strong> and require you to add your own API key for a provider you choose (for example OpenAI, OpenRouter, Groq, Together, or a local Ollama server).</p>
+    <ul>
+      <li>When you trigger an AI action, the relevant text (a sentence or selection, and for autocomplete a small amount of surrounding context) is sent <strong>directly from your device to the provider you configured</strong>, over your own account with that provider.</li>
+      <li>OGrammar has <strong>no servers</strong>. Your text and your key never pass through any OGrammar-operated service. The request goes straight to your chosen provider's API.</li>
+      <li>If you point OGrammar at a <strong>local Ollama</strong> server, even the AI tier stays on your own machine or network.</li>
+    </ul>
+
+    <h2>Your API keys</h2>
+    <p>API keys you enter are <strong>encrypted at rest</strong> in your browser (and via the OS keystore in the desktop app) and are used only to authenticate your own requests to your chosen provider. They are never sent to OGrammar. You can remove all stored keys at any time from the extension's options page.</p>
+
+    <h2>Permissions</h2>
+    <p>The extension requests access to the pages you visit (<span class="tag">&lt;all_urls&gt;</span>) for a single purpose: to detect and correct writing issues in the editable text fields you type into, on whatever site you are using. It does not read, collect, or transmit page content for any other purpose, and it takes no action on a page until you type in a text field.</p>
+
+    <h2>What we do not do</h2>
+    <ul>
+      <li>No accounts, no sign-up, no user profiles.</li>
+      <li>No advertising, no trackers, no analytics sent to us or any third party.</li>
+      <li>No selling, renting, or sharing of your data. We never see your data, so there is nothing to sell.</li>
+      <li>No use of your text to train any model.</li>
+    </ul>
+
+    <h2>Third parties</h2>
+    <p>The only third parties that can receive your text are the <strong>AI providers you explicitly configure</strong>, under your own account with them. Their handling of your data is governed by <em>their</em> privacy policies. Choose a provider you trust, or run a local model so nothing leaves your machine.</p>
+
+    <h2>Open source</h2>
+    <p>OGrammar is open source under the Apache License 2.0. You can inspect exactly what it does at <a href="https://github.com/zazzn/opengrammar">github.com/zazzn/opengrammar</a>.</p>
+
+    <h2>Changes &amp; contact</h2>
+    <p>If this policy changes, the updated version will be posted here. Questions or concerns can be raised via the project's <a href="https://github.com/zazzn/opengrammar/issues">GitHub issues</a>.</p>
+
+    <footer>OGrammar is a privacy-first, local-first writing assistant. Your words are yours.</footer>
+  </div>
+</body>
+</html>

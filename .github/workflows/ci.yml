@@ -2,39 +2,32 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, og-rewrite ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, og-rewrite ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Bun
-      uses: oven-sh/setup-bun@v1
-      with:
-        bun-version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-    - name: Install and Check Extension
-      run: |
-        cd opengrammar/extension
-        bun install
-        echo "Running Type Check..."
-        bun x tsc
-        echo "Running Build..."
-        bun run build
+      - name: Install, typecheck, build (extension)
+        working-directory: opengrammar/extension
+        run: |
+          npm ci || npm install
+          npx tsc --noEmit
+          npm run build
 
-    # Code-free Reviewer: This automatically fails PRs that don't meet standards
-    - name: Automated Quality Check
-      run: |
-        echo "Finalizing automated review..."
-        # This acts as your 'Code Free' gatekeeper
-        if [ $? -eq 0 ]; then
-          echo "✅ Quality check passed. Code is safe for merging."
-        else
-          echo "❌ Quality check failed. Please fix the issues."
-          exit 1
-        fi
+      - name: Brand residue gate
+        run: |
+          cd opengrammar/extension/src
+          if grep -rliE '#4f46e5|#7c3aed|#2563eb|family=Inter' popup options content styles; then
+            echo "::error::Old OpenGrammar brand residue found (indigo / Inter). Run the green token system."
+            exit 1
+          fi
+          echo "Brand gate clean."

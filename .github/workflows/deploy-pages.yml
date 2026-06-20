@@ -2,9 +2,10 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "og-rewrite", "main" ]
     paths:
       - 'index.html'
+      - 'privacy.html'
       - 'logo.svg'
       - 'docs/**'
       - '.github/workflows/deploy-pages.yml'
@@ -28,22 +29,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Pages
-        uses: actions/configure-pages@v4
-
+        uses: actions/configure-pages@v5
       - name: Build site
         run: |
-          mkdir public
+          mkdir -p public
           cp index.html public/
+          cp privacy.html public/
           cp logo.svg public/
           cp -r docs public/
-
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './public'
-
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

@@ -33,3 +33,6 @@ desktop/**/target/
 # guard against any stray copies landing under desktop/
 desktop/**/apikey.bin
 desktop/**/config.json
+
+# packaged extension zip for the Chrome Web Store
+opengrammar/extension/ogrammar-*.zip
