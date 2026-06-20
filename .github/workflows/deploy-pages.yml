@@ -6,6 +6,7 @@ on:
     paths:
       - 'index.html'
       - 'privacy.html'
+      - 'google390b631622e01e0d.html'
       - 'logo.svg'
       - 'docs/**'
       - '.github/workflows/deploy-pages.yml'
@@ -36,6 +37,7 @@ jobs:
           mkdir -p public
           cp index.html public/
           cp privacy.html public/
+          cp google390b631622e01e0d.html public/
           cp logo.svg public/
           cp -r docs public/
       - name: Upload artifact
