@@ -16,13 +16,14 @@ GitHub Pages, upload the packaged zip + screenshots, paste the fields below, sub
 > Private, local-first grammar, spelling and style checking everywhere you type. Free, open-source, bring your own AI key.
 
 ## Detailed description
-> OGrammar is a privacy-first writing assistant. Unlike the big grammar tools, its core checking runs entirely on your device - your text is never sent to our servers, because there are no servers.
+(Revised 2026-06-20 to clear the "Yellow Nickel" keyword-spam rejection. Rule: list no more than 5 supported brands/sites in the description and don't repeat any keyword 5+ times. The old copy named 7 brands (OpenAI, OpenRouter, Groq, Together, Ollama, Gmail, Google Docs); this names only Gmail + Google Docs. Do NOT re-add the provider brand list - point users to the options screen or a screenshot instead.)
+> OGrammar is a privacy-first writing assistant. Its grammar, spelling, and style checking runs entirely on your device, so your text is never sent to a server.
 >
-> - Local grammar, spelling, and style checking in any text field on any site, with inline underlines and a writing score.
-> - Optional AI tier (advanced rewrites, tone, autocomplete) that is OFF by default and uses YOUR own API key, sending text only to the provider you choose: OpenAI, OpenRouter, Groq, Together, or a local Ollama model.
+> - Checks the text you type in editable fields on any website, with inline underlines and a writing score.
+> - An optional AI mode (advanced rewrites, tone changes, and autocomplete) is off by default. It uses an API key you provide and sends text only to the provider you choose, or to a model you run locally.
 > - Works in Gmail and Google Docs.
-> - No account, no subscription, no ads, no tracking. Your API keys are encrypted on your device and never reach us.
-> - Open source under Apache 2.0.
+> - No account, no subscription, no ads, and no tracking. Any API key you add is encrypted on your device.
+> - Free and open source under the Apache 2.0 license.
 >
 > Writing help that never leaves your machine.
 
