@@ -8,7 +8,7 @@ const STORE_KEY = 'ogDebugLog';
 const MAX_ENTRIES = 200;
 const MAX_FIELD = 600; // per-field char cap so the buffer can't balloon
 
-export type DebugKind = 'harper' | 'correct' | 'rewrite' | 'rephrase' | 'autocomplete';
+export type DebugKind = 'harper' | 'correct' | 'rewrite' | 'rephrase';
 
 export interface DebugEntry {
   t: number; // epoch ms

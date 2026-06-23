@@ -1,4 +1,4 @@
-import type { AnalysisContext, AutocompleteResponse, Issue } from '../types';
+import type { AnalysisContext, Issue } from '../types';
 import { isProtectedNonProseText } from '../shared/protectedText';
 import {
   applySettledQuickFixes,
@@ -17,7 +17,6 @@ import {
   onLearnedStorageChange,
   recordLearnedCorrection,
 } from './learnedStore';
-import { autocompleteManager } from './autocomplete';
 import {
   clearHighlights,
   highlightIssues,
@@ -75,10 +74,8 @@ let lastInputSelection: {
 
 // Track which domains are disabled
 let disabledDomains: string[] = [];
-let autocompleteEnabled = false; // opt-in; see loadUserSettings()
 let autocorrectEnabled = false; // opt-in; see loadUserSettings()
 let autocorrectDelayMs = 2000; // idle (ms) before autocorrect applies; see settings
-let autocompleteDelayMs = 700; // idle (ms) before autocomplete fires; see settings
 
 let isContextInvalidated = false;
 
@@ -258,25 +255,15 @@ async function loadUserSettings() {
   try {
     const result = await chrome.storage.sync.get([
       'disabledDomains',
-      'autocompleteEnabled',
       'autocorrectEnabled',
       'autocorrectDelayMs',
-      'autocompleteDelayMs',
     ]);
     disabledDomains = result.disabledDomains || [];
-    // Tab/ghost autocomplete is OPT-IN (default off). This is a proofreading
-    // tool, not a predictive-text tool; the unwanted Tab suggestions were a
-    // top complaint. Only on if the user explicitly enabled it.
-    autocompleteEnabled = result.autocompleteEnabled === true;
     // iPhone-style autocorrect is OPT-IN (default off): it silently edits the
     // user's text as they type, so it must be explicitly enabled.
     autocorrectEnabled = result.autocorrectEnabled === true;
     if (typeof result.autocorrectDelayMs === 'number') {
       autocorrectDelayMs = result.autocorrectDelayMs;
-    }
-    if (typeof result.autocompleteDelayMs === 'number') {
-      autocompleteDelayMs = result.autocompleteDelayMs;
-      rebuildDebouncedAutocomplete();
     }
     void initAutocorrect();
     void initLearnedCorrections();
@@ -588,7 +575,6 @@ function activateElement(element: HTMLElement) {
 
   // Listen for input events
   element.addEventListener('input', handleInput as EventListener);
-  element.addEventListener('keydown', handleKeyDown as EventListener);
   startFloatingDecorationObservers(element);
 
   activeElements.set(element, editableElement);
@@ -623,7 +609,6 @@ function deactivateElement(element: HTMLElement) {
 
   // Remove event listeners
   element.removeEventListener('input', handleInput as EventListener);
-  element.removeEventListener('keydown', handleKeyDown as EventListener);
   stopFloatingDecorationObservers(element);
 
   // Clear highlights only if NOT currently interacting with a tooltip
@@ -643,7 +628,6 @@ function deactivateElement(element: HTMLElement) {
   }
 
   console.log('[OGrammar] Deactivated element');
-  autocompleteManager.hide();
 }
 
 /**
@@ -657,25 +641,6 @@ function handleInput(event: Event) {
     void syncActiveContext(editableElement.lastText, editableElement.lastIssues || []);
     if (autocorrectEnabled) noteAutocorrectEdit();
     debouncedCheck(target);
-    if (autocompleteEnabled) {
-      debouncedAutocomplete(target);
-    }
-  }
-}
-
-function handleKeyDown(event: Event) {
-  const keyboardEvent = event as KeyboardEvent;
-  const target = getElementFromTarget(event.target);
-  if (!target) return;
-
-  if (keyboardEvent.key === 'Tab' && autocompleteManager.getState()?.element === target) {
-    keyboardEvent.preventDefault();
-    autocompleteManager.accept();
-    return;
-  }
-
-  if (keyboardEvent.key === 'Escape') {
-    autocompleteManager.hide();
   }
 }
 
@@ -1246,10 +1211,9 @@ function buildAnalysisContext(element: HTMLElement, text: string): AnalysisConte
 }
 
 /**
- * Title + URL + the page's main visible text (capped), so autocomplete
- * can ground a continuation in what the user is actually reading. This
- * sends page content to the configured LLM provider — it only travels on
- * the autocomplete path, which is opt-in (off by default).
+ * Title + URL + the page's main visible text (capped), so the grammar/AI
+ * review can ground its suggestions in what the user is actually reading.
+ * Included in the AnalysisContext sent to the configured LLM provider.
  */
 function getPageContext(): string {
   try {
@@ -1363,50 +1327,6 @@ function applyRewrite(original: string, rewritten: string): { success: boolean; 
   return { success: false, error: 'No editable selection available to rewrite.' };
 }
 
-const requestAutocomplete = async (element: HTMLElement) => {
-  if (!checkContext() || !autocompleteEnabled) return;
-  if (currentFocusElement !== element) return;
-
-  const text = extractText(element);
-  if (!text || text.trim().length < 12) {
-    autocompleteManager.hide();
-    return;
-  }
-
-  const cursor = getCaretPosition(element);
-  if (cursor < text.length && !element.isContentEditable) {
-    autocompleteManager.hide();
-    return;
-  }
-
-  try {
-    const response = (await chrome.runtime.sendMessage({
-      type: 'AUTOCOMPLETE_TEXT',
-      text,
-      cursor,
-      context: buildAnalysisContext(element, text),
-    })) as AutocompleteResponse;
-
-    if (!response?.suggestion || response.confidence < 0.35) {
-      autocompleteManager.hide();
-      return;
-    }
-
-    const rect = element.getBoundingClientRect();
-    autocompleteManager.show(element, response, rect);
-  } catch {
-    autocompleteManager.hide();
-  }
-};
-
-// Rebuilt whenever `autocompleteDelayMs` changes (debounce() captures its wait at
-// construction). Default delay = 700ms.
-let debouncedAutocomplete = debounce(requestAutocomplete, autocompleteDelayMs);
-
-function rebuildDebouncedAutocomplete() {
-  debouncedAutocomplete = debounce(requestAutocomplete, autocompleteDelayMs);
-}
-
 // Add CSS animations
 const style = document.createElement('style');
 style.textContent = `
@@ -1435,20 +1355,12 @@ chrome.storage?.onChanged?.addListener((changes) => {
     disabledDomains = changes.disabledDomains.newValue || [];
     console.log('[OGrammar] Disabled domains updated:', disabledDomains);
   }
-  if (changes.autocompleteEnabled) {
-    autocompleteEnabled = changes.autocompleteEnabled.newValue === true;
-    if (!autocompleteEnabled) autocompleteManager.hide();
-  }
   if (changes.autocorrectEnabled) {
     autocorrectEnabled = changes.autocorrectEnabled.newValue === true;
     if (!autocorrectEnabled) cancelPendingAutocorrect();
   }
   if (changes.autocorrectDelayMs && typeof changes.autocorrectDelayMs.newValue === 'number') {
     autocorrectDelayMs = changes.autocorrectDelayMs.newValue;
-  }
-  if (changes.autocompleteDelayMs && typeof changes.autocompleteDelayMs.newValue === 'number') {
-    autocompleteDelayMs = changes.autocompleteDelayMs.newValue;
-    rebuildDebouncedAutocomplete();
   }
   if (changes.autocorrectRejected) {
     onRejectedStorageChange(changes.autocorrectRejected.newValue);

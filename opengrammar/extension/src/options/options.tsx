@@ -4,10 +4,8 @@ import { clearAllApiKeys } from '../shared/apiKeyStore';
 type HarperDialect = 'American' | 'British' | 'Australian' | 'Canadian';
 
 interface Settings {
-  autocompleteEnabled: boolean;
   autocorrectEnabled: boolean;
   autocorrectDelayMs: number;
-  autocompleteDelayMs: number;
   harperDialect: HarperDialect;
   debugLogging: boolean;
   llmProtectedMasking: boolean;
@@ -18,10 +16,8 @@ interface Settings {
 
 // DOM Elements
 const elements = {
-  autocompleteEnabled: document.getElementById('autocompleteEnabled') as HTMLInputElement,
   autocorrectEnabled: document.getElementById('autocorrectEnabled') as HTMLInputElement,
   autocorrectDelay: document.getElementById('autocorrectDelay') as HTMLSelectElement,
-  autocompleteDelay: document.getElementById('autocompleteDelay') as HTMLSelectElement,
   harperDialect: document.getElementById('harperDialect') as HTMLSelectElement,
   debugLogging: document.getElementById('debugLogging') as HTMLInputElement,
   llmProtectedMasking: document.getElementById('llmProtectedMasking') as HTMLInputElement,
@@ -45,7 +41,6 @@ const elements = {
   metricAnalyses: document.getElementById('metricAnalyses') as HTMLElement,
   metricIssues: document.getElementById('metricIssues') as HTMLElement,
   metricApplied: document.getElementById('metricApplied') as HTMLElement,
-  metricAutocomplete: document.getElementById('metricAutocomplete') as HTMLElement,
   topDomains: document.getElementById('topDomains') as HTMLElement,
   topProviders: document.getElementById('topProviders') as HTMLElement,
   analyticsUpdated: document.getElementById('analyticsUpdated') as HTMLElement,
@@ -54,10 +49,8 @@ const elements = {
 };
 
 let settings: Settings = {
-  autocompleteEnabled: false,
   autocorrectEnabled: false,
   autocorrectDelayMs: 2000,
-  autocompleteDelayMs: 700,
   harperDialect: 'American',
   debugLogging: false,
   llmProtectedMasking: false,
@@ -97,10 +90,8 @@ async function loadSettings() {
   return new Promise<void>((resolve) => {
     chrome.storage.sync.get(
       [
-        'autocompleteEnabled',
         'autocorrectEnabled',
         'autocorrectDelayMs',
-        'autocompleteDelayMs',
         'harperDialect',
         'debugLogging',
         'llmProtectedMasking',
@@ -110,12 +101,9 @@ async function loadSettings() {
       ],
       (result) => {
         settings = {
-          autocompleteEnabled: result.autocompleteEnabled === true,
           autocorrectEnabled: result.autocorrectEnabled === true,
           autocorrectDelayMs:
             typeof result.autocorrectDelayMs === 'number' ? result.autocorrectDelayMs : 2000,
-          autocompleteDelayMs:
-            typeof result.autocompleteDelayMs === 'number' ? result.autocompleteDelayMs : 700,
           harperDialect: normalizeDialect(result.harperDialect),
           debugLogging: result.debugLogging === true,
           llmProtectedMasking: result.llmProtectedMasking === true,
@@ -125,10 +113,8 @@ async function loadSettings() {
         };
 
         // Update UI
-        elements.autocompleteEnabled.checked = settings.autocompleteEnabled;
         elements.autocorrectEnabled.checked = settings.autocorrectEnabled;
         elements.autocorrectDelay.value = String(settings.autocorrectDelayMs);
-        elements.autocompleteDelay.value = String(settings.autocompleteDelayMs);
         elements.harperDialect.value = settings.harperDialect;
         elements.debugLogging.checked = settings.debugLogging;
         elements.llmProtectedMasking.checked = settings.llmProtectedMasking;
@@ -180,10 +166,8 @@ async function saveSettings() {
   return new Promise<void>((resolve) => {
     chrome.storage.sync.set(
       {
-        autocompleteEnabled: settings.autocompleteEnabled,
         autocorrectEnabled: settings.autocorrectEnabled,
         autocorrectDelayMs: settings.autocorrectDelayMs,
-        autocompleteDelayMs: settings.autocompleteDelayMs,
         harperDialect: settings.harperDialect,
         debugLogging: settings.debugLogging,
         llmProtectedMasking: settings.llmProtectedMasking,
@@ -204,11 +188,6 @@ async function saveSettings() {
  */
 function setupEventListeners() {
   // Toggle settings
-  elements.autocompleteEnabled.addEventListener('change', () => {
-    settings.autocompleteEnabled = elements.autocompleteEnabled.checked;
-    saveSettings();
-  });
-
   elements.autocorrectEnabled.addEventListener('change', () => {
     settings.autocorrectEnabled = elements.autocorrectEnabled.checked;
     saveSettings();
@@ -216,11 +195,6 @@ function setupEventListeners() {
 
   elements.autocorrectDelay.addEventListener('change', () => {
     settings.autocorrectDelayMs = parseInt(elements.autocorrectDelay.value, 10) || 2000;
-    saveSettings();
-  });
-
-  elements.autocompleteDelay.addEventListener('change', () => {
-    settings.autocompleteDelayMs = parseInt(elements.autocompleteDelay.value, 10) || 700;
     saveSettings();
   });
 
@@ -562,7 +536,6 @@ function renderAnalytics() {
   elements.metricAnalyses.textContent = `${summary.totals.analysis_runs || 0}`;
   elements.metricIssues.textContent = `${summary.totals.issues_found || 0}`;
   elements.metricApplied.textContent = `${summary.totals.suggestions_applied || 0}`;
-  elements.metricAutocomplete.textContent = `${summary.totals.autocomplete_accepted || 0}`;
   elements.analyticsUpdated.textContent = `Last updated: ${summary.lastUpdatedAt ? new Date(summary.lastUpdatedAt).toLocaleString() : 'never'}`;
 
   renderAnalyticsList(elements.topDomains, Object.entries(summary.domains || {}));

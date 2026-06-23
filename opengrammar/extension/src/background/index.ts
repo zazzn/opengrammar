@@ -3,8 +3,6 @@ import type {
   AnalyticsEventType,
   AnalyticsSummary,
   AnalyzeResponse,
-  AutocompleteRequest,
-  AutocompleteResponse,
   EditorContext,
   LLMProvider,
   RewriteResponse,
@@ -43,8 +41,6 @@ const DEFAULT_ANALYTICS: AnalyticsSummary = {
     issues_found: 0,
     suggestions_applied: 0,
     suggestions_ignored: 0,
-    autocomplete_shown: 0,
-    autocomplete_accepted: 0,
     rewrite_opened: 0,
     rewrite_applied: 0,
   },
@@ -126,11 +122,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     void getActiveEditorContext().then((context) => {
       sendResponse(context || { text: '', issues: [] });
     });
-    return true;
-  }
-
-  if (request.type === 'AUTOCOMPLETE_TEXT') {
-    void handleAutocomplete(request, sendResponse);
     return true;
   }
 
@@ -579,171 +570,6 @@ async function handleGrammarCheck(
       issues: [],
     });
   }
-}
-
-async function handleAutocomplete(
-  request: AutocompleteRequest & { type: string },
-  sendResponse: (response: AutocompleteResponse) => void,
-) {
-  try {
-    const apiKey = await getApiKey();
-    const { model, provider, customBaseUrl, ollamaUrl, autocompleteEnabled } =
-      await chrome.storage.sync.get([
-        'model',
-        'provider',
-        'customBaseUrl',
-        'ollamaUrl',
-        'autocompleteEnabled',
-      ]);
-
-    if (autocompleteEnabled !== true) {
-      sendResponse({
-        suggestion: '',
-        confidence: 0,
-        replaceStart: request.cursor,
-        replaceEnd: request.cursor,
-        source: 'heuristic',
-      });
-      return;
-    }
-
-    const text = request.text;
-    const cursor = Math.max(0, Math.min(request.cursor ?? text.length, text.length));
-    const providerId = (provider || 'openai') as LLMProvider;
-
-    const data: AutocompleteResponse =
-      apiKey || providerId === 'ollama'
-        ? await getLlmAutocomplete(
-            text,
-            cursor,
-            apiKey,
-            model,
-            providerId,
-            resolveBaseUrl(providerId, customBaseUrl, ollamaUrl),
-            request.context,
-          )
-        : getHeuristicAutocomplete(text, cursor);
-
-    if (data.suggestion) {
-      await trackAnalyticsEvent('autocomplete_shown', {
-        count: 1,
-        domain: request.context?.domain,
-        provider: provider || 'heuristic',
-      });
-    }
-
-    logEvent({
-      kind: 'autocomplete',
-      provider,
-      model,
-      meta: data.source,
-      in: text.slice(Math.max(0, cursor - 120), cursor),
-      out: data.suggestion,
-    });
-
-    sendResponse(data);
-  } catch (error) {
-    sendResponse({
-      suggestion: '',
-      confidence: 0,
-      replaceStart: request.cursor,
-      replaceEnd: request.cursor,
-      source: 'heuristic',
-      error: error instanceof Error ? error.message : 'Autocomplete failed',
-    });
-  }
-}
-
-// Ported verbatim from backend/src/index.ts (getLlmAutocomplete) so the
-// next-word suggestion behaviour is unchanged now the call is client-side.
-async function getLlmAutocomplete(
-  text: string,
-  cursor: number,
-  apiKey: string,
-  model: string | undefined,
-  provider: LLMProvider,
-  baseURL: string,
-  context?: AnalysisContext,
-): Promise<AutocompleteResponse> {
-  const prefix = text.slice(0, cursor);
-  const suffix = text.slice(cursor);
-
-  const content = await chatCompletion({
-    apiKey,
-    baseURL,
-    model: model || 'gpt-4o-mini',
-    messages: [
-      {
-        role: 'system',
-        content:
-          'You are a writing assistant. Predict the next short continuation for the user. ' +
-          'Use context.pageContext (the title/URL/main text of the page they are viewing) to make ' +
-          'the continuation specific and relevant to that page when applicable. ' +
-          'Return ONLY JSON with keys suggestion and confidence. Keep suggestion under 12 words and do not repeat the existing text.',
-      },
-      {
-        role: 'user',
-        content: JSON.stringify({
-          prefix: prefix.slice(-400),
-          suffix: suffix.slice(0, 120),
-          context,
-        }),
-      },
-    ],
-    temperature: 0.5,
-    maxTokens: 80,
-    responseFormat: { type: 'json_object' },
-    nativeOllama: provider === 'ollama',
-  });
-
-  const raw = content || '{"suggestion":"","confidence":0.5}';
-  const parsed = JSON.parse(raw.replace(/^```json\s*/, '').replace(/\s*```$/, ''));
-
-  return {
-    suggestion: typeof parsed.suggestion === 'string' ? parsed.suggestion.trim() : '',
-    confidence:
-      typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0.72,
-    replaceStart: cursor,
-    replaceEnd: cursor,
-    source: 'llm',
-  };
-}
-
-// Ported verbatim from backend/src/index.ts (getHeuristicAutocomplete).
-function getHeuristicAutocomplete(text: string, cursor: number): AutocompleteResponse {
-  const prefix = text.slice(0, cursor);
-  const trimmed = prefix.trimEnd();
-  const lower = trimmed.toLowerCase();
-
-  const patternSuggestions: Array<{ pattern: RegExp; suggestion: string }> = [
-    { pattern: /thank you for$/i, suggestion: ' your time.' },
-    { pattern: /i look forward to$/i, suggestion: ' hearing from you.' },
-    { pattern: /please let me know if$/i, suggestion: ' you have any questions.' },
-    { pattern: /in conclusion[,]?$/i, suggestion: ' this approach provides a stronger outcome.' },
-    { pattern: /for example[,]?$/i, suggestion: ' this can improve clarity and consistency.' },
-    { pattern: /i hope you are$/i, suggestion: ' doing well.' },
-  ];
-
-  for (const entry of patternSuggestions) {
-    if (entry.pattern.test(lower)) {
-      return {
-        suggestion: entry.suggestion,
-        confidence: 0.66,
-        replaceStart: cursor,
-        replaceEnd: cursor,
-        source: 'heuristic',
-      };
-    }
-  }
-
-  const endsWithSentence = /[.!?]$/.test(trimmed);
-  return {
-    suggestion: endsWithSentence ? ' This helps keep the writing clear.' : '',
-    confidence: endsWithSentence ? 0.42 : 0,
-    replaceStart: cursor,
-    replaceEnd: cursor,
-    source: 'heuristic',
-  };
 }
 
 async function handleRewrite(text: string, tone: string, sendResponse: (response: any) => void) {

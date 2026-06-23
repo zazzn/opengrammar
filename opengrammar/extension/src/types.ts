@@ -160,8 +160,8 @@ export interface AnalysisContext {
   previousText?: string;
   nextText?: string;
   fullTextExcerpt?: string;
-  /** Page title + URL + trimmed main visible text, so autocomplete can
-   *  ground a continuation in what the user is actually reading. */
+  /** Page title + URL + trimmed main visible text, so the grammar/AI review
+   *  can ground its suggestions in what the user is actually reading. */
   pageContext?: string;
 }
 
@@ -206,25 +206,6 @@ export interface RewriteResponse {
   error?: string;
 }
 
-export interface AutocompleteRequest {
-  text: string;
-  cursor: number;
-  apiKey?: string;
-  model?: string;
-  provider?: LLMProvider;
-  baseUrl?: string;
-  context?: AnalysisContext;
-}
-
-export interface AutocompleteResponse {
-  suggestion: string;
-  confidence: number;
-  replaceStart: number;
-  replaceEnd: number;
-  source: 'heuristic' | 'llm';
-  error?: string;
-}
-
 export interface EditorContext {
   text: string;
   issues: Issue[];
@@ -237,8 +218,6 @@ export type AnalyticsEventType =
   | 'issues_found'
   | 'suggestions_applied'
   | 'suggestions_ignored'
-  | 'autocomplete_shown'
-  | 'autocomplete_accepted'
   | 'rewrite_opened'
   | 'rewrite_applied';
 

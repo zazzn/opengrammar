@@ -28,17 +28,6 @@
         <div class="setting-group">
           <label class="toggle-setting">
             <div class="toggle-info">
-              <span class="setting-label">Autocomplete suggestions</span>
-              <span class="setting-description">Show next-phrase completions and accept with Tab</span>
-            </div>
-            <input type="checkbox" id="autocompleteEnabled" class="toggle-input">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-
-        <div class="setting-group">
-          <label class="toggle-setting">
-            <div class="toggle-info">
               <span class="setting-label">Autocorrect as you type</span>
               <span class="setting-description">Silently fix high-confidence typos (spelling, capitalization, punctuation) on words you just finished typing. Off by default. Undo a fix and OGrammar won't auto-apply it again.</span>
             </div>
@@ -61,23 +50,6 @@
             <option value="2000">After 2 seconds</option>
             <option value="3000">After 3 seconds</option>
             <option value="5000">After 5 seconds</option>
-          </select>
-        </div>
-
-        <div class="setting-group">
-          <label for="autocompleteDelay">
-            <span class="setting-label">Autocomplete delay</span>
-            <span class="setting-description">
-              How long to wait after you stop typing before autocomplete
-              suggests a continuation. Longer is less eager.
-            </span>
-          </label>
-          <select id="autocompleteDelay" class="text-input" style="margin-top: 8px;">
-            <option value="400">After 0.4 seconds</option>
-            <option value="700">After 0.7 seconds</option>
-            <option value="1000">After 1 second</option>
-            <option value="1500">After 1.5 seconds</option>
-            <option value="2000">After 2 seconds</option>
           </select>
         </div>
 
@@ -205,7 +177,6 @@
           <div class="analytics-card"><span class="analytics-value" id="metricAnalyses">0</span><span class="analytics-label">Analyses</span></div>
           <div class="analytics-card"><span class="analytics-value" id="metricIssues">0</span><span class="analytics-label">Issues Found</span></div>
           <div class="analytics-card"><span class="analytics-value" id="metricApplied">0</span><span class="analytics-label">Applied</span></div>
-          <div class="analytics-card"><span class="analytics-value" id="metricAutocomplete">0</span><span class="analytics-label">Autocomplete Accepted</span></div>
         </div>
 
         <div class="analytics-subsections">
@@ -290,7 +261,7 @@
         <h2>Debug &amp; Tuning</h2>
         <p class="section-description">
           Capture what OGrammar produces (inline fixes, corrections, tone
-          rewrites, autocomplete) so you can share a compact log for tuning.
+          rewrites) so you can share a compact log for tuning.
           Off by default; no overhead when off. Nothing is sent anywhere —
           the log stays on this device until you copy it.
         </p>
@@ -374,7 +345,7 @@
     </main>
 
     <footer>
-      <p>Built with ❤️ — OGrammar, a fork of OpenGrammar</p>
+      <p>Built with ❤️ — OGrammar · free & open source</p>
     </footer>
   </div>
 
