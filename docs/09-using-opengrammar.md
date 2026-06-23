@@ -1,7 +1,6 @@
 # Using OGrammar — User Guide
 
-A complete guide to the **OGrammar browser extension's** features. For OS-wide use on
-Windows, see [OGrammar Desktop](31-desktop-app.md); both products share the same engine.
+A complete guide to the **OGrammar browser extension's** features.
 
 ---
 
@@ -167,8 +166,6 @@ where you write casually.
   flagged.
 - **Use writing preferences** to match the site — strict for documents, typos-only for
   chat.
-- **Want coverage outside the browser?** Install the [desktop app](31-desktop-app.md);
-  it checks native Windows apps and yields browser windows to this extension.
 
 ---
 

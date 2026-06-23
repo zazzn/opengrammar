@@ -1,8 +1,7 @@
 # Browser Extension Setup
 
 Install and configure the **OGrammar browser extension** on Chromium browsers
-(Chrome, Brave, Edge). This is **product 1** of two — for OS-wide checking on
-Windows, see [OGrammar Desktop](31-desktop-app.md).
+(Chrome, Brave, Edge).
 
 The extension is loaded **unpacked** from a local build (it is not yet on the
 Chrome Web Store), so you build it once and load the `dist/` folder.
@@ -147,4 +146,3 @@ See [18-troubleshooting.md](18-troubleshooting.md) for the full guide.
 
 - [Using OGrammar](09-using-opengrammar.md) — daily usage
 - [AI providers](07-ai-providers.md) — provider setup
-- [OGrammar Desktop](31-desktop-app.md) — OS-wide checking on Windows

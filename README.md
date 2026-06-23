@@ -3,8 +3,8 @@
 > Biswas, distributed under the **Apache License 2.0**. It contains
 > substantial changes (a new Harper-based inline engine, a local n-gram
 > context re-ranker, re-architected LLM correction, encrypted API-key
-> storage, additional providers, a proactive sentence-review flow, and an
-> all-new **OS-wide desktop app** — see [`NOTICE`](NOTICE) for the full list
+> storage, additional providers, and a proactive sentence-review flow — see
+> [`NOTICE`](NOTICE) for the full list
 > of modifications). It is **not affiliated with or endorsed by the original
 > author**. The original `LICENSE` and `NOTICE` are retained as required by
 > Apache-2.0.
@@ -14,7 +14,7 @@
 
   # 🪶 OGrammar
 
-  **Your privacy-first, open-source writing assistant — now everywhere you type.**
+  **Your privacy-first, open-source writing assistant for the browser.**
   *A free, local-first, bring-your-own-key alternative to premium grammar tools.*
 
   [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -22,33 +22,17 @@
 
 ---
 
-## Two products, one engine
+## What it is
 
-OGrammar now ships as **two distinct products** that share the same Harper + LLM
-engine but run in completely different places:
+A Grammarly-style **browser extension** for Chrome / Brave / Edge. Inline underlines,
+proactive sentence review, autocomplete, tone rewriting, writing stats, and opt-in
+autocorrect — in Gmail, Google Docs, Notion, Reddit, and any web editor.
 
-### 🧩 1. Browser Extension  — *writing in the browser*
-A Grammarly-style assistant for Chrome / Brave / Edge. Inline underlines, proactive
-sentence review, autocomplete, tone rewriting, writing stats, and opt-in autocorrect —
-in Gmail, Google Docs, Notion, Reddit, and any web editor.
 → **[Install](docs/04-browser-extension-setup.md)** · source in [`opengrammar/extension/`](opengrammar/extension/)
-
-### 🖥️ 2. Desktop App (Windows)  — *writing everywhere else*
-A native (Rust, no Electron) **OS-wide** proofreader that works in **any** focused text
-field — Notepad, Word, Slack desktop, chat boxes, IDE fields — via UI Automation. True
-OS overlay underlines, click-to-fix cards, opt-in autocorrect, and an LLM **rewrite pill**
-(Polish / Formalize / Casual, with preview before apply).
-→ **[Overview](docs/31-desktop-app.md)** · **[Build](desktop/README.md)** · source in [`desktop/`](desktop/)
-
-> 📖 **[Full two-product overview →](docs/30-products-overview.md)**
-
-The two are **de-conflicted**: the desktop app excludes browsers by default, so the
-extension owns the browser and the desktop app owns everything else. Run both for
-end-to-end coverage.
 
 ---
 
-## What they share
+## How it works
 
 - **Harper (local, instant):** the [Harper](https://writewithharper.com) engine runs
   100% on-device — spelling, grammar, punctuation, capitalization, style — no network,
@@ -56,34 +40,22 @@ end-to-end coverage.
 - **LLM context tier (optional, BYOK):** add your own key (OpenAI, DeepSeek, Groq,
   OpenRouter, Together, or local Ollama) for context/sentence review. The model's
   findings are merged with Harper's and de-duplicated (Harper wins on overlap).
-- **Parity:** the desktop's Rust `ograms-engine` is a direct port of the extension's LLM
-  correction core, so the prompt, normaliser, diff fallback, and protected-text masking
-  stay in sync across both.
 - **Privacy:** local-first, bring-your-own-key, no text telemetry. Keys are encrypted at
-  rest (extension: `chrome.storage`; desktop: Windows DPAPI in `%APPDATA%\OGrammar`).
+  rest in `chrome.storage`.
 
 ---
 
 ## Quick start
 
-**Extension:** build `opengrammar/extension`, then in `chrome://extensions` enable
+Build `opengrammar/extension`, then in `chrome://extensions` enable
 Developer Mode → **Load unpacked** → select the built extension. Open its options to add
 your AI key. See [docs/04-browser-extension-setup.md](docs/04-browser-extension-setup.md).
-
-**Desktop (Windows):**
-```powershell
-cd desktop
-cargo build --release -p ograms-hotkey
-.\target\release\ograms-hotkey.exe
-```
-Then open **Settings** from the tray icon to set your dialect, AI provider/model, and key.
-See [desktop/README.md](desktop/README.md).
 
 ---
 
 ## Documentation
 
-Start at **[docs/30-products-overview.md](docs/30-products-overview.md)**, or the full
+Start at **[docs/01-quick-start.md](docs/01-quick-start.md)**, or the full
 index at **[docs/00-index.md](docs/00-index.md)**.
 
 ## Contributing

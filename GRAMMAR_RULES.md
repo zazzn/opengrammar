@@ -5,7 +5,7 @@ guide explains how grammar checking works now and how you can help improve it.
 
 ## How Rules Work
 
-OGrammar uses a **two-tier engine** (shared by the browser extension and the desktop app):
+OGrammar uses a **two-tier engine**:
 
 1. **Harper (local, instant):** on-device spelling, grammar, punctuation, capitalization,
    and style via the [Harper](https://writewithharper.com) engine — no network, no key.
@@ -21,8 +21,7 @@ replaced by Harper. The logic lives in the extension at
 - `issuePolicy.ts` — routes/filters issues (`quick-fix` vs `sentence-review` vs `suppress`)
 - `llmClient.ts` — the LLM prompt and result-normalisation logic
 
-The desktop app mirrors this in Rust (`desktop/ograms-engine/src/llm.rs`). See
-[docs/13-architecture.md](docs/13-architecture.md) for the full picture.
+See [docs/13-architecture.md](docs/13-architecture.md) for the full picture.
 
 ## How to Contribute
 
@@ -38,9 +37,8 @@ If you know a common mistake OGrammar misses (or a false positive it raises):
 1. Decide which tier the change belongs in — a local mechanical check (Harper-side handling
    in `harperEngine.ts` / routing in `issuePolicy.ts`) or context/sentence behaviour
    (`llmClient.ts`).
-2. Make the change. If you touch the LLM prompt, routing, or protected-text rules, **mirror
-   it in the desktop engine** (`desktop/ograms-engine/src/llm.rs`) to keep parity.
-3. Run `bun x tsc --noEmit` in `opengrammar/extension` (and `cargo test` for desktop changes).
+2. Make the change in the relevant module above.
+3. Run `bun x tsc --noEmit` in `opengrammar/extension`.
 4. Submit your PR with a clear description and an example before/after.
 
 ## Categories We Care About

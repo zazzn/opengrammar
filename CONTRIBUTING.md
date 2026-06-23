@@ -21,16 +21,13 @@ By participating in this project, you are expected to uphold our Code of Conduct
 ### Pull Requests
 
 1. **Fork the repository** and create your branch.
-2. **Make your changes** in the relevant product (see below).
-3. **Ensure checks pass**: extension → `bun x tsc --noEmit`; desktop → `cargo build` + `cargo test`.
-4. **Keep the engine at parity** — if you change the LLM prompt/routing/protected-text rules,
-   mirror the change in *both* the extension (`background/llmClient.ts`, `issuePolicy.ts`,
-   `shared/protectedText.ts`) and the desktop engine (`ograms-engine/src/llm.rs`).
-5. **Issue a Pull Request** with a clear description.
+2. **Make your changes** in the extension (see below).
+3. **Ensure checks pass**: `bun x tsc --noEmit`.
+4. **Issue a Pull Request** with a clear description.
 
 ## Development Setup
 
-OGrammar is **two products** — see **[docs/13-architecture.md](docs/13-architecture.md)** and
+See **[docs/13-architecture.md](docs/13-architecture.md)** and
 **[docs/14-development.md](docs/14-development.md)** for the full guide.
 
 **Browser extension** (TypeScript; we use **Bun**):
@@ -38,13 +35,6 @@ OGrammar is **two products** — see **[docs/13-architecture.md](docs/13-archite
 cd opengrammar/extension
 bun install
 bun run dev        # or: bun run build ; bun x tsc --noEmit
-```
-
-**Desktop app** (Rust, Windows):
-```powershell
-cd desktop
-cargo build --release -p ograms-hotkey
-cargo test -p ograms-engine -p ograms-hotkey
 ```
 
 ## Community

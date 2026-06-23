@@ -206,8 +206,6 @@ Output: "It is recommended to do this"
 
 ## 🚀 How to Use
 
-### In the browser extension
-
 1. **Select text** in an editable field on any page.
 2. A small **rewrite bubble** appears near your selection — click it.
 3. **Choose a tone** and review the proposed rewrite.
@@ -215,12 +213,6 @@ Output: "It is recommended to do this"
 
 Tone rewriting requires an AI provider — set one in **Options** (see
 [07-ai-providers.md](07-ai-providers.md)).
-
-### In the desktop app (Windows)
-
-The desktop app surfaces rewriting as a **Rewrite pill** at the focused field's corner
-(Polish / Formalize / Casual), with a preview before it applies anything. See
-[31-desktop-app.md](31-desktop-app.md).
 
 ---
 
@@ -409,7 +401,6 @@ Keep a list of good rewrites:
 
 - [Using OGrammar](09-using-opengrammar.md) - Complete user guide
 - [AI Providers](07-ai-providers.md) - Configure AI
-- [OGrammar Desktop](31-desktop-app.md) - Rewriting outside the browser
 
 ---
 

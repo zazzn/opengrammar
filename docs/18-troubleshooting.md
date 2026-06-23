@@ -1,7 +1,6 @@
 # Troubleshooting
 
-Fixes for common issues with the **OGrammar browser extension**. For desktop-app issues,
-see [OGrammar Desktop](31-desktop-app.md).
+Fixes for common issues with the **OGrammar browser extension**.
 
 ---
 

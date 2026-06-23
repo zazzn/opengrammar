@@ -39,7 +39,7 @@ function initTheme() {
         document.body.classList.add('dark');
     }
     
-    // Desktop theme toggle
+    // Header theme toggle
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
             document.body.classList.toggle('dark');

@@ -1,12 +1,7 @@
 # Quick Start
 
-Get OGrammar running fast. OGrammar ships as **two products** — a **browser
-extension** and a **Windows desktop app** — that share one Harper + LLM engine.
-This page gets the **browser extension** going; for the desktop app see
-[31-desktop-app.md](31-desktop-app.md).
-
-> New here? Read the [two-product overview](30-products-overview.md) first to decide
-> which product (or both) you want.
+Get the OGrammar **browser extension** running fast. It is built on one Harper + LLM
+engine and works in Chrome / Brave / Edge.
 
 ---
 
@@ -70,7 +65,6 @@ bun run build
 | Use AI fully offline | [AI providers](07-ai-providers.md) → Ollama (local, no key) |
 | Rewrite text in different tones | [Tone rewriting](10-tone-rewriting.md) |
 | See every feature | [Using OGrammar](09-using-opengrammar.md) |
-| Check anywhere on Windows (not just the browser) | [OGrammar Desktop](31-desktop-app.md) |
 
 ---
 

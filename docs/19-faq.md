@@ -8,13 +8,9 @@ Common questions about OGrammar.
 
 ### What is OGrammar?
 
-OGrammar is a free, open-source, privacy-first writing assistant. It ships as **two
-products** that share one engine:
-
-- a **browser extension** for Chromium browsers (Chrome / Brave / Edge), and
-- a **Windows desktop app** that works OS-wide in any text field.
-
-It's a local-first, bring-your-own-key alternative to premium grammar tools.
+OGrammar is a free, open-source, privacy-first writing assistant. It's a **browser
+extension** for Chromium browsers (Chrome / Brave / Edge), and a local-first,
+bring-your-own-key alternative to premium grammar tools.
 
 ### Is it really free?
 
@@ -31,7 +27,6 @@ or fully free and offline with local Ollama.
 | **Open source** | No | Yes (Apache 2.0) |
 | **Offline** | Limited | Full (Harper local engine) |
 | **AI** | Grammarly's only | Your choice of provider, or local Ollama |
-| **Coverage** | Browser + apps | Browser extension **and** OS-wide Windows app |
 
 ### What browsers does the extension support?
 
@@ -39,27 +34,19 @@ Chromium browsers — Chrome (88+), Brave (1.20+), Edge (88+). Other Chromium br
 (Opera, Vivaldi) should work via "Load unpacked" but are untested. **Firefox/Safari**
 ports are on the [roadmap](../ROADMAP.md).
 
-### Does OGrammar work outside the browser?
-
-Yes — that's the **desktop app**. On Windows it checks native apps (Notepad, Word, Slack
-desktop, chat boxes, IDE fields) via UI Automation. It excludes browsers by default, so
-the extension owns the browser and the desktop app owns everything else. See
-[31-desktop-app.md](31-desktop-app.md). macOS/Linux are not built yet.
-
 ---
 
 ## Installation & setup
 
 ### How do I install it?
 
-- **Extension:** build it and load `dist/` unpacked — see
-  [04-browser-extension-setup.md](04-browser-extension-setup.md).
-- **Desktop:** build the Rust app and run it — see [31-desktop-app.md](31-desktop-app.md).
+Build the extension and load `dist/` unpacked — see
+[04-browser-extension-setup.md](04-browser-extension-setup.md).
 
 ### Do I need to deploy a backend?
 
-**No.** There is no backend. The extension (and desktop app) call your chosen AI provider
-directly with your own key, or talk to your local Ollama server. Three ways to run:
+**No.** There is no backend. The extension calls your chosen AI provider
+directly with your own key, or talks to your local Ollama server. Three ways to run:
 
 1. **On-device only** — Harper grammar/spelling/punctuation, no key, offline.
 2. **Bring your own key** — add a Groq/OpenAI/etc. key for the LLM tier.
@@ -67,7 +54,7 @@ directly with your own key, or talk to your local Ollama server. Three ways to r
 
 ### How long does setup take?
 
-About 5–10 minutes for the extension. Add ~15–30 minutes if you set up local Ollama.
+About 5–10 minutes. Add ~15–30 minutes if you set up local Ollama.
 
 ---
 
@@ -98,7 +85,8 @@ disable specific sites in Options → Site settings.
 
 ### Can I use it on mobile?
 
-No — OGrammar targets **desktop**. Mobile browser extensions are too limited.
+No — OGrammar targets **Chromium browsers on computers**. Mobile browser extensions are
+too limited.
 
 ### Can I add custom words?
 
@@ -116,9 +104,8 @@ Yes — Options → Custom dictionary (or **Add to dictionary** from any suggest
 
 ### Do you store my API keys?
 
-No. Keys are stored locally and encrypted at rest — `chrome.storage` for the extension,
-Windows DPAPI (`%APPDATA%\OGrammar`) for the desktop app. They're only used to
-authenticate with your provider.
+No. Keys are stored locally and encrypted at rest in `chrome.storage`. They're only used
+to authenticate with your provider.
 
 ### Can I run everything locally?
 
@@ -148,8 +135,7 @@ Not for Harper checking. For the LLM tier, yes — or run Ollama locally (no key
 
 ### Can I switch providers?
 
-Anytime — change the provider/model (and key) in Options (extension) or Settings
-(desktop).
+Anytime — change the provider/model (and key) in Options.
 
 ---
 
@@ -184,8 +170,7 @@ Report bugs, suggest features, improve docs, or contribute code. See
 
 See [GRAMMAR_RULES.md](../GRAMMAR_RULES.md). Grammar/spelling is handled by Harper plus the
 LLM tier; the extension's logic lives in `opengrammar/extension/src/background/`
-(`harperEngine.ts`, `issuePolicy.ts`, `llmClient.ts`). Mirror LLM prompt/routing changes
-in the desktop engine (`desktop/ograms-engine/src/llm.rs`) to keep parity.
+(`harperEngine.ts`, `issuePolicy.ts`, `llmClient.ts`).
 
 ---
 
@@ -193,24 +178,20 @@ in the desktop engine (`desktop/ograms-engine/src/llm.rs`) to keep parity.
 
 ### What's the tech stack?
 
-- **Extension:** React + TypeScript + Vite, Manifest V3, Harper (WASM); calls AI providers
-  directly via OpenAI-compatible APIs.
-- **Desktop:** Rust (Win32 + UI Automation), sharing the Harper + LLM logic with the
-  extension (`ograms-engine` is a Rust port of the extension's LLM core).
+React + TypeScript + Vite, Manifest V3, Harper (WASM); calls AI providers directly via
+OpenAI-compatible APIs.
 
 See [13-architecture.md](13-architecture.md).
 
 ### Is there a hosted API?
 
-No. OGrammar is a browser extension and a Windows desktop app — there's no hosted HTTP
-API. The desktop `ograms-engine` Rust crate does expose a CLI, and the extension's modules
+No. OGrammar is a browser extension — there's no hosted HTTP API. The extension's modules
 are reusable in the codebase.
 
 ### What's the roadmap?
 
-See [ROADMAP.md](../ROADMAP.md). In short: the shared engine, extension, and Windows
-desktop app are shipping; planned work includes Firefox/Safari ports, deeper desktop
-capture for Electron apps, selection-scoped rewrite, and packaging/installers.
+See [ROADMAP.md](../ROADMAP.md). In short: the engine and extension are shipping; planned
+work includes Firefox/Safari ports and residual false-positive guards.
 
 ---
 

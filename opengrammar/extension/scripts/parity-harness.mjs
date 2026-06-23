@@ -1,5 +1,5 @@
 // Cross-engine parity harness: inject the same real typos into real sentences,
-// run them through the EXTENSION pipeline (in-process) and the DESKTOP Rust engine
+// run them through the extension pipeline (in-process) and a reference Rust engine
 // (ograms-engine --jsonl), and diff the top-1 suggestion per case. Fails loudly if
 // the two engines disagree, so "fix one, break the other" can't slip through.
 //   node scripts/parity-harness.mjs [nCases=300]
@@ -71,9 +71,9 @@ for (const line of readFileSync(join(root, 'test-data/leipzig-eng-sentences.txt'
   if (cases.length >= N) break;
 }
 
-// ── DESKTOP (Rust) engine via the CLI, one process for the whole corpus ──
-const CLI = '/home/zazzn/opengrammar/desktop/target/debug/ograms-engine';
-if (!existsSync(CLI)) { console.error('Rust CLI not built:', CLI, '\nRun: cd ~/opengrammar/desktop && cargo build -p ograms-engine'); process.exit(2); }
+// ── reference (Rust) engine via the CLI, one process for the whole corpus ──
+const CLI = process.env.OGRAMS_ENGINE_CLI || '';
+if (!CLI || !existsSync(CLI)) { console.error('Reference Rust CLI not found. Set OGRAMS_ENGINE_CLI to an ograms-engine binary.'); process.exit(2); }
 const DICT = join(root, 'public/dict/frequency_dictionary_en_82_765.txt');
 const MODEL = join(root, 'public/ngram/model.bin');
 const rustRes = spawnSync(
@@ -132,7 +132,7 @@ for (let i = 0; i < cases.length; i++) {
   }
 }
 
-console.log(`\nCross-engine parity — ${agg.n} cases (extension vs desktop Rust, Combined)`);
+console.log(`\nCross-engine parity — ${agg.n} cases (extension vs reference Rust, Combined)`);
 console.log(`  both engines flagged the typo: ${agg.bothDet}`);
 console.log(`  top-1 AGREES:                  ${agg.top1Match}/${agg.bothDet} (${agg.bothDet ? ((100 * agg.top1Match) / agg.bothDet).toFixed(1) : '–'}%)`);
 console.log(`  DETECTION mismatch:            ${agg.detMismatch}  (ext-only ${agg.extOnly}, rust-only ${agg.rustOnly})`);
@@ -149,7 +149,7 @@ if (detMisses.length) {
 // Invariant 1: ranking parity — when both engines flag a typo they must pick the same
 //   top-1 correction. This is the shared OGrammar logic; require ~100% (allow a hair for
 //   SymSpell-port float-tie noise). Invariant 2: the Rust engine must never over-flag
-//   (rust-only detections would be a real desktop bug). ext-only detection misses are
+//   (rust-only detections would be a real engine bug). ext-only detection misses are
 //   tolerated: they're harper.js-WASM-vs-harper-core library nuances, below our logic.
 const top1Pct = agg.bothDet ? (100 * agg.top1Match) / agg.bothDet : 100;
 const RANK_FLOOR = 99.0;

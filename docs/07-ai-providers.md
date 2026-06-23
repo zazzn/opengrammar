@@ -1,9 +1,7 @@
 # 🤖 AI Provider Setup Guide
 
 Configure the optional **LLM tier** that powers sentence-level review and tone
-rewriting. This applies to **both products** — the browser extension and the Windows
-desktop app set the provider the same way (extension: **Options**; desktop: tray →
-**Settings**).
+rewriting. Set the provider in the extension's **Options**.
 
 OGrammar is **bring-your-own-key**: it calls your chosen provider directly with your
 own key — there is no OGrammar backend, and nothing is proxied through us. The local
@@ -13,8 +11,7 @@ tier.
 > **All quality numbers on this page are measured on OGrammar's own 46-case
 > proofreading corpus** (weighted score out of 123), with protected-text masking on —
 > not vendor marketing. Full methodology and per-model tables live in
-> [25-local-llm-model-benchmark.md](25-local-llm-model-benchmark.md) and
-> [33-spell-suggestion-benchmark.md](33-spell-suggestion-benchmark.md). Providers we
+> [25-local-llm-model-benchmark.md](25-local-llm-model-benchmark.md). Providers we
 > have **not** scored on that corpus are labelled *not scored* — we don't invent numbers.
 
 ---
@@ -94,8 +91,7 @@ ollama pull qwen3.5:4b       # the recommended model (~2.5 GB)
 
 > **Running Ollama in WSL?** Use `http://127.0.0.1:11434/v1`, **not** `localhost` —
 > Windows resolves `localhost` to IPv6 (`::1`), which WSL's mirrored loopback doesn't
-> forward, so the connection silently fails. (The desktop app normalizes this for you;
-> the extension does not, so set `127.0.0.1` there.) `127.0.0.1` also works for a native
+> forward, so the connection silently fails. `127.0.0.1` also works for a native
 > install, so it's always a safe choice.
 
 OGrammar talks to Ollama over its **native `/api/chat`** API under the hood (pinned to a
@@ -232,10 +228,9 @@ makes it both the highest-quality *and* the cheapest cloud choice.
 
 ## 🔄 Switching providers
 
-Change it anytime — extension: **Options**; desktop: tray → **Settings** → pick the
+Change it anytime — open the extension's **Options** → pick the
 provider, paste the key (if needed), choose the model, save. Settings persist
-automatically; the API key is stored encrypted (desktop: DPAPI; extension: browser sync
-storage).
+automatically; the API key is stored encrypted in browser sync storage.
 
 ---
 
@@ -262,7 +257,5 @@ ollama run qwen3.5:4b "Fix this: me and him went to store"
 
 - [Local LLM model benchmark](25-local-llm-model-benchmark.md) — full methodology, the
   masked per-model tables, and the cross-provider recommendation behind this page.
-- [Spell-suggestion benchmark](33-spell-suggestion-benchmark.md) — how much the LLM tier
-  adds over the local engine on real typos.
-- [Browser extension setup](04-browser-extension-setup.md) · [OGrammar Desktop](31-desktop-app.md)
+- [Browser extension setup](04-browser-extension-setup.md)
 - [Troubleshooting](18-troubleshooting.md)

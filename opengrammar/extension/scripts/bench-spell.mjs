@@ -1,14 +1,13 @@
 /**
- * Spell-suggestion accuracy benchmark — compares the configs that distinguish
- * the two OGrammar engines, across synthetic + real typo corpora, with an
- * optional local-LLM (Ollama) track to quantify the "LLM as source of truth"
- * headroom.
+ * Spell-suggestion accuracy benchmark — compares the candidate-generation and
+ * ranking configs, across synthetic + real typo corpora, with an optional
+ * local-LLM (Ollama) track to quantify the "LLM as source of truth" headroom.
  *
  * Configs (all share Harper for DETECTION; they differ only in how the
- * SUGGESTION is generated + ranked — the real engine difference):
- *   A harper        Harper's own top suggestion        (current DESKTOP default)
+ * SUGGESTION is generated + ranked):
+ *   A harper        Harper's own top suggestion
  *   B harper+ctx    Harper cands re-ranked by n-gram
- *   C symspell+ctx  SymSpell pool + n-gram             (current EXTENSION default)
+ *   C symspell+ctx  SymSpell pool + n-gram             (the shipped default)
  *   D C + tiering   C + edit-distance tiering          (proposed "solution #1")
  *
  * Tracks:
