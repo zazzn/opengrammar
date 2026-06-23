@@ -1,5 +1,5 @@
 // ===================================
-// OpenGrammar Documentation Scripts
+// OGrammar Documentation Scripts
 // ===================================
 
 document.addEventListener('DOMContentLoaded', () => {

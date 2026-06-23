@@ -64,12 +64,6 @@
                     </svg>
                     AI Providers
                 </a>
-                <a href="#extension-settings" class="nav-link" data-page="extension-settings">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
-                    </svg>
-                    Extension Settings
-                </a>
             </div>
 
             <div class="nav-section">
@@ -85,12 +79,6 @@
                         <path fill-rule="evenodd" d="M4 2a2 2 0 00-2 2v11a3 3 0 106 0V4a2 2 0 00-2-2H4zm1 14a1 1 0 100-2 1 1 0 000 2zm5-1.757l4.9-4.9a2 2 0 000-2.828L13.485 5.1a2 2 0 00-2.828 0L10 5.757v8.486zM16 18H9.071l6-6H16a2 2 0 012 2v2a2 2 0 01-2 2z" clip-rule="evenodd"/>
                     </svg>
                     Tone Rewriting
-                </a>
-                <a href="#writing-statistics" class="nav-link" data-page="writing-statistics">
-                    <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
-                    </svg>
-                    Writing Statistics
                 </a>
                 <a href="#keyboard-shortcuts" class="nav-link" data-page="keyboard-shortcuts">
                     <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor">
@@ -292,7 +280,7 @@ npm run build</code></pre>
                         <li>Click <strong>Settings</strong> (gear icon)</li>
                         <li>Enter your API key (from Step 1)</li>
                         <li>Select Provider: <strong>Groq</strong></li>
-                        <li>Select Model: <strong>llama-3.3-70b-versatile</strong> (or run Ollama locally with <strong>qwen3.5:4b</strong>)</li>
+                        <li>Keep the default model, or pick <strong>llama-3.3-70b-versatile</strong> for the fastest replies (or run Ollama locally with <strong>qwen3.5:4b</strong>)</li>
                     </ol>
 
                     <h2 id="step-5-start-writing">Step 5: Start Writing!</h2>
@@ -390,13 +378,13 @@ npm run build</code></pre>
                                 </tr>
                                 <tr>
                                     <td><strong>Opera</strong></td>
-                                    <td>74+</td>
-                                    <td><span class="status-badge success"><i data-lucide="check-circle-2" class="icon-inline"></i> Supported</span></td>
+                                    <td>Chromium-based</td>
+                                    <td><span class="status-badge warning"><i data-lucide="alert-triangle" class="icon-inline"></i> Untested (Chromium)</span></td>
                                 </tr>
                                 <tr>
                                     <td><strong>Vivaldi</strong></td>
-                                    <td>3.6+</td>
-                                    <td><span class="status-badge success"><i data-lucide="check-circle-2" class="icon-inline"></i> Supported</span></td>
+                                    <td>Chromium-based</td>
+                                    <td><span class="status-badge warning"><i data-lucide="alert-triangle" class="icon-inline"></i> Untested (Chromium)</span></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -539,21 +527,13 @@ npm run build</code></pre>
                         </div>
                     </div>
 
-                    <div class="callout callout-primary">
-                        <div class="callout-icon"><i data-lucide="layers" class="icon-inline"></i></div>
-                        <div class="callout-content">
-                            <strong>Now two products.</strong>
-                            <p>OGrammar ships as this <strong>browser extension</strong> and a separate <strong>Windows desktop app</strong> that proofreads OS-wide in any application. Both share the same Harper + LLM engine. This site documents the extension; the desktop app is covered in the <a href="https://github.com/zazzn/opengrammar" target="_blank">repository docs</a>.</p>
-                        </div>
-                    </div>
-
                     <h2><i data-lucide="star" class="icon-inline"></i> Key Features</h2>
                     
                     <div class="feature-grid-2">
                         <div class="feature-box">
                             <div class="feature-box-icon"><i data-lucide="lock" class="icon-inline"></i></div>
                             <h3>Zero Cost Option</h3>
-                            <p>The core engine runs locally in your browser, checking for passive voice, repetition, and readability without needing a server or an internet connection.</p>
+                            <p>The core engine runs locally in your browser, checking grammar, spelling, punctuation, and style without needing a server or an internet connection.</p>
                         </div>
                         <div class="feature-box">
                             <div class="feature-box-icon"><i data-lucide="key" class="icon-inline"></i></div>
@@ -593,21 +573,15 @@ npm run build</code></pre>
                             </svg>
                             <strong>Dual-Engine Architecture:</strong>
                             <ul>
-                                <li><em>Rule-Based (Free & Offline):</em> Catches passive voice, repeated words, and overly long sentences.</li>
-                                <li><em>AI-Powered (Requires API Key):</em> Advanced grammar, spelling, clarity, and stylistic suggestions.</li>
+                                <li><em>On-device (Free & Offline):</em> The Harper engine checks grammar, spelling, punctuation, and style — including repeated and filler words.</li>
+                                <li><em>AI-Powered (Optional):</em> Advanced grammar, spelling, clarity, and stylistic rewrites — with your own provider key, or a local model via Ollama (no key, and nothing leaves your device).</li>
                             </ul>
                         </li>
                         <li>
                             <svg viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                             </svg>
-                            <strong>Tone & Style Rewriting:</strong> Right-click context menus or shortcuts to quickly rewrite text in 8 different tones.
-                        </li>
-                        <li>
-                            <svg viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                            </svg>
-                            <strong>Writing Statistics:</strong> Built-in dashboard for readability scores, reading time, and vocabulary diversity.
+                            <strong>Tone & Style Rewriting:</strong> Select text and rewrite it inline in one of three tones — Polish, Formal, or Casual (AI required).
                         </li>
                         <li>
                             <svg viewBox="0 0 20 20" fill="currentColor">
@@ -648,7 +622,7 @@ npm run build</code></pre>
                 </div>
                 <div class="content-body">
                     <h2><i data-lucide="clipboard-list" class="icon-inline"></i> Overview</h2>
-                    <p>OGrammar is <strong>bring-your-own-key</strong>: it calls your chosen provider directly with your own key — there is no OGrammar backend. The local Harper engine always works without a key; a provider only powers the optional <strong>LLM tier</strong> (sentence-level review and tone rewriting). The scores below are measured on OGrammar's own 46-case proofreading corpus (out of 123) with protected-text masking on — see the <a href="https://github.com/zazzn/opengrammar/blob/main/docs/07-ai-providers.md" target="_blank">full provider guide</a> for the methodology.</p>
+                    <p>OGrammar is <strong>bring-your-own-key</strong>: it calls your chosen provider directly with your own key — there is no OGrammar backend. The local Harper engine always works without a key; a provider only powers the optional <strong>LLM tier</strong> (sentence-level review and tone rewriting). The scores below are measured on OGrammar's own 46-case proofreading corpus (out of 123) with protected-text masking on — see the <a href="https://github.com/zazzn/opengrammar/blob/og-rewrite/docs/07-ai-providers.md" target="_blank">full provider guide</a> for the methodology.</p>
 
                     <div class="provider-comparison">
                         <div class="provider-card-large">
@@ -673,7 +647,7 @@ npm run build</code></pre>
                                 <div class="stat"><span>Speed:</span> ~1–2s</div>
                                 <div class="stat"><span>Cost:</span> ~$0.00004/correction</div>
                             </div>
-                            <p class="provider-desc">Best overall quality and cheapest cloud. Model <code>deepseek-chat</code>.</p>
+                            <p class="provider-desc">Best overall quality and cheapest cloud <em>among the models we tested</em>. Model <code>deepseek-chat</code>.</p>
                         </div>
                         <div class="provider-card-large">
                             <div class="provider-header">
@@ -689,7 +663,7 @@ npm run build</code></pre>
                         </div>
                     </div>
 
-                    <p>Also supported: <strong>Abacus RouteLLM</strong> (flat ~$10/mo, <code>route-llm</code>), plus <strong>OpenAI</strong>, <strong>OpenRouter</strong>, <strong>Together AI</strong> and any OpenAI-compatible <strong>Custom</strong> endpoint. Those last three work well but have not been scored on our corpus.</p>
+                    <p>Also supported: <strong>OpenAI</strong>, <strong>OpenRouter</strong>, <strong>Together AI</strong>, <strong>Abacus RouteLLM</strong> (flat ~$10/mo, <code>route-llm</code>), and any OpenAI-compatible <strong>Custom</strong> endpoint. The table above is a small benchmark of only a few models — <strong>OpenAI and most other models were not scored</strong>, so their absence isn't a verdict on quality. They work well; use whichever provider you already have.</p>
 
                     <h2><i data-lucide="bot" class="icon-inline"></i> Ollama — private &amp; free (recommended)</h2>
                     <ol>
@@ -778,7 +752,13 @@ npm run build</code></pre>
                     <h2><i data-lucide="palette" class="icon-inline"></i> Tone Rewriting</h2>
                     
                     <h3>Available Tones</h3>
+                    <p>Select text, then pick a tone from the floating bubble. OGrammar offers exactly three tones (AI required):</p>
                     <div class="tone-grid">
+                        <div class="tone-card">
+                            <span class="tone-emoji"><i data-lucide="sparkles" class="icon-inline"></i></span>
+                            <h4>Polish</h4>
+                            <p>Tighten and clean up</p>
+                        </div>
                         <div class="tone-card">
                             <span class="tone-emoji"><i data-lucide="briefcase" class="icon-inline"></i></span>
                             <h4>Formal</h4>
@@ -788,36 +768,6 @@ npm run build</code></pre>
                             <span class="tone-emoji"><i data-lucide="smile" class="icon-inline"></i></span>
                             <h4>Casual</h4>
                             <p>Friends, chat</p>
-                        </div>
-                        <div class="tone-card">
-                            <span class="tone-emoji"><i data-lucide="briefcase" class="icon-inline"></i></span>
-                            <h4>Professional</h4>
-                            <p>Work emails</p>
-                        </div>
-                        <div class="tone-card">
-                            <span class="tone-emoji"><i data-lucide="heart-handshake" class="icon-inline"></i></span>
-                            <h4>Friendly</h4>
-                            <p>Social media</p>
-                        </div>
-                        <div class="tone-card">
-                            <span class="tone-emoji"><i data-lucide="zap" class="icon-inline"></i></span>
-                            <h4>Concise</h4>
-                            <p>Quick messages</p>
-                        </div>
-                        <div class="tone-card">
-                            <span class="tone-emoji"><i data-lucide="library" class="icon-inline"></i></span>
-                            <h4>Detailed</h4>
-                            <p>Explanations</p>
-                        </div>
-                        <div class="tone-card">
-                            <span class="tone-emoji"><i data-lucide="dumbbell" class="icon-inline"></i></span>
-                            <h4>Persuasive</h4>
-                            <p>Sales, pitches</p>
-                        </div>
-                        <div class="tone-card">
-                            <span class="tone-emoji"><i data-lucide="meh" class="icon-inline"></i></span>
-                            <h4>Neutral</h4>
-                            <p>General use</p>
                         </div>
                     </div>
 
@@ -893,114 +843,35 @@ npm run build</code></pre>
 
                         <div class="tone-detail-card">
                             <div class="tone-detail-header">
-                                <span class="tone-detail-icon"><i data-lucide="briefcase" class="icon-inline"></i></span>
-                                <h3>Professional</h3>
+                                <span class="tone-detail-icon"><i data-lucide="sparkles" class="icon-inline"></i></span>
+                                <h3>Polish</h3>
                             </div>
-                            <p class="tone-detail-use">Use for: Work emails, business communication, reports</p>
+                            <p class="tone-detail-use">Use for: Tightening any draft — fixes flow and wordiness while keeping your voice</p>
                             <div class="tone-detail-example">
                                 <div class="example-input">
                                     <span class="label">Input:</span>
-                                    <code>hey can we meet tmrw</code>
+                                    <code>i just wanted to maybe ask if we could possibly meet</code>
                                 </div>
                                 <div class="example-output">
                                     <span class="label">Output:</span>
-                                    <code>Hello, could we schedule a meeting for tomorrow?</code>
+                                    <code>Could we meet?</code>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <h2><i data-lucide="rocket" class="icon-inline"></i> How to Use</h2>
-                    
-                    <h3>Method 1: Right-Click Menu</h3>
-                    <ol>
-                        <li>Select text you want to rewrite</li>
-                        <li>Right-click</li>
-                        <li>Choose "Rewrite with OGrammar"</li>
-                        <li>Choose tone and see preview</li>
-                        <li>Apply or Copy result</li>
-                    </ol>
 
-                    <h3>Method 2: Keyboard Shortcut</h3>
+                    <p>Tone rewriting requires AI to be configured. It works entirely from the in-page selection bubble — there is no right-click menu and no keyboard shortcut.</p>
                     <ol>
-                        <li>Select text</li>
-                        <li>Press <kbd>Ctrl+Shift+R</kbd> (Windows/Linux) or <kbd>Cmd+Shift+R</kbd> (Mac)</li>
-                        <li>Choose tone</li>
-                        <li>Apply changes</li>
+                        <li>Select the text you want to rewrite</li>
+                        <li>A floating bubble appears next to your selection</li>
+                        <li>Choose a tone: <strong>Polish</strong>, <strong>Formal</strong>, or <strong>Casual</strong></li>
+                        <li>Review the rewrite and apply it</li>
                     </ol>
 
                     <div class="section-nav">
                         <a href="#using-opengrammar" class="prev-link">
-                            <svg viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                            <span>Previous</span>
-                        </a>
-                        <a href="#writing-statistics" class="next-link">
-                            <span>Next</span>
-                            <svg viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                        </a>
-                    </div>
-                </div>
-            </article>
-
-            <article id="writing-statistics" class="content-section">
-                <div class="section-header">
-                    <nav class="breadcrumb">
-                        <a href="#">Docs</a>
-                        <span class="breadcrumb-sep">/</span>
-                        <span>User Guide</span>
-                        <span class="breadcrumb-sep">/</span>
-                        <span class="current">Writing Statistics</span>
-                    </nav>
-                    <h1><i data-lucide="bar-chart-2" class="icon-inline"></i> Writing Statistics</h1>
-                    <p class="section-description">Analyze and improve your writing with detailed statistics.</p>
-                </div>
-                <div class="content-body">
-                    <h2><i data-lucide="trending-up" class="icon-inline"></i> Available Metrics</h2>
-                    
-                    <h3>Readability Scores</h3>
-                    
-                    <div class="metric-card">
-                        <div class="metric-header">
-                            <h4>Flesch Reading Ease Score</h4>
-                            <span class="metric-badge">0-100</span>
-                        </div>
-                        <div class="metric-scale">
-                            <div class="scale-item"><span class="range">90-100</span> <span class="label">Very Easy (5th grade)</span></div>
-                            <div class="scale-item"><span class="range">80-89</span> <span class="label">Easy (6th grade)</span></div>
-                            <div class="scale-item"><span class="range">70-79</span> <span class="label">Fairly Easy (7th grade)</span></div>
-                            <div class="scale-item"><span class="range">60-69</span> <span class="label">Standard (8th-9th grade)</span></div>
-                            <div class="scale-item"><span class="range">50-59</span> <span class="label">Fairly Difficult (10th-12th)</span></div>
-                            <div class="scale-item"><span class="range">30-49</span> <span class="label">Difficult (College)</span></div>
-                            <div class="scale-item"><span class="range">0-29</span> <span class="label">Very Difficult (Graduate+)</span></div>
-                        </div>
-                    </div>
-
-                    <div class="metric-card">
-                        <div class="metric-header">
-                            <h4>Flesch-Kincaid Grade Level</h4>
-                            <span class="metric-badge">US Grades</span>
-                        </div>
-                        <div class="metric-scale">
-                            <div class="scale-item"><span class="range">1-6</span> <span class="label">Elementary School</span></div>
-                            <div class="scale-item"><span class="range">7-9</span> <span class="label">Middle School</span></div>
-                            <div class="scale-item"><span class="range">10-12</span> <span class="label">High School</span></div>
-                            <div class="scale-item"><span class="range">13-16</span> <span class="label">College</span></div>
-                            <div class="scale-item"><span class="range">17+</span> <span class="label">Graduate School</span></div>
-                        </div>
-                    </div>
-
-                    <h3>Time Estimates</h3>
-                    <ul>
-                        <li><strong>Reading Time:</strong> Words ÷ 200 words per minute</li>
-                        <li><strong>Speaking Time:</strong> Words ÷ 150 words per minute</li>
-                    </ul>
-
-                    <div class="section-nav">
-                        <a href="#tone-rewriting" class="prev-link">
                             <svg viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
                             </svg>
@@ -1029,44 +900,40 @@ npm run build</code></pre>
                     <p class="section-description">All keyboard shortcuts for quick access to OGrammar features.</p>
                 </div>
                 <div class="content-body">
-                    <h2>Default Shortcuts</h2>
-                    
+                    <h2>Keys in the Browser Extension</h2>
+                    <p>OGrammar keeps its keyboard surface deliberately small. These are the only two keys it uses, and they apply to the autocomplete ghost-text suggestion:</p>
+
                     <div class="table-wrapper">
                         <table class="data-table">
                             <thead>
                                 <tr>
+                                    <th>Key</th>
                                     <th>Action</th>
-                                    <th>Windows/Linux</th>
-                                    <th>Mac</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><strong>Rewrite Selected Text</strong></td>
-                                    <td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd></td>
-                                    <td><kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd></td>
+                                    <td><kbd>Tab</kbd></td>
+                                    <td>Accept the current autocomplete suggestion</td>
                                 </tr>
                                 <tr>
-                                    <td><strong>Toggle Extension</strong></td>
-                                    <td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd></td>
-                                    <td><kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Open Statistics</strong></td>
-                                    <td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></td>
-                                    <td><kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Open Settings</strong></td>
-                                    <td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>,</kbd></td>
-                                    <td><kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>,</kbd></td>
+                                    <td><kbd>Esc</kbd></td>
+                                    <td>Dismiss the suggestion card / autocomplete</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
 
+                    <div class="callout callout-primary">
+                        <div class="callout-icon"><i data-lucide="info" class="icon-inline"></i></div>
+                        <div class="callout-content">
+                            <strong>No global shortcuts.</strong>
+                            <p>The extension registers no global keyboard commands. Applying a correction, rewriting a tone, ignoring a suggestion, and adding a word to your dictionary all happen inline from the suggestion card and the selection bubble. Settings open from the popup.</p>
+                        </div>
+                    </div>
+
                     <div class="section-nav">
-                        <a href="#writing-statistics" class="prev-link">
+                        <a href="#tone-rewriting" class="prev-link">
                             <svg viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
                             </svg>
@@ -1134,7 +1001,7 @@ npm run build</code></pre>
                     <div class="troubleshoot-card">
                         <h4>Symptoms</h4>
                         <ul>
-                            <li>Rule-based checks work</li>
+                            <li>On-device checks work</li>
                             <li>AI suggestions don't appear</li>
                             <li>"API key invalid" error</li>
                         </ul>
@@ -1144,7 +1011,7 @@ npm run build</code></pre>
                             <li>Check for typos (no spaces)</li>
                             <li>Ensure correct provider is selected</li>
                             <li>Test API key with provider directly</li>
-                            <li>Check rate limits (Groq: 100/day free)</li>
+                            <li>Check rate limits (Groq's free tier is rate-limited)</li>
                         </ol>
                     </div>
 
@@ -1187,7 +1054,7 @@ npm run build</code></pre>
                                 </svg>
                             </div>
                             <div class="faq-answer">
-                                <p>Yes! The core rule-based engine is completely free and works offline. For AI-powered features, you bring your own API key and pay only for what you use directly to the provider (often fractions of a cent).</p>
+                                <p>Yes! The core on-device Harper engine is completely free and works offline. For AI-powered features, you bring your own API key and pay only for what you use directly to the provider (often fractions of a cent).</p>
                             </div>
                         </div>
 
@@ -1199,7 +1066,7 @@ npm run build</code></pre>
                                 </svg>
                             </div>
                             <div class="faq-answer">
-                                <p>OGrammar has no databases, no user accounts, and no tracking. Your API key never leaves your browser. When using AI features, text is sent to a stateless edge function, processed, and immediately forgotten.</p>
+                                <p>OGrammar has no databases, no user accounts, and no tracking. Your API key never leaves your browser. When using AI features, text is sent directly from your browser to the AI provider you chose, using your own key — OGrammar has no servers, so it never sees or stores your text.</p>
                             </div>
                         </div>
 
@@ -1223,7 +1090,7 @@ npm run build</code></pre>
                                 </svg>
                             </div>
                             <div class="faq-answer">
-                                <p>Yes! The rule-based engine works completely offline. For AI features, you can use Ollama to run models locally on your machine, giving you full offline capability.</p>
+                                <p>Yes! The on-device Harper engine works completely offline. For AI features, you can use Ollama to run models locally on your machine, giving you full offline capability.</p>
                             </div>
                         </div>
 
@@ -1255,7 +1122,7 @@ npm run build</code></pre>
         <footer class="content-footer">
             <div class="footer-content">
                 <p>Built with <i data-lucide="heart" class="icon-inline"></i>️ by <a href="https://github.com/zazzn" target="_blank">the OGrammar maintainer</a></p>
-                <p>OGrammar is a modified fork of OGrammar, licensed under <a href="https://opensource.org/licenses/Apache-2.0" target="_blank">Apache 2.0</a></p>
+                <p>OGrammar is free and open source under the <a href="https://opensource.org/licenses/Apache-2.0" target="_blank">Apache 2.0 license</a>.</p>
             </div>
         </footer>
     </main>

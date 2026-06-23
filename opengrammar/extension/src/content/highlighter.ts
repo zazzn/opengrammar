@@ -799,7 +799,7 @@ function showSpellingMenu(anchor: HTMLElement, issue: Issue, element: HTMLElemen
     box-shadow: 0 4px 28px rgba(0,0,0,0.16), 0 1px 5px rgba(0,0,0,0.08);
     border: 1px solid rgba(0,0,0,0.07);
     z-index: 2147483647;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     overflow: hidden; animation: og-fade-in 0.1s ease;
   `;
 
@@ -837,13 +837,13 @@ function showSpellingMenu(anchor: HTMLElement, issue: Issue, element: HTMLElemen
       padding:9px 12px; background:#fff; border:none; cursor:pointer;
       font-size:13px; color:#3c3c43; text-align:left; font-family:inherit;
       border-bottom:1px solid #f4f4f5; transition:background 0.1s;
-    ">📘 Add “${escapeHtml(issue.original)}” to dictionary</button>
+    ">Add “${escapeHtml(issue.original)}” to dictionary</button>
     <button class="og-sp-ignore" style="
       display:flex; align-items:center; gap:8px; width:100%;
       padding:9px 12px; background:#fff; border:none; cursor:pointer;
       font-size:13px; color:#5f6368; text-align:left; font-family:inherit;
       transition:background 0.1s;
-    ">✕ Ignore</button>
+    ">✕ Dismiss</button>
   `;
 
   menu.addEventListener('mousedown', (e) => e.preventDefault());
@@ -976,7 +976,7 @@ function renderAssistantBadge(state: AssistantState, issues: Issue[]): string {
         border-radius:999px; background:#1FA463; color:white;
         font-size:7px; font-weight:800; line-height:12px;
         border:1.5px solid white;
-        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+        font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
         box-shadow:0 1px 3px rgba(0,0,0,0.22);
       ">AI</span>`
     : '';
@@ -999,7 +999,7 @@ function renderAssistantBadge(state: AssistantState, issues: Issue[]): string {
         font-size:9px; font-weight:700;
         display:inline-flex; align-items:center; justify-content:center;
         border:1.5px solid white;
-        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+        font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
         box-shadow:0 1px 3px rgba(0,0,0,0.25);
       ">${badgeInner}</span>
       ${aiHint}
@@ -1024,7 +1024,7 @@ export function setAssistantState(element: HTMLElement, state: AssistantState) {
       width: ${BUBBLE_SIZE}px; height: ${BUBBLE_SIZE}px; padding: 0;
       border-radius: 50%;
       background: linear-gradient(135deg, #1FA463 0%, #1FA463 100%);
-      box-shadow: 0 1px 6px rgba(79,70,229,0.45), 0 1px 3px rgba(0,0,0,0.18);
+      box-shadow: 0 1px 6px rgba(31,164,99,0.45), 0 1px 3px rgba(0,0,0,0.18);
       z-index: 2147483646;
       cursor: pointer; pointer-events: auto;
       border: none; outline: none;
@@ -1104,7 +1104,7 @@ export function updateSelectionBubble(
     width: ${BUBBLE_SIZE}px; height: ${BUBBLE_SIZE}px; padding: 0;
     border-radius: 50%;
     background: linear-gradient(135deg, #1FA463 0%, #1FA463 100%);
-    box-shadow: 0 1px 6px rgba(124,58,237,0.45), 0 1px 3px rgba(0,0,0,0.18);
+    box-shadow: 0 1px 6px rgba(31,164,99,0.45), 0 1px 3px rgba(0,0,0,0.18);
     z-index: 2147483646; cursor: pointer; pointer-events: auto;
     border: none; outline: none; transition: transform 0.12s ease;
   `;
@@ -1141,7 +1141,7 @@ function openSelectionMenu(anchor: HTMLElement) {
     background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
     box-shadow: 0 8px 28px rgba(0,0,0,0.18);
     padding: 10px; width: 264px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   `;
   menu.innerHTML = `
     <div style="font-size:12px;font-weight:700;color:#111827;margin-bottom:8px;">
@@ -1162,11 +1162,11 @@ function openSelectionMenu(anchor: HTMLElement) {
     chip.textContent = label;
     chip.style.cssText = `
       flex:1 1 auto; min-width:70px; padding:6px 8px;
-      background:#E7F4EC; color:#6D28D9; border:1px solid #A7E0C2;
+      background:#E7F4EC; color:#127A48; border:1px solid #A7E0C2;
       border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;
       font-family:inherit; transition:background 0.12s;
     `;
-    chip.addEventListener('mouseenter', () => { chip.style.background = '#E0E7FF'; });
+    chip.addEventListener('mouseenter', () => { chip.style.background = '#D6ECDD'; });
     chip.addEventListener('mouseleave', () => { chip.style.background = '#E7F4EC'; });
     chips.appendChild(chip);
   }
@@ -1186,7 +1186,7 @@ function openSelectionMenu(anchor: HTMLElement) {
         border:1px solid #A7E0C2;border-radius:6px;padding:7px 9px;white-space:pre-wrap;
         max-height:140px;overflow:auto;">${escapeHtml(proposed)}</div>
       <div style="display:flex;gap:6px;margin-top:7px;">
-        <button class="og-sel-apply" type="button" style="flex:1;padding:6px 8px;background:#6D28D9;
+        <button class="og-sel-apply" type="button" style="flex:1;padding:6px 8px;background:#1FA463;
           color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Apply</button>
         <button class="og-sel-cancel" type="button" style="flex:1;padding:6px 8px;background:#fff;
           color:#6b7280;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Cancel</button>
@@ -1319,7 +1319,7 @@ function showInlineReviewCard(anchor: HTMLElement, issue: Issue, element: HTMLEl
     background: #ffffff; border-radius: 12px;
     box-shadow: 0 4px 32px rgba(0,0,0,0.14), 0 1px 6px rgba(0,0,0,0.07);
     z-index: 2147483647;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px; max-height: calc(100vh - 16px); overflow-y: auto;
     border: 1px solid rgba(0,0,0,0.07); animation: og-fade-in 0.12s ease;
   `;
@@ -1397,7 +1397,7 @@ function showInlineReviewCard(anchor: HTMLElement, issue: Issue, element: HTMLEl
   const applyBox = card.querySelector('.og-rv-apply-box') as HTMLElement | null;
   if (applyBox) {
     applyBox.addEventListener('click', (e) => { e.stopPropagation(); accept(); });
-    applyBox.addEventListener('mouseenter', () => { applyBox.style.background = '#f0f0ff'; });
+    applyBox.addEventListener('mouseenter', () => { applyBox.style.background = '#D6ECDD'; });
     applyBox.addEventListener('mouseleave', () => { applyBox.style.background = '#fafafa'; });
   }
 
@@ -1464,7 +1464,7 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
     border-radius: 12px;
     box-shadow: 0 4px 32px rgba(0,0,0,0.14), 0 1px 6px rgba(0,0,0,0.07);
     z-index: 2147483647;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px;
     max-height: calc(100vh - 16px);
     overflow-y: auto;
@@ -1565,7 +1565,7 @@ function showTooltip(anchor: HTMLElement, issue: Issue, element: HTMLElement) {
       if (applySuggestion(element, issue, anchor)) hideTooltip();
       else flashApplyFailure(card);
     });
-    suggClick.addEventListener('mouseenter', () => { suggClick.style.background = '#f0f0ff'; });
+    suggClick.addEventListener('mouseenter', () => { suggClick.style.background = '#D6ECDD'; });
     suggClick.addEventListener('mouseleave', () => { suggClick.style.background = '#fafafa'; });
   }
 
@@ -1629,7 +1629,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
     box-shadow: 0 4px 32px rgba(0,0,0,0.14), 0 1px 6px rgba(0,0,0,0.07);
     border: 1px solid rgba(0,0,0,0.07);
     z-index: 2147483647;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     max-height: calc(100vh - 16px);
     overflow-y: auto;
     animation: og-fade-in 0.12s ease;
@@ -1663,7 +1663,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
         <button class="og-goal-btn" data-goal="${g.id}" style="
           padding: 5px 10px;
           background: ${g.id === 'clarity' ? '#E7F4EC' : '#f4f4f5'};
-          color: ${g.id === 'clarity' ? '#3730A3' : '#5f6368'};
+          color: ${g.id === 'clarity' ? '#127A48' : '#5f6368'};
           border: 1px solid ${g.id === 'clarity' ? '#A7E0C2' : '#e5e7eb'};
           border-radius: 999px;
           font-size: 12px; font-weight: 600;
@@ -1733,7 +1733,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
     goalBtns.forEach((btn) => {
       const isActive = btn.dataset.goal === goal;
       btn.style.background = isActive ? '#E7F4EC' : '#f4f4f5';
-      btn.style.color        = isActive ? '#3730A3' : '#5f6368';
+      btn.style.color        = isActive ? '#127A48' : '#5f6368';
       btn.style.borderColor  = isActive ? '#A7E0C2' : '#e5e7eb';
     });
     triggerRephrase(goal);
@@ -1814,7 +1814,7 @@ function showRephrasePanel(tooltipCard: HTMLElement, issue: Issue, element: HTML
             display:inline-flex;align-items:center;justify-content:center;
             width:20px;height:20px;border-radius:50%;
             background:#E7F4EC;border:1px solid #A7E0C2;
-            font-size:11px;font-weight:700;color:#3730A3;
+            font-size:11px;font-weight:700;color:#127A48;
             margin-top:1px;
           ">${i + 1}</span>
           <span style="font-size:13px;color:#1c1c1e;line-height:1.45;flex:1;word-break:break-word;">
@@ -2074,7 +2074,7 @@ function showCheckingCard(element: HTMLElement) {
     position: fixed; left:-9999px; top:-9999px; width: 300px;
     background:#fff; border-radius:12px; border:1px solid rgba(0,0,0,0.07);
     box-shadow:0 4px 32px rgba(0,0,0,0.14); z-index:2147483647;
-    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
     animation: og-fade-in 0.12s ease;
   `;
   card.innerHTML = `
@@ -2120,7 +2120,7 @@ function showReviewStatusCard(
     position: fixed; left:-9999px; top:-9999px; width: 334px;
     background:#fff; border-radius:12px; border:1px solid rgba(0,0,0,0.07);
     box-shadow:0 4px 32px rgba(0,0,0,0.14); z-index:2147483647;
-    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
     animation: og-fade-in 0.12s ease;
     overflow:hidden;
   `;
@@ -2196,14 +2196,14 @@ async function maybeShowModelHint(card: HTMLElement, anchorEl: HTMLElement) {
   slot.style.border = '1px solid #A7E0C2';
   slot.style.borderRadius = '7px';
   slot.style.background = '#E7F4EC';
-  slot.style.color = '#3730A3';
+  slot.style.color = '#127A48';
   slot.style.fontSize = '12px';
   slot.style.lineHeight = '1.45';
   slot.innerHTML = `
     <div style="display:flex; gap:8px; align-items:flex-start;">
       <div style="flex:1;">
         For context-aware suggestions (e.g. loose vs lose), a stronger cloud model like DeepSeek is more reliable than the local model.
-        <a href="${MODEL_BENCHMARK_URL}" target="_blank" rel="noreferrer" style="color:#3730A3; font-weight:700; text-decoration:underline;">See benchmark results</a>.
+        <a href="${MODEL_BENCHMARK_URL}" target="_blank" rel="noreferrer" style="color:#127A48; font-weight:700; text-decoration:underline;">See benchmark results</a>.
       </div>
       <button class="og-model-hint-dismiss" type="button" style="
         flex-shrink:0; border:none; background:transparent; color:#1FA463;
@@ -2356,7 +2356,7 @@ function showSentenceReview(
     border-radius: 12px;
     box-shadow: 0 4px 32px rgba(0,0,0,0.14), 0 1px 6px rgba(0,0,0,0.07);
     z-index: 2147483647;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px;
     max-height: calc(100vh - 16px);
     overflow-y: auto;
@@ -2595,7 +2595,7 @@ function showSentenceReview(
   const correctedInner = acceptBox?.firstElementChild?.nextElementSibling as HTMLElement | undefined;
   if (acceptBox) {
     acceptBox.addEventListener('click', (e) => { e.stopPropagation(); acceptSentence(); });
-    acceptBox.addEventListener('mouseenter', () => { if (correctedInner) correctedInner.style.background = '#E0E7FF'; });
+    acceptBox.addEventListener('mouseenter', () => { if (correctedInner) correctedInner.style.background = '#D6ECDD'; });
     acceptBox.addEventListener('mouseleave', () => { if (correctedInner) correctedInner.style.background = '#E7F4EC'; });
   }
 
@@ -2639,7 +2639,7 @@ function showSentenceReview(
         );
       }
     });
-    fixAllBtn.addEventListener('mouseenter', () => { fixAllBtn.style.background = '#f0f0ff'; });
+    fixAllBtn.addEventListener('mouseenter', () => { fixAllBtn.style.background = '#D6ECDD'; });
     fixAllBtn.addEventListener('mouseleave', () => { fixAllBtn.style.background = 'white'; });
   }
 
@@ -2694,7 +2694,7 @@ function showSentenceReview(
         border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;
         font-family:inherit; transition:background 0.12s;
       `;
-      chip.addEventListener('mouseenter', () => { chip.style.background = '#E0E7FF'; });
+      chip.addEventListener('mouseenter', () => { chip.style.background = '#D6ECDD'; });
       chip.addEventListener('mouseleave', () => { chip.style.background = '#E7F4EC'; });
       improveMenu.appendChild(chip);
     }
@@ -2948,7 +2948,41 @@ function injectStyles() {
   if (stylesInjected) return;
   stylesInjected = true;
   const style = document.createElement('style');
+  // Bundle the brand font (Geist) so in-page cards/menus/bubbles match the
+  // popup & options. Loaded from the extension's own web_accessible_resources
+  // via chrome.runtime.getURL, so the host page's CSP can't block it. Wrapped
+  // in a try/catch and using font-display:swap — if the font fails to load the
+  // in-page UI silently falls back to the system stack and never breaks.
+  let fontFaces = '';
+  try {
+    const geistUrl = (w: string) =>
+      JSON.stringify(chrome.runtime.getURL(`fonts/Geist-${w}.woff2`));
+    fontFaces = `
+    @font-face {
+      font-family: 'Geist';
+      src: url(${geistUrl('Regular')}) format('woff2');
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Geist';
+      src: url(${geistUrl('Medium')}) format('woff2');
+      font-weight: 500; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Geist';
+      src: url(${geistUrl('SemiBold')}) format('woff2');
+      font-weight: 600; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Geist';
+      src: url(${geistUrl('Bold')}) format('woff2');
+      font-weight: 700; font-style: normal; font-display: swap;
+    }`;
+  } catch {
+    fontFaces = '';
+  }
   style.textContent = `
+    ${fontFaces}
     @keyframes og-fade-in {
       from { opacity: 0; transform: translateY(-4px); }
       to   { opacity: 1; transform: translateY(0); }

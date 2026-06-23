@@ -2,6 +2,33 @@
    the in-page UI. Identity: one signal-green accent, off-black / off-white canvas,
    Geist type, replacing the retired OpenGrammar indigo palette and old web font.
    Light-only for now; dark mode is a tracked follow-up. */
+
+/* Brand font (Geist), bundled locally under public/fonts and shipped in the
+   extension package — no CDN, so it works offline and under strict host CSPs.
+   Extension pages (popup, options) load it from the package root; the in-page
+   content script injects its own @font-face via chrome.runtime.getURL.
+   font-display:swap keeps the system stack as a graceful fallback. */
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-Regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-Medium.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-SemiBold.woff2') format('woff2');
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-Bold.woff2') format('woff2');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+
 :root {
   --ogt-accent: #1FA463;
   --ogt-accent-dark: #127A48;

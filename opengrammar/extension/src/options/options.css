@@ -137,7 +137,7 @@ header {
 .info-bubble-trigger:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(31, 164, 99, 0.1);
 }
 
 .info-bubble {
@@ -246,7 +246,7 @@ header {
 .select-input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(31, 164, 99, 0.1);
 }
 
 .input-group {

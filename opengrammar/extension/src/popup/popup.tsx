@@ -1,6 +1,6 @@
 /**
  * OGrammar Popup — React UI
- * Layout: Header → Score ring → Issue chips → AI card → Settings → Footer
+ * Layout: Header → Issue summary → AI card → Settings → Footer
  */
 import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom/client';
@@ -31,33 +31,6 @@ export function ollamaV1(url: string): string {
   return /\/v1$/.test(b) ? b : `${b}/v1`;
 }
 
-/* ─── Score ring SVG component ─── */
-function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
-  const r      = (size - 6) / 2;
-  const circ   = 2 * Math.PI * r;
-  const offset = circ - (score / 100) * circ;
-  // green = good, ochre = ok, rose = needs work
-  const color  = score >= 80 ? '#1FA463' : score >= 55 ? '#C7821A' : '#D1495B';
-
-  return (
-    <div className="score-ring" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#E7F4EC" strokeWidth={5} />
-        <circle
-          cx={size/2} cy={size/2} r={r}
-          fill="none" stroke={color} strokeWidth={5}
-          strokeLinecap="round"
-          strokeDasharray={circ} strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 0.65s cubic-bezier(0.4,0,0.2,1)' }}
-        />
-      </svg>
-      <div className="score-number" style={{ fontSize: size < 60 ? 14 : 18, color }}>
-        {score}
-      </div>
-    </div>
-  );
-}
-
 /* ─── Icon components ─── */
 const EyeIcon = ({ show }: { show: boolean }) => (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -78,18 +51,12 @@ const ChevronIcon = () => (
   </svg>
 );
 
-/* ─── Score and Info Section ─── */
-const ScoreSection = ({ issueStats, writingScore }: { issueStats: any, writingScore: number }) => (
+/* ─── Issue summary (live breakdown of issues found on the page) ─── */
+const IssueSummary = ({ issueStats }: { issueStats: any }) => (
   <>
     <div className="score-section">
-      <ScoreRing score={writingScore} />
       <div className="score-info">
-        <h2>
-          {writingScore >= 88 ? 'Excellent writing!' :
-            writingScore >= 70 ? 'Good writing' :
-            writingScore >= 50 ? 'Needs some work' :
-            'Issues detected'}
-        </h2>
+        <h2>{issueStats.total === 0 ? 'No issues found' : 'Issues detected'}</h2>
         <p>
           {issueStats.total === 0
             ? 'No issues found on this page.'
@@ -580,7 +547,6 @@ const Popup = () => {
     saveSettings({ provider: p, model: providerModelMemory[p] || fallback });
   };
 
-  const writingScore = Math.max(10, 100 - issueStats.grammar * 12 - issueStats.style * 6 - issueStats.clarity * 4);
   const selectedProvider = providers.find((p) => p.id === settings.provider);
   const modelList = availableModels.length > 0 ? availableModels : selectedProvider?.models || [];
 
@@ -598,8 +564,7 @@ const Popup = () => {
         </button>
       </header>
 
-      <ScoreSection issueStats={issueStats} writingScore={writingScore} />
-
+      <IssueSummary issueStats={issueStats} />
 
       <div className="ai-card">
         <div className="ai-card-left"><strong>AI Engine</strong><span>{selectedProvider?.requiresApiKey && !settings.apiKey ? 'Off — add a key for AI suggestions' : `${selectedProvider?.name || 'OpenAI'} · ${settings.model}`}</span></div>

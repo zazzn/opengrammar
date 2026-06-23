@@ -89,8 +89,8 @@ button{font-family:inherit;cursor:pointer}
 .nav-links a:hover{color:var(--fg);background:var(--bg2)}
 .nav-actions{display:flex;align-items:center;gap:10px}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 22px;border-radius:var(--radius-sm);font-weight:600;font-size:14px;border:none;transition:all var(--transition)}
-.btn-primary{background:var(--primary);color:#fff;box-shadow:0 4px 16px rgba(79,70,229,.3)}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(79,70,229,.4)}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 4px 16px rgba(31,164,99,.3)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(31,164,99,.4)}
 .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--fg)}
 .btn-ghost:hover{background:var(--bg2);border-color:var(--fg3)}
 .theme-btn{width:40px;height:40px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:center;color:var(--fg2);transition:all var(--transition)}
@@ -148,10 +148,10 @@ section{padding:100px 0}
 .feature-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:var(--primary-l)}
 .feature-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:20px}
 .feature-icon.privacy{background:var(--green-bg);color:var(--green)}
-.feature-icon.ai{background:rgba(124,58,237,.12);color:var(--accent)}
+.feature-icon.ai{background:rgba(31,164,99,.12);color:var(--accent)}
 .feature-icon.self-host{background:var(--blue-bg);color:var(--blue)}
 .feature-icon.rules{background:var(--amber-bg);color:var(--amber)}
-.feature-icon.rewrite{background:rgba(79,70,229,.1);color:var(--primary)}
+.feature-icon.rewrite{background:rgba(31,164,99,.1);color:var(--primary)}
 .feature-icon.stats{background:rgba(6,182,212,.1);color:#0891b2}
 .feature-card h3{font-size:18px;font-weight:700;margin-bottom:10px}
 .feature-card p{font-size:15px;color:var(--fg2);line-height:1.65}
@@ -187,7 +187,7 @@ section{padding:100px 0}
 .provider-tag{padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .provider-tag.free{background:var(--green-bg);color:var(--green)}
 .provider-tag.quality{background:var(--blue-bg);color:var(--blue)}
-.provider-tag.private{background:rgba(124,58,237,.12);color:var(--accent)}
+.provider-tag.private{background:rgba(31,164,99,.12);color:var(--accent)}
 .provider-card .desc{font-size:14px;color:var(--fg2);margin-bottom:16px}
 .check-list{list-style:none;display:flex;flex-direction:column;gap:8px}
 .check-list li{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--fg2)}
@@ -201,8 +201,8 @@ section{padding:100px 0}
 .compare-table tr:last-child td{border-bottom:none}
 .compare-table .yes{color:var(--green);font-weight:600}
 .compare-table .no{color:var(--red);font-weight:600}
-.compare-table .highlight-col{background:rgba(79,70,229,.04)}
-[data-theme="dark"] .compare-table .highlight-col{background:rgba(129,140,248,.06)}
+.compare-table .highlight-col{background:rgba(31,164,99,.05)}
+[data-theme="dark"] .compare-table .highlight-col{background:rgba(52,199,127,.08)}
 
 /* ========== GET STARTED ========== */
 .get-started{text-align:center}
@@ -309,13 +309,13 @@ section{padding:100px 0}
             <div class="grid-pattern"></div>
         </div>
         <div class="container hero-content">
-            <div class="hero-badge"><span class="dot"></span> v2.1 — Open Source & Free Forever</div>
+            <div class="hero-badge"><span class="dot"></span> Open source · Free forever</div>
             <h1>Write with clarity.<br><span class="gradient-text">Own your privacy.</span></h1>
-            <p>OGrammar is the free, open-source Grammarly alternative. 40+ grammar rules run offline. Plug in your AI API key for advanced edits — no subscriptions, no data harvesting.</p>
+            <p>OGrammar is the free, open-source writing assistant that runs on your own device. A local engine checks grammar, spelling, and style with no account and no network — and you can plug in your own AI key for advanced rewrites. No subscriptions, no data harvesting, no servers.</p>
             <div class="hero-buttons">
                 <a href="#get-started" class="btn btn-primary">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    Download Extension
+                    Get the Extension
                 </a>
                 <a href="https://github.com/zazzn/opengrammar" target="_blank" class="btn btn-ghost">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd"/></svg>
@@ -331,7 +331,7 @@ section{padding:100px 0}
                         <span>compose — Gmail</span>
                     </div>
                     <div class="demo-body">
-                        Most popular grammar assistants require you to send every keystroke to their servers and <span class="err">charge a hefty monthly fee<span class="demo-tooltip"><strong><i data-lucide="alert-circle" class="icon-inline"></i> Cliché Detected</strong>Consider "are expensive" instead.</span></span> for advanced features. OGrammar changes that. The core engine runs locally in your browser, checking for <span class="style-h">passive voice</span> and <span class="warn">repetition</span> without needing a server.
+                        OGrammar checks the text you type, right where you type it. It catches a quick <span class="err">speling<span class="demo-tooltip"><strong><i data-lucide="alert-circle" class="icon-inline"></i> Spelling</strong>Did you mean "spelling"?</span></span> slip, notices when you <span class="style-h">repeat repeat</span> a word, and flags <span class="warn">wordy, hard-to-read phrasing</span> — all on your device, with nothing sent to a server.
                     </div>
                     <div class="demo-badge-row">
                         <span class="dbadge red">● 1 Grammar</span>
@@ -354,33 +354,33 @@ section{padding:100px 0}
             <div class="features-grid">
                 <div class="feature-card fade-in">
                     <div class="feature-icon privacy"><i data-lucide="lock" class="icon-inline"></i></div>
-                    <h3>Absolute Privacy</h3>
-                    <p>No databases, no accounts, no tracking. The local engine runs fully offline. AI requests use a stateless edge function — text is never stored.</p>
+                    <h3>No servers, ever</h3>
+                    <p>Checking runs on your device. There is no OGrammar backend, no account, and no tracking. Any AI key you add is encrypted on your machine and used only by you.</p>
+                </div>
+                <div class="feature-card fade-in">
+                    <div class="feature-icon rules"><i data-lucide="spell-check" class="icon-inline"></i></div>
+                    <h3>On-device Harper engine</h3>
+                    <p>The Automattic Harper engine checks grammar, spelling, punctuation, and style entirely offline, as you type. Choose American, British, Canadian, or Australian English.</p>
                 </div>
                 <div class="feature-card fade-in">
                     <div class="feature-icon ai"><i data-lucide="key" class="icon-inline"></i></div>
-                    <h3>Bring Your Own AI</h3>
-                    <p>Paste your API key for OpenAI, Groq, OpenRouter, Together, or Ollama. Pay fractions of a cent — directly to the provider.</p>
+                    <h3>Bring your own AI</h3>
+                    <p>Optional and off by default. Add a key for OpenAI, DeepSeek, Groq, OpenRouter, or Together — or run a model 100% locally with Ollama. Your text goes straight to the provider you choose.</p>
                 </div>
                 <div class="feature-card fade-in">
-                    <div class="feature-icon self-host"><i data-lucide="shield" class="icon-inline"></i></div>
-                    <h3>Local-First, No Backend</h3>
-                    <p>On-device grammar needs no key or network. For AI, your key talks straight to the provider — or run a local model with Ollama. There is no server in between.</p>
+                    <div class="feature-icon self-host"><i data-lucide="graduation-cap" class="icon-inline"></i></div>
+                    <h3>It learns as you write</h3>
+                    <p>Confirm a correction once and the local engine remembers it — no AI round-trip needed. Undo an autocorrect and it never makes that change again.</p>
                 </div>
                 <div class="feature-card fade-in">
-                    <div class="feature-icon rules"><i data-lucide="file-text" class="icon-inline"></i></div>
-                    <h3>40+ Grammar Rules</h3>
-                    <p>Offline checking for passive voice, repetition, spelling, punctuation, clichés, redundant phrases, double negatives, and more.</p>
+                    <div class="feature-icon stats"><i data-lucide="shield-check" class="icon-inline"></i></div>
+                    <h3>Safe with code &amp; secrets</h3>
+                    <p>A protected-text engine recognizes URLs, emails, file paths, code, package names, API keys, and version strings — so suggestions never mangle the things you didn't mean to edit.</p>
                 </div>
                 <div class="feature-card fade-in">
-                    <div class="feature-icon rewrite"><i data-lucide="palette" class="icon-inline"></i></div>
-                    <h3>Tone Rewriting</h3>
-                    <p>Rewrite text in 8 tones — Formal, Casual, Professional, Friendly, Concise, Detailed, Persuasive, and Neutral. Right-click or Ctrl+Shift+R.</p>
-                </div>
-                <div class="feature-card fade-in">
-                    <div class="feature-icon stats"><i data-lucide="bar-chart-2" class="icon-inline"></i></div>
-                    <h3>Writing Statistics</h3>
-                    <p>Readability scores (Flesch, ARI), reading/speaking time, vocabulary diversity, and detailed analytics for every document.</p>
+                    <div class="feature-icon rewrite"><i data-lucide="wand-2" class="icon-inline"></i></div>
+                    <h3>Tone &amp; rephrase</h3>
+                    <p>With AI on, rewrite any selection — Polish, Formal, or Casual — or pull up three alternative phrasings, inline, with a preview before anything changes.</p>
                 </div>
             </div>
         </div>
@@ -391,38 +391,43 @@ section{padding:100px 0}
         <div class="container">
             <div class="how-grid">
                 <div class="fade-in">
-                    <div class="section-label"><i data-lucide="sparkles" class="icon-inline"></i> Architecture</div>
-                    <h2 class="section-title">Dual-engine.<br>Maximum power.</h2>
-                    <p class="section-desc" style="margin-bottom:40px">Two engines work in parallel — fast local rules plus context-aware AI — then merge and rank results into a single clean list.</p>
+                    <div class="section-label"><i data-lucide="sparkles" class="icon-inline"></i> How it works</div>
+                    <h2 class="section-title">Local first.<br>AI when you want it.</h2>
+                    <p class="section-desc" style="margin-bottom:40px">A fast on-device engine handles everyday checking. Turn on AI — with your own key — for deeper rewrites. Results merge into one ranked list.</p>
                     <div class="how-steps">
                         <div class="how-step">
                             <div class="step-num s1">1</div>
-                            <div><h4>Local Rules Engine</h4><p>40+ regex rules run instantly in your browser. Passive voice, spelling, punctuation, clichés — all offline, all free.</p></div>
+                            <div><h4>On-device checking</h4><p>The Harper engine flags grammar, spelling, punctuation, and style as you type — offline, instantly, with nothing leaving your browser.</p></div>
                         </div>
                         <div class="how-step">
                             <div class="step-num s2">2</div>
-                            <div><h4>AI Processing</h4><p>For complex grammar and context-aware suggestions, text is sent to your chosen LLM via a stateless edge function.</p></div>
+                            <div><h4>Spelling that fits the sentence</h4><p>A built-in 82k-word dictionary plus an n-gram language model rank corrections by what actually fits the context, not just edit distance.</p></div>
                         </div>
                         <div class="how-step">
                             <div class="step-num s3">3</div>
-                            <div><h4>Smart UI</h4><p>Red, amber, and blue wavy underlines appear as you type. Click to apply, ignore, or add to your dictionary.</p></div>
+                            <div><h4>Optional AI, your key</h4><p>Enable advanced rewrites, tone changes, or autocomplete. Text goes directly to the provider you pick — or a local Ollama model. Off by default.</p></div>
                         </div>
                     </div>
                 </div>
                 <div class="how-visual fade-in">
-                    <h3 style="font-weight:700;margin-bottom:20px">Writing Statistics</h3>
-                    <div class="stat-row">
-                        <div class="stat-box"><div class="label">Words</div><div class="value purple">1,248</div></div>
-                        <div class="stat-box"><div class="label">Reading Time</div><div class="value blue">4 min</div></div>
+                    <h3 style="font-weight:700;margin-bottom:20px">In-page suggestions</h3>
+                    <div style="font-size:16px;line-height:2;color:var(--fg);margin-bottom:20px">
+                        Thanks for the quick <span style="border-bottom:2.5px wavy var(--red);padding-bottom:2px">recieve</span> — I'll review it today.
                     </div>
-                    <div class="progress-bar">
-                        <div class="bar-label"><span>Readability Score</span><span style="color:var(--green);font-weight:700">Excellent (78)</span></div>
-                        <div class="bar-track"><div class="bar-fill" style="width:78%"></div></div>
+                    <div style="border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg2);padding:16px">
+                        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--red);margin-bottom:8px">Spelling</div>
+                        <div style="display:flex;align-items:center;gap:10px;font-size:15px;margin-bottom:14px">
+                            <span style="text-decoration:line-through;color:var(--fg3)">recieve</span>
+                            <i data-lucide="arrow-right" class="icon-inline" style="color:var(--fg3)"></i>
+                            <strong style="color:var(--primary)">receive</strong>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap">
+                            <span style="padding:6px 14px;border-radius:8px;background:var(--primary);color:#fff;font-size:13px;font-weight:600">Apply</span>
+                            <span style="padding:6px 14px;border-radius:8px;background:var(--bg3);color:var(--fg2);font-size:13px;font-weight:600">Ignore</span>
+                            <span style="padding:6px 14px;border-radius:8px;background:var(--bg3);color:var(--fg2);font-size:13px;font-weight:600">Add to dictionary</span>
+                        </div>
                     </div>
-                    <div class="progress-bar" style="margin-top:16px">
-                        <div class="bar-label"><span>Vocabulary Diversity</span><span style="color:var(--accent);font-weight:700">43%</span></div>
-                        <div class="bar-track"><div class="bar-fill" style="width:43%;background:linear-gradient(90deg,var(--primary),var(--accent))"></div></div>
-                    </div>
+                    <p style="font-size:13px;color:var(--fg3);line-height:1.6;margin-top:16px">Click a suggestion to apply it, ignore it, or add the word to your personal dictionary — all on your device.</p>
                 </div>
             </div>
         </div>
@@ -434,27 +439,30 @@ section{padding:100px 0}
             <div class="section-header fade-in">
                 <div class="section-label"><i data-lucide="sparkles" class="icon-inline"></i> AI Providers</div>
                 <h2 class="section-title">Choose your engine.</h2>
-                <p class="section-desc center">6 supported providers. From free to premium. From cloud to fully local.</p>
+                <p class="section-desc center">Eight providers, your own key, billed by them — never by us. From a free tier to fully local.</p>
             </div>
             <div class="providers-grid">
                 <div class="provider-card fade-in">
-                    <div class="provider-head"><h3><i data-lucide="zap" class="icon-inline"></i> Groq</h3><span class="provider-tag free">Free Tier</span></div>
-                    <p class="desc">Fastest inference with LPU technology. 100 free requests/day.</p>
-                    <ul class="check-list"><li>~200ms response</li><li>Llama 3.1 70B</li><li>No credit card</li></ul>
+                    <div class="provider-head"><h3><i data-lucide="zap" class="icon-inline"></i> Groq</h3><span class="provider-tag free">Free tier</span></div>
+                    <p class="desc">A free tier to start, with the fastest cloud responses — pick llama-3.3-70b-versatile for the quickest replies.</p>
+                    <ul class="check-list"><li>Free to try</li><li>No credit card</li><li>Very fast</li></ul>
                 </div>
                 <div class="provider-card fade-in">
-                    <div class="provider-head"><h3><i data-lucide="circle-dot" class="icon-inline"></i> OpenAI</h3><span class="provider-tag quality">Best Quality</span></div>
-                    <p class="desc">GPT-4o-mini for highest accuracy. ~$0.15/1K requests.</p>
-                    <ul class="check-list"><li>95% accuracy</li><li>Context-aware</li><li>Most reliable</li></ul>
+                    <div class="provider-head"><h3><i data-lucide="gem" class="icon-inline"></i> DeepSeek</h3><span class="provider-tag quality">Low cost</span></div>
+                    <p class="desc">A very low cost per check, and the top scorer among the few models in our own small benchmark. Pay only for what you use.</p>
+                    <ul class="check-list"><li>Very low cost</li><li>Top scorer in our test</li><li>Pay per use</li></ul>
                 </div>
                 <div class="provider-card fade-in">
-                    <div class="provider-head"><h3><i data-lucide="bot" class="icon-inline"></i> Ollama</h3><span class="provider-tag private">100% Local</span></div>
-                    <p class="desc">Run models on your own hardware. Complete privacy, works offline.</p>
+                    <div class="provider-head"><h3><i data-lucide="bot" class="icon-inline"></i> Ollama</h3><span class="provider-tag private">100% local</span></div>
+                    <p class="desc">Run an open model on your own hardware. Nothing leaves your machine; works fully offline.</p>
                     <ul class="check-list"><li>Zero data leaves</li><li>Free forever</li><li>No internet needed</li></ul>
                 </div>
             </div>
-            <p style="text-align:center;margin-top:32px">
-                <a href="docs/index.html#ai-providers" style="color:var(--primary);font-weight:600;font-size:15px">View all 6 providers — OpenRouter, Together AI, Custom →</a>
+            <p class="section-desc center" style="margin-top:32px;font-size:15px">
+                These picks come from our own small proofreading benchmark that tested only a handful of models — <strong>OpenAI and most other models weren't scored</strong>, so this isn't a ranking against them. Every provider is fully supported; use whichever you already have.
+            </p>
+            <p style="text-align:center;margin-top:16px">
+                <a href="docs/index.html#ai-providers" style="color:var(--primary);font-weight:600;font-size:15px">Set up OpenAI, OpenRouter, Together AI, Abacus RouteLLM, or any custom endpoint →</a>
             </p>
         </div>
     </section>
@@ -470,14 +478,14 @@ section{padding:100px 0}
                 <table class="compare-table">
                     <thead><tr><th>Feature</th><th>Grammarly</th><th class="highlight-col">OGrammar</th><th>LanguageTool</th></tr></thead>
                     <tbody>
-                        <tr><td><strong>Price</strong></td><td>$12/mo</td><td class="highlight-col yes">Free</td><td>$4.99/mo</td></tr>
-                        <tr><td><strong>Open Source</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i> Apache 2.0</td><td>Partial</td></tr>
-                        <tr><td><strong>Local AI (Ollama)</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i> Run models locally</td><td class="no"><i data-lucide="x" class="icon-inline"></i></td></tr>
-                        <tr><td><strong>Offline Mode</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i> 40+ rules</td><td>Partial</td></tr>
-                        <tr><td><strong>BYOK (Own AI Key)</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i> 6 providers</td><td class="no"><i data-lucide="x" class="icon-inline"></i></td></tr>
-                        <tr><td><strong>Local LLM (Ollama)</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td></tr>
-                        <tr><td><strong>Tone Rewriting</strong></td><td class="yes"><i data-lucide="check" class="icon-inline"></i> (Premium)</td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i> 8 tones</td><td class="no"><i data-lucide="x" class="icon-inline"></i></td></tr>
-                        <tr><td><strong>Data Stored on Server</strong></td><td class="no"><i data-lucide="check" class="icon-inline"></i> Yes</td><td class="highlight-col yes"><i data-lucide="x" class="icon-inline"></i> Stateless</td><td><i data-lucide="check" class="icon-inline"></i> Yes</td></tr>
+                        <tr><td><strong>Price</strong></td><td>From $12/mo</td><td class="highlight-col yes">Free</td><td>From $4.99/mo</td></tr>
+                        <tr><td><strong>Open source</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i> Apache 2.0</td><td>Partial</td></tr>
+                        <tr><td><strong>Works offline (on-device)</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i> Harper engine</td><td>Partial</td></tr>
+                        <tr><td><strong>Bring your own AI key</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i> 8 providers</td><td class="no"><i data-lucide="x" class="icon-inline"></i></td></tr>
+                        <tr><td><strong>100% local AI (Ollama)</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td></tr>
+                        <tr><td><strong>Tone rewriting</strong></td><td class="yes"><i data-lucide="check" class="icon-inline"></i> Premium</td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td></tr>
+                        <tr><td><strong>Learns your corrections locally</strong></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i></td><td class="no"><i data-lucide="x" class="icon-inline"></i></td></tr>
+                        <tr><td><strong>Stores your text on a server</strong></td><td class="no">Yes</td><td class="highlight-col yes"><i data-lucide="check" class="icon-inline"></i> No</td><td class="no">Yes</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -497,12 +505,12 @@ section{padding:100px 0}
                 <pre><span class="comment"># 1. Clone the repository</span>
 <span class="cmd">git clone</span> https://github.com/zazzn/opengrammar.git
 
-<span class="comment"># 2. Build the extension</span>
+<span class="comment"># 2. Build the extension (npm)</span>
 <span class="cmd">cd</span> opengrammar/opengrammar/extension
-<span class="cmd">bun install</span> && <span class="cmd">bun run build</span>
+<span class="cmd">npm install</span> && <span class="cmd">npm run build</span>
 
-<span class="comment"># 3. Load in chrome://extensions → Load Unpacked → dist/</span>
-<span class="comment"># <i data-lucide="check" class="icon-inline"></i> Set your provider + API key in the popup. No backend needed.</span></pre>
+<span class="comment"># 3. chrome://extensions → Developer mode → Load unpacked → select dist/</span>
+<span class="comment"># <i data-lucide="check" class="icon-inline"></i> Optional: pick a provider + key in the popup for AI. No backend needed.</span></pre>
             </div>
             <div class="cta-buttons fade-in">
                 <a href="docs/index.html#quick-start" class="btn btn-primary" style="padding:16px 32px;font-size:16px;border-radius:12px">
@@ -535,7 +543,6 @@ section{padding:100px 0}
                     <h4>Guides</h4>
                     <a href="docs/index.html#using-opengrammar">User Guide</a>
                     <a href="docs/index.html#tone-rewriting">Tone Rewriting</a>
-                    <a href="docs/index.html#writing-statistics">Writing Statistics</a>
                     <a href="docs/index.html#keyboard-shortcuts">Keyboard Shortcuts</a>
                     <a href="docs/index.html#faq">FAQ</a>
                 </div>

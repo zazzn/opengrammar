@@ -114,13 +114,13 @@ export function renderInlineDiffHTML(original: string, suggestion: string): stri
       const side = idx === 0 ? 'lead' : idx === lastIdx ? 'trail' : 'mid';
       html += `<span style="color:#6b6b70;">${esc(truncateEq(op.text, side))}</span>`;
     } else if (op.kind === 'del') {
-      html += `<span style="color:#b91c1c;background:#fee2e2;border-radius:3px;padding:0 2px;text-decoration:line-through;text-decoration-color:#ef4444;">${esc(op.text)}</span>`;
+      html += `<span style="color:#D1495B;background:#FBEAEE;border-radius:3px;padding:0 2px;text-decoration:line-through;text-decoration-color:#D1495B;">${esc(op.text)}</span>`;
     } else {
       const punctOnly = /^[^\sA-Za-z0-9]+$/.test(op.text.trim());
       const caret = punctOnly
-        ? '<span style="color:#059669;font-size:0.8em;vertical-align:-0.1em;">▾</span>'
+        ? '<span style="color:#127A48;font-size:0.8em;vertical-align:-0.1em;">▾</span>'
         : '';
-      html += `${caret}<span style="color:#065f46;background:#d1fae5;border-radius:3px;padding:0 2px;font-weight:700;">${esc(op.text)}</span>`;
+      html += `${caret}<span style="color:#127A48;background:#E7F4EC;border-radius:3px;padding:0 2px;font-weight:700;">${esc(op.text)}</span>`;
     }
   });
   return html;

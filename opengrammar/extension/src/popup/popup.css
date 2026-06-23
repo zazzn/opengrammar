@@ -119,23 +119,12 @@ body {
   50%       { opacity: 0.35; }
 }
 
-/* ─── Score ring ─── */
+/* ─── Issue summary header ─── */
 .score-section {
   padding: 16px 15px 13px;
   display: flex; align-items: center; gap: 14px;
   border-bottom: 1px solid var(--og-border);
   background: var(--og-surface);
-}
-.score-ring {
-  flex-shrink: 0; position: relative;
-  width: 64px; height: 64px;
-}
-.score-ring svg { transform: rotate(-90deg); }
-.score-ring circle { transition: stroke-dashoffset 0.65s cubic-bezier(0.4,0,0.2,1); }
-.score-number {
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px; font-weight: 800; letter-spacing: -0.5px;
 }
 .score-info h2 {
   font-size: 14px; font-weight: 700; color: var(--og-text-1); margin-bottom: 3px;
