@@ -3,7 +3,7 @@
 **Version 0.9** — a privacy-first, open-source writing-assistant browser
 extension. A fork of [OpenGrammar](https://github.com/swadhinbiswas/opengrammar).
 
-- Repo: <https://github.com/zazzn/opengrammar>
+- Repo: <https://github.com/zazzn/ogramext>
 - License: Apache-2.0 (see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE))
 
 There is no hosted service, account, or documentation site — everything

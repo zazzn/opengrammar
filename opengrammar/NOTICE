@@ -13,7 +13,7 @@ Copyright Swadhin Biswas and the OpenGrammar contributors
 Source:  https://github.com/swadhinbiswas/opengrammar
 License: Apache License, Version 2.0
 
-This fork (https://github.com/zazzn/opengrammar) makes significant changes to
+This fork (https://github.com/zazzn/ogramext) makes significant changes to
 the upstream work, including but not limited to:
 
   - Inline mechanical-only correction tier rebuilt on the Automattic Harper

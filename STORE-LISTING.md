@@ -8,7 +8,7 @@ GitHub Pages, upload the packaged zip + screenshots, paste the fields below, sub
 - **Name:** OGrammar
 - **Category:** Productivity
 - **Language:** English (US) - note other locales as future work
-- **Privacy policy URL:** `https://zazzn.github.io/opengrammar/privacy.html`
+- **Privacy policy URL:** `https://zazzn.github.io/ogramext/privacy.html`
   (live once GitHub Pages is enabled: repo Settings -> Pages -> Source = "GitHub Actions";
   the `deploy-pages.yml` workflow publishes `privacy.html` on every push to `og-rewrite`.)
 

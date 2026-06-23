@@ -37,7 +37,7 @@ const correctionCache = new Map<string, string>();
 const BUBBLE_SIZE = 30; // px — small, fits inside the field corner
 const COMPACT_BUBBLE_SIZE = 24;
 const MIN_FIELD_HEIGHT = 38; // skip tiny inputs (matches Grammarly)
-const MODEL_BENCHMARK_URL = 'https://github.com/zazzn/opengrammar/blob/og-rewrite/docs/25-local-llm-model-benchmark.md';
+const MODEL_BENCHMARK_URL = 'https://github.com/zazzn/ogramext/blob/og-rewrite/docs/25-local-llm-model-benchmark.md';
 let modelHintShownThisSession = false;
 
 function clamp(n: number, min: number, max: number): number {
