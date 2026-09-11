@@ -115,6 +115,19 @@ const SettingsPanel = ({
       {selectedProvider && <p className="field-hint">{selectedProvider.description}</p>}
     </div>
 
+    {settings.provider === 'custom' && (
+      <div className="field-group">
+        <label className="field-label">Custom Base URL</label>
+        <input
+          type="url"
+          value={settings.customBaseUrl}
+          onChange={(e) => saveSettings({ customBaseUrl: e.target.value })}
+          placeholder="https://your-api.com/v1"
+          className="text-input"
+        />
+      </div>
+    )}
+
     {selectedProvider?.requiresApiKey && (
       <div className="field-group">
         <label className="field-label">API Key <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: '#aeaeb2' }}>— stored locally</span></label>
@@ -185,23 +198,16 @@ const SettingsPanel = ({
       })()}
     </div>
 
-    {(settings.provider === 'ollama' || settings.provider === 'custom') && (
+    {settings.provider === 'ollama' && (
       <button type="button" className={`advanced-toggle ${showAdvanced ? 'open' : ''}`} onClick={() => setAdvanced((v: boolean) => !v)}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><SettingsIcon /> Advanced settings</span>
         <ChevronIcon />
       </button>
     )}
 
-    {showAdvanced && (settings.provider === 'ollama' || settings.provider === 'custom') && (
+    {showAdvanced && settings.provider === 'ollama' && (
       <div className="advanced-panel" ref={advancedRef}>
-        {settings.provider === 'custom' && (
-          <div className="field-group">
-            <label className="field-label">Custom Base URL</label>
-            <input type="url" value={settings.customBaseUrl} onChange={(e) => saveSettings({ customBaseUrl: e.target.value })} placeholder="https://your-api.com/v1" className="text-input" />
-          </div>
-        )}
-        {settings.provider === 'ollama' && (
-          <div className="field-group">
+        <div className="field-group">
             <label className="field-label">Ollama Server URL</label>
             <p className="field-hint" style={{ marginBottom: 5 }}>Default: http://localhost:11434</p>
             <div className="input-row">
@@ -323,7 +329,6 @@ const SettingsPanel = ({
               </p>
             </div>
           </div>
-        )}
       </div>
     )}
   </div>
@@ -354,7 +359,18 @@ const Popup = () => {
   const advancedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { loadSettings(); loadProviders(); loadIssueStats(); }, []);
-  useEffect(() => { if (settings.provider) loadModels(); }, [settings.provider]);
+  useEffect(() => {
+    if (
+      !settings.provider ||
+      (settings.provider !== 'ollama' && !settings.apiKey) ||
+      (settings.provider === 'custom' && !settings.customBaseUrl)
+    ) {
+      return;
+    }
+
+    const timer = setTimeout(loadModels, 300);
+    return () => clearTimeout(timer);
+  }, [settings.provider, settings.apiKey, settings.customBaseUrl, settings.ollamaUrl]);
   useEffect(() => {
     if (settings.provider !== 'ollama') {
       lastOllamaModel.current = null;
@@ -543,7 +559,7 @@ const Popup = () => {
     const p = e.target.value;
     // Ollama models are resolved live from /api/tags; don't seed a static
     // or default name (it would 404 until the live picker fills it in).
-    const fallback = p === 'ollama' ? '' : providers.find((x) => x.id === p)?.models[0] || 'gpt-4o-mini';
+    const fallback = p === 'ollama' || p === 'custom' ? '' : providers.find((x) => x.id === p)?.models[0] || 'gpt-4o-mini';
     saveSettings({ provider: p, model: providerModelMemory[p] || fallback });
   };
 
